@@ -1,6 +1,8 @@
 cmake_minimum_required (VERSION 2.8.11)
 project (multirotor_sim)
 
+set(CMAKE_POSITION_INDEPENDENT_CODE ON)
+
 find_package(Boost REQUIRED COMPONENTS system thread)
 find_package(Eigen3 REQUIRED)
 find_package(yaml-cpp REQUIRED)
@@ -17,10 +19,10 @@ include_directories(include
     ${YAML_CPP_INCLUDE_DIR}
 )
 
-add_library(framework
+add_library(multirotor_sim STATIC
     src/controller.cpp
     src/dynamics.cpp
     src/simulator.cpp
     src/environment.cpp
 )
-target_link_libraries(framework vi_ekf math_helper ${YAML_CPP_LIBRARIES} stdc++fs)
+target_link_libraries(multirotor_sim vi_ekf math_helper ${YAML_CPP_LIBRARIES} stdc++fs geometry)
