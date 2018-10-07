@@ -1,17 +1,6 @@
 tmax: 300.0 # Simulation total time, time step is determined by IMU rate
-num_mc_runs: 24 # Number of Monte-Carlo runs
 
 random_seed: -1 # -1 initializes seed with time
-
-log_directory: "../logs"
-
-multi_ekf_confs: [
-    "../params/ekf_baseline_params.yaml",
-    "../params/ekf_dt_params.yaml",
-    # "../params/ekf_pu_params.yaml", 
-    "../params/ekf_kf_params.yaml",
-    "../params/ekf_all_params.yaml"
-]
 
 # Path type:
 #   0 : waypoints
@@ -170,38 +159,3 @@ depth_noise_stdev: 0.1
 
 ## Attitude
 attitude_update_rate: 100
-
-# Common estimator configuration
-mu0: 0.1
-
-P0: [0.000001, 0.000001, 0.000001, # We start exactly at truth
-     0.000001, 0.000001, 0.000001,
-     0.000001, 0.000001, 0.000001,
-     0.0, 0.0, 0.0, # Bias init noise is overwritten by common file
-     0.0, 0.0, 0.0, # Bias init noise is overwritten by common file
-     0.000001]
-P0_feat: [0.1, 0.1, 0.3]
-
-Qx: [0.0, 0.0, 0.0,
-     0.0, 0.0, 0.0,
-     0.0, 0.0, 0.0,
-     0.0, 0.0, 0.0, # Bias noise overwritten by common file
-     0.0, 0.0, 0.0, # Bias noise overwritten by common file
-     0.0]
-Qx_feat: [0.0, 0.0, 0.0]
-
-lambda: [1.0, 1.0, 1.0,     # POS
-         1.0, 1.0, 1.0,     # VEL
-         1.0, 1.0, 1.0,     # ATT
-         1.0, 1.0, 1.0,     # B_A
-         1.0, 1.0, 1.0,     # B_G
-         1.0]               # MU
-lambda_feat: [1.0, 1.0, 1.0]
-
-imu_LPF: 0.0
-truth_LPF: 0.0
-
-min_depth: 3.0
-keyframe_overlap: 0.8
-feature_radius: 45
-cov_prop_skips: 0 # number of covariance propagation opportunities to skip

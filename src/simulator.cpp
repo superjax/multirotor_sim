@@ -348,6 +348,14 @@ int Simulator::global_to_local_feature_id(const int global_id) const
   return -1;
 }
 
+Xformd Simulator::get_pose() const
+{
+  Xformd x;
+  x.t_ = dyn_.get_state().segment<3>(dynamics::PX);
+  x.q_ = dyn_.get_state().segment<4>(dynamics::QW);
+  return x;
+}
+
 void Simulator::get_truth(xVector &x, const std::vector<int>& tracked_features) const
 {
   x.block<10,1>(0,0) = dyn_.get_state().block<10,1>(0,0);

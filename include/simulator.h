@@ -105,6 +105,13 @@ public:
   void tracked_features(std::vector<int>& ids) const;
 
   /**
+   * @brief get_pose
+   * Returns the current (true) state of the multirotor
+   * @returns current pose (position, attitude)
+   */
+  Xformd get_pose() const;
+
+  /**
    * @brief get_truth
    * @return the full truth vector (as supplied by EKF class)
    */

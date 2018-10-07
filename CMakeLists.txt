@@ -25,4 +25,4 @@ add_library(multirotor_sim STATIC
     src/simulator.cpp
     src/environment.cpp
 )
-target_link_libraries(multirotor_sim vi_ekf math_helper ${YAML_CPP_LIBRARIES} stdc++fs geometry)
+target_link_libraries(multirotor_sim ${YAML_CPP_LIBRARIES} stdc++fs geometry)
