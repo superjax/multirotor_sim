@@ -117,6 +117,12 @@ public:
    */
   void get_truth(xVector& x, const std::vector<int> &tracked_features) const;
 
+  /**
+   * @brief get_imu_noise
+   * @return 6x6 diagonal matrix of IMU covariance [acc, gyro]
+   */
+  Matrix6d get_imu_noise_covariance() const;
+
   inline Vector3d get_accel_bias() const { return accel_bias_; }
   inline Vector3d get_gyro_bias() const { return gyro_bias_; }
   

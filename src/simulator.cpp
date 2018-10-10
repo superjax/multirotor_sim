@@ -135,8 +135,10 @@ void Simulator::load(string filename)
   // Compute initial control and corresponding acceleration
   cont_.computeControl(dyn_.get_state(), t_, u_);
   dyn_.compute_accel(u_);
-  imu_.segment<3>(0) = dyn_.get_imu_accel() + accel_bias_ + accel_noise_;
+  imu_.segment<3>(0) = dyn_.get_imu_accel() + accel_bias_ + accel_noise_ - dynamics::gravity_;
   imu_.segment<3>(3) = dyn_.get_state().segment<3>(dynamics::WX) + gyro_bias_ + gyro_noise_;
+  imu_prev_.setZero();
+  imu_prev_.segment<3>(0) = -dynamics::gravity_;
 
   // Start Progress Bar
   if (prog_indicator_)
@@ -479,6 +481,17 @@ Matrix<double, 1, 1> Simulator::get_altitude()
 {
   /// TODO simulate sensor noise
   return -1.0 * dyn_.get_state().segment<1>(dynamics::PZ).array() + altimeter_noise_stdev_ * normal_(generator_);
+}
+
+Matrix6d Simulator::get_imu_noise_covariance() const
+{
+    Vector6d cov = (Vector6d() << accel_noise_stdev_*accel_noise_stdev_,
+                                  accel_noise_stdev_*accel_noise_stdev_,
+                                  accel_noise_stdev_*accel_noise_stdev_,
+                                  gyro_noise_stdev_*gyro_noise_stdev_,
+                                  gyro_noise_stdev_*gyro_noise_stdev_,
+                                  gyro_noise_stdev_*gyro_noise_stdev_).finished();
+    return cov.asDiagonal();
 }
 
 
