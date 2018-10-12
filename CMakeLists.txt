@@ -12,7 +12,7 @@ if (NOT TARGET geometry)
     include_directories(lib/geometry/include)
 endif()
 
-include_directories(include    
+include_directories(include/multirotor_sim
     ${Boost_INCLUDE_DIRS}
     ${EIGEN3_INCLUDE_DIRS}
     ${catkin_INCLUDE_DIRS}
