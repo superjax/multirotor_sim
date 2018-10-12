@@ -3,11 +3,10 @@
 #include "Eigen/Core"
 #include "Eigen/Geometry"
 
-//#include "vi_ekf.h"
 #include "utils.h"
-#include "quat.h"
-#include "xform.h"
-#include "support.h"
+#include "geometry/quat.h"
+#include "geometry/xform.h"
+#include "geometry/support.h"
 
 using namespace quat;
 using namespace xform;

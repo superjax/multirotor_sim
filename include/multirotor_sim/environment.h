@@ -2,7 +2,7 @@
 
 #include <Eigen/Core>
 
-#include "quat.h"
+#include "geometry/quat.h"
 #include "utils.h"
 
 using namespace Eigen;

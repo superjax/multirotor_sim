@@ -4,9 +4,10 @@
 #include "Eigen/Geometry"
 #include <Eigen/StdVector>
 
+#include "geometry/quat.h"
+#include "geometry/support.h"
+
 #include "utils.h"
-#include "quat.h"
-#include "support.h"
 #include "dynamics.h"
 
 using namespace quat;

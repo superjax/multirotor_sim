@@ -7,10 +7,11 @@
 #include "Eigen/Core"
 
 #include "utils.h"
-#include "quat.h"
 #include "environment.h"
 #include "dynamics.h"
 #include "controller.h"
+
+#include "geometry/quat.h"
 
 #define NUM_FEATURES 12
 #define MAX_X 17+NUM_FEATURES*5

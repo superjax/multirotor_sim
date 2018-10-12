@@ -1,5 +1,5 @@
 #include "environment.h"
-#include "support.h"
+#include "geometry/support.h"
     
 Environment::Environment(int seed)
   : uniform_(-1.0, 1.0),
