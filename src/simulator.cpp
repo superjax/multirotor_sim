@@ -491,7 +491,10 @@ Matrix6d Simulator::get_imu_noise_covariance() const
                                   gyro_noise_stdev_*gyro_noise_stdev_,
                                   gyro_noise_stdev_*gyro_noise_stdev_,
                                   gyro_noise_stdev_*gyro_noise_stdev_).finished();
-    return cov.asDiagonal();
+    if (cov.norm() < 1e-8)
+        return Matrix6d::Identity() * 1e-5;
+    else
+        return cov.asDiagonal();
 }
 
 

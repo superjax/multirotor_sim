@@ -129,11 +129,11 @@ altimeter_update_active: false
 ## IMU
 imu_update_rate: 250
 accel_init_stdev: 0.1
-accel_noise_stdev: 0.3
-accel_bias_walk: 0.05
+accel_noise_stdev: 0.01
+accel_bias_walk: 0.00
 gyro_init_stdev: 0.1
-gyro_noise_stdev: 0.06
-gyro_bias_walk: 0.01
+gyro_noise_stdev: 0.01
+gyro_bias_walk: 0.0
 
 ## Camera
 camera_time_delay: 0.05
