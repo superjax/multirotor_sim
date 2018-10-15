@@ -107,8 +107,18 @@ void Simulator::load(string filename)
   depth_noise_stdev_ = depth_noise * !use_depth_truth_;
   depth_noise_ = 0;
 
-  // Attitude
-  get_yaml_node("attitude_update_rate", filename, attitude_update_rate_);
+  // Truth
+  double att_noise, pos_noise;
+  get_yaml_node("truth_update_rate", filename, truth_update_rate_);
+  get_yaml_node("use_attitude_truth", filename, use_attitude_truth_);
+  get_yaml_node("use_position_truth", filename, use_position_truth_);
+  get_yaml_node("attitude_noise_stdev", filename, att_noise);
+  get_yaml_node("position_noise_stdev", filename, pos_noise);
+  get_yaml_node("truth_time_offset", filename, truth_time_offset_);
+  get_yaml_node("truth_transmission_noise", filename, truth_transmission_noise_);
+  get_yaml_node("truth_transmission_time", filename, truth_transmission_time_);
+  attitude_noise_stdev_ = att_noise * !use_attitude_truth_;
+  position_noise_stdev_ = pos_noise * !use_position_truth_;
 
   cont_.load(filename);
   env_.load(filename);
@@ -120,8 +130,10 @@ void Simulator::load(string filename)
   get_yaml_node("depth_update_active", filename, depth_update_active_);
   get_yaml_node("altimeter_update_active", filename, altimeter_update_active_);
   get_yaml_node("attitude_update_active", filename, attitude_update_active_);
+  get_yaml_node("position_update_active", filename, position_update_active_);
 
-  att_R_ = 0.01 * I_3x3;
+  att_R_ = att_noise * att_noise * I_3x3;
+  pos_R_ = pos_noise * pos_noise * I_3x3;
   acc_R_ = accel_noise * accel_noise * I_3x3;
   feat_R_ = pixel_noise * pixel_noise * I_2x2;
   alt_R_ << altimeter_noise * altimeter_noise;
@@ -188,152 +200,192 @@ void Simulator::tracked_features(std::vector<int>& ids) const
   }
 }
 
+
+void Simulator::get_imu_meas(std::vector<measurement_t, Eigen::aligned_allocator<measurement_t>>& meas_list)
+{
+    if (t_ >= last_imu_update_ + 1.0/imu_update_rate_)
+    {
+      double dt = t_ - last_imu_update_;
+      last_imu_update_ = t_;
+      imu_prev_ = imu_;
+
+      // Bias random walks and IMU noise
+      if (!use_accel_truth_)
+      {
+        Vector3d accel_walk;
+        random_normal_vec(accel_walk, accel_walk_stdev_, normal_, generator_);
+        accel_bias_ += accel_walk * accel_walk_stdev_ * dt;
+        random_normal_vec(accel_noise_, accel_noise_stdev_, normal_,  generator_);
+      }
+      if (!use_gyro_truth_)
+      {
+        Vector3d gyro_walk;
+        random_normal_vec(gyro_walk, gyro_walk_stdev_, normal_,  generator_);
+        gyro_bias_ += gyro_walk * dt;
+        random_normal_vec(gyro_noise_, gyro_noise_stdev_, normal_,  generator_);
+      }
+
+      // Populate accelerometer and gyro measurements
+      imu_.segment<3>(0) = dyn_.get_imu_accel() + accel_bias_ + accel_noise_;
+      imu_.segment<3>(3) = dyn_.get_state().segment<3>(dynamics::WX) + gyro_bias_ + gyro_noise_;
+
+      // Collect x/y acceleration measurements for drag update
+      measurement_t acc_meas;
+      acc_meas.t = t_;
+      acc_meas.type = ACC;
+      acc_meas.z = get_acc();
+      acc_meas.R = acc_R_;
+      acc_meas.active = drag_update_active_;
+      meas_list.push_back(acc_meas);
+    }
+}
+
+
+void Simulator::get_camera_meas(std::vector<measurement_t, Eigen::aligned_allocator<measurement_t>>& meas_list)
+{
+    // If it's time to capture new measurements, then do it
+    if (t_ > last_camera_update_ + 1.0/camera_update_rate_)
+    {
+      last_camera_update_ = t_;
+      update_camera_pose();
+
+      // Update feature measurements for currently tracked features
+      for(auto it = tracked_points_.begin(); it != tracked_points_.end();)
+      {
+        if (update_feature(*it))
+        {
+          measurement_t meas;
+          meas.t = t_;
+          meas.type = FEAT;
+          meas.z = get_pixel((*it));
+          meas.R = feat_R_;
+          meas.global_id = (*it).global_id;
+          meas.depth = get_depth((*it));
+          meas.active = feature_update_active_;
+          camera_measurements_buffer_.push_back(meas);
+          DBG("update feature - envID = %d globalID = %d\n",
+              it->env_id, it->global_id);
+          it++;
+        }
+        else
+        {
+          if (it->zeta(2,0) < 0)
+          {
+            DBG("clearing feature - envID = %d globalID = %d because went negative [%f, %f, %f]\n",
+                it->env_id, it->global_id, it->zeta(0,0), it->zeta(1,0), it->zeta(2,0));
+          }
+          else if ((it->pixel.array() < 0).any() || (it->pixel.array() > image_size_.array()).any())
+          {
+            DBG("clearing feature - envID = %d globalID = %d because went out of frame [%f, %f]\n",
+                it->env_id, it->global_id, it->pixel(0,0), it->pixel(1,0));
+          }
+          tracked_points_.erase(it);
+        }
+      }
+
+      while (tracked_points_.size() < NUM_FEATURES)
+      {
+        // Add the new feature to our "tracker"
+        feature_t new_feature;
+        if (!get_random_feature_in_frame(new_feature)) break;
+        tracked_points_.push_back(new_feature);
+        DBG("new feature - envID = %d globalID = %d [%f, %f, %f], [%f, %f]\n",
+            new_feature.env_id, new_feature.global_id, new_feature.zeta(0,0), new_feature.zeta(1,0),
+            new_feature.zeta(2,0), new_feature.pixel(0,0), new_feature.pixel(1,0));
+
+        // Pixel noise
+        if (!use_camera_truth_)
+          random_normal_vec(pixel_noise_, pixel_noise_stdev_, normal_, generator_);
+
+        // Create a measurement for this new feature
+        measurement_t meas;
+        meas.t = t_;
+        meas.type = FEAT;
+        meas.z = get_pixel(new_feature) + pixel_noise_;
+        meas.R = feat_R_;
+        meas.global_id = new_feature.global_id;
+        meas.depth = get_depth(new_feature, init_depth_);
+        meas.active = true; // always true for new features
+        camera_measurements_buffer_.push_back(meas);
+      }
+    }
+
+    // Push out the measurement if it is time to send it
+    if ((t_ > last_camera_update_ + camera_time_delay_) && (camera_measurements_buffer_.size() > 0));
+    {
+      for (auto it = camera_measurements_buffer_.begin(); it != camera_measurements_buffer_.end(); it++)
+      {
+        meas_list.push_back(*it);
+      }
+      camera_measurements_buffer_.clear();
+    }
+}
+
+
+void Simulator::get_alt_meas(std::vector<measurement_t, Eigen::aligned_allocator<measurement_t>>& meas_list)
+{
+    if (t_ >= last_altimeter_update_ + 1.0/altimeter_update_rate_)
+    {
+      // Altimeter noise
+      if (!use_altimeter_truth_)
+        altimeter_noise_ = altimeter_noise_stdev_ * normal_(generator_);
+      Matrix<double, 1, 1> noise(altimeter_noise_);
+
+      last_altimeter_update_ = t_;
+      measurement_t meas;
+      meas.t = t_;
+      meas.type = ALT;
+      meas.z = get_altitude() + noise;
+      meas.R = alt_R_;
+      meas.active = altimeter_update_active_;
+      meas_list.push_back(meas);
+    }
+}
+
+
+void Simulator::get_truth_meas(std::vector<measurement_t, Eigen::aligned_allocator<measurement_t>>& meas_list)
+{
+    if (t_ >= last_truth_update_ + 1.0/truth_update_rate_)
+    {
+      measurement_t att_meas;
+      att_meas.t = t_ - truth_time_offset_;
+      att_meas.type = ATT;
+      att_meas.z = get_attitude();
+      att_meas.R = att_R_;
+      att_meas.active = attitude_update_active_;
+      truth_measurement_buffer_.push_back(att_meas);
+
+      measurement_t pose_meas;
+      pose_meas.t = t_ - truth_time_offset_;
+      pose_meas.type = ATT;
+      pose_meas.z = get_position();
+      pose_meas.R = pos_R_;
+      pose_meas.active = position_update_active_;
+      truth_measurement_buffer_.push_back(pose_meas);
+
+      double offset = std::max(truth_transmission_time_ + normal_(generator_) * truth_transmission_noise_, 0.0);
+      next_truth_measurement_ = t_ + offset;
+    }
+
+    if (t_ >= next_truth_measurement_ && truth_measurement_buffer_.size() > 0)
+    {
+        for (auto it = truth_measurement_buffer_.begin(); it != truth_measurement_buffer_.end(); it++)
+        {
+          meas_list.push_back(*it);
+        }
+        truth_measurement_buffer_.clear();
+    }
+
+}
+
 void Simulator::get_measurements(std::vector<measurement_t, Eigen::aligned_allocator<measurement_t>>& meas_list)
 {
   meas_list.clear();
 
-  if (t_ >= last_imu_update_ + 1.0/imu_update_rate_)
-  {
-    double dt = t_ - last_imu_update_;
-    last_imu_update_ = t_;
-    imu_prev_ = imu_;
-
-    // Bias random walks and IMU noise
-    if (!use_accel_truth_)
-    {
-      Vector3d accel_walk;
-      random_normal_vec(accel_walk, accel_walk_stdev_, normal_, generator_);
-      accel_bias_ += accel_walk * accel_walk_stdev_ * dt;
-      random_normal_vec(accel_noise_, accel_noise_stdev_, normal_,  generator_);
-    }
-    if (!use_gyro_truth_)
-    {
-      Vector3d gyro_walk;
-      random_normal_vec(gyro_walk, gyro_walk_stdev_, normal_,  generator_);
-      gyro_bias_ += gyro_walk * dt;
-      random_normal_vec(gyro_noise_, gyro_noise_stdev_, normal_,  generator_);
-    }
-
-    // Populate accelerometer and gyro measurements
-    imu_.segment<3>(0) = dyn_.get_imu_accel() + accel_bias_ + accel_noise_;
-    imu_.segment<3>(3) = dyn_.get_state().segment<3>(dynamics::WX) + gyro_bias_ + gyro_noise_;
-
-    // Collect x/y acceleration measurements for drag update
-    measurement_t acc_meas;
-    acc_meas.t = t_;
-    acc_meas.type = ACC;
-    acc_meas.z = get_acc();
-    acc_meas.R = acc_R_;
-    acc_meas.active = drag_update_active_;
-    meas_list.push_back(acc_meas);
-  }
-  
-  /// Update Camera measurement
-
-  // If we have waited long enough, then push out the measurement
-  if ((t_ > last_camera_update_ + camera_time_delay_) && (camera_measurements_buffer_.size() > 0));
-  {
-    for (auto it = camera_measurements_buffer_.begin(); it != camera_measurements_buffer_.end(); it++)
-    {
-      meas_list.push_back(*it);
-    }
-    camera_measurements_buffer_.clear();
-  }
-
-  // If it's time to capture new measurements, then do it
-  if (t_ > last_camera_update_ + 1.0/camera_update_rate_)
-  {
-    last_camera_update_ = t_;
-    update_camera_pose();
-
-    // Update feature measurements for currently tracked features
-    for(auto it = tracked_points_.begin(); it != tracked_points_.end();)
-    {
-      if (update_feature(*it))
-      {
-        measurement_t meas;
-        meas.t = t_;
-        meas.type = FEAT;
-        meas.z = get_pixel((*it));
-        meas.R = feat_R_;
-        meas.global_id = (*it).global_id;
-        meas.depth = get_depth((*it));
-        meas.active = feature_update_active_;
-        camera_measurements_buffer_.push_back(meas);
-        DBG("update feature - envID = %d globalID = %d\n",
-            it->env_id, it->global_id);
-        it++;
-      }
-      else
-      {
-        if (it->zeta(2,0) < 0)
-        {
-          DBG("clearing feature - envID = %d globalID = %d because went negative [%f, %f, %f]\n",
-              it->env_id, it->global_id, it->zeta(0,0), it->zeta(1,0), it->zeta(2,0));
-        }
-        else if ((it->pixel.array() < 0).any() || (it->pixel.array() > image_size_.array()).any())
-        {
-          DBG("clearing feature - envID = %d globalID = %d because went out of frame [%f, %f]\n",
-              it->env_id, it->global_id, it->pixel(0,0), it->pixel(1,0));
-        }
-        tracked_points_.erase(it);
-      }
-    }
-
-    while (tracked_points_.size() < NUM_FEATURES)
-    {
-      // Add the new feature to our "tracker"
-      feature_t new_feature;
-      if (!get_random_feature_in_frame(new_feature)) break;
-      tracked_points_.push_back(new_feature);
-      DBG("new feature - envID = %d globalID = %d [%f, %f, %f], [%f, %f]\n",
-          new_feature.env_id, new_feature.global_id, new_feature.zeta(0,0), new_feature.zeta(1,0),
-          new_feature.zeta(2,0), new_feature.pixel(0,0), new_feature.pixel(1,0));
-
-      // Pixel noise
-      if (!use_camera_truth_)
-        random_normal_vec(pixel_noise_, pixel_noise_stdev_, normal_, generator_);
-
-      // Create a measurement for this new feature
-      measurement_t meas;
-      meas.t = t_;
-      meas.type = FEAT;
-      meas.z = get_pixel(new_feature) + pixel_noise_;
-      meas.R = feat_R_;
-      meas.global_id = new_feature.global_id;
-      meas.depth = get_depth(new_feature, init_depth_);
-      meas.active = true; // always true for new features
-      camera_measurements_buffer_.push_back(meas);
-    }
-  }
-  
-  if (t_ >= last_altimeter_update_ + 1.0/altimeter_update_rate_)
-  {
-    // Altimeter noise
-    if (!use_altimeter_truth_)
-      altimeter_noise_ = altimeter_noise_stdev_ * normal_(generator_);
-    Matrix<double, 1, 1> noise(altimeter_noise_);
-
-    last_altimeter_update_ = t_;
-    measurement_t meas;
-    meas.t = t_;
-    meas.type = ALT;
-    meas.z = get_altitude() + noise;
-    meas.R = alt_R_;
-    meas.active = altimeter_update_active_;
-    meas_list.push_back(meas);
-  }
-  
-  if (t_ >= last_attitude_update_ + 1.0/attitude_update_rate_)
-  {
-    measurement_t att_meas;
-    att_meas.t = t_;
-    att_meas.type = ATT;
-    att_meas.z = get_attitude();
-    att_meas.R = att_R_;
-    att_meas.active = attitude_update_active_;
-    meas_list.push_back(att_meas);
-  }
+  get_imu_meas(meas_list);
+  get_camera_meas(meas_list);
+  get_alt_meas(meas_list);
+  get_truth_meas(meas_list);
 }
 
 int Simulator::global_to_local_feature_id(const int global_id) const
@@ -443,15 +495,17 @@ void Simulator::proj(const Vector3d &zeta, Vector2d& pix) const
 
 Vector4d Simulator::get_attitude()
 {
-  /// TODO simulate sensor noise
-  return dyn_.get_state().segment<4>(dynamics::QW);
+  Vector3d noise;
+  random_normal_vec(noise, attitude_noise_stdev_, normal_, generator_);
+  return (Quatd(dyn_.get_state().segment<4>(dynamics::QW)) + noise).elements();
 }
 
 
 Vector3d Simulator::get_position()
 {
-  /// TODO simulate sensor noise
-  return dyn_.get_state().segment<3>(dynamics::PX);
+  Vector3d noise;
+  random_normal_vec(noise, position_noise_stdev_, normal_, generator_);
+  return dyn_.get_state().segment<3>(dynamics::PX) + noise;
 }
 
 

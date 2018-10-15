@@ -95,6 +95,11 @@ public:
    * @param meas
    */
   void get_measurements(std::vector<measurement_t, Eigen::aligned_allocator<measurement_t> > &meas);
+  void get_imu_meas(std::vector<measurement_t, Eigen::aligned_allocator<measurement_t> > &meas);
+  void get_camera_meas(std::vector<measurement_t, Eigen::aligned_allocator<measurement_t> > &meas);
+  void get_alt_meas(std::vector<measurement_t, Eigen::aligned_allocator<measurement_t> > &meas);
+  void get_truth_meas(std::vector<measurement_t, Eigen::aligned_allocator<measurement_t> > &meas);
+
 
   const Vector6d& get_imu_prev() const { return imu_prev_; }
 
@@ -133,12 +138,14 @@ public:
   double t_, dt_, tmax_;
 
   Matrix3d att_R_;
+  Matrix3d pos_R_;
   Matrix3d acc_R_;
   Matrix2d feat_R_;
   Matrix<double, 1, 1> alt_R_;
   Matrix<double, 1, 1> depth_R_;
   
   bool attitude_update_active_;
+  bool position_update_active_;
   bool depth_update_active_;
   bool feature_update_active_;
   bool drag_update_active_;
@@ -322,7 +329,17 @@ private:
   double depth_noise_stdev_; // Standard deviation of altimeter noise
   double depth_noise_;
 
-  // Attitude
-  double attitude_update_rate_; // determines how often to supply truth measurements
-  double last_attitude_update_;
+  // Truth
+  bool use_attitude_truth_;
+  bool use_position_truth_;
+  double truth_update_rate_; // determines how often to supply truth measurements
+  double attitude_noise_stdev_;
+  double position_noise_stdev_;
+  double last_truth_update_ = 0.0;
+  double next_truth_measurement_ = 0.0;
+  double truth_time_offset_;
+  double truth_transmission_noise_;
+  double truth_transmission_time_;
+  deque<measurement_t, aligned_allocator<measurement_t>> truth_measurement_buffer_; // container to hold measurements while waiting for delay
+
 };

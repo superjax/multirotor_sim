@@ -123,6 +123,7 @@ init_depth: false
 feature_update_active: true
 drag_update_active: true
 attitude_update_active: false
+position_update_active: false
 depth_update_active: false
 altimeter_update_active: false
 
@@ -157,5 +158,13 @@ altimeter_noise_stdev: 0.1
 depth_update_rate: 30
 depth_noise_stdev: 0.1
 
-## Attitude
-attitude_update_rate: 100
+## Truth
+truth_update_rate: 100
+use_attitude_truth: false
+use_position_truth: false
+attitude_noise_stdev: 0.01
+position_noise_stdev: 0.01
+truth_delay: 0
+truth_time_offset: 0
+truth_transmission_noise: 0
+truth_transmission_time: 0
