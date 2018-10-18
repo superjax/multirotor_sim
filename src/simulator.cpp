@@ -357,7 +357,7 @@ void Simulator::get_truth_meas(std::vector<measurement_t, Eigen::aligned_allocat
 
       measurement_t pose_meas;
       pose_meas.t = t_ - truth_time_offset_;
-      pose_meas.type = ATT;
+      pose_meas.type = POS;
       pose_meas.z = get_position();
       pose_meas.R = pos_R_;
       pose_meas.active = position_update_active_;
@@ -365,6 +365,7 @@ void Simulator::get_truth_meas(std::vector<measurement_t, Eigen::aligned_allocat
 
       double offset = std::max(truth_transmission_time_ + normal_(generator_) * truth_transmission_noise_, 0.0);
       next_truth_measurement_ = t_ + offset;
+      last_truth_update_ = t_;
     }
 
     if (t_ >= next_truth_measurement_ && truth_measurement_buffer_.size() > 0)
@@ -471,7 +472,7 @@ bool Simulator::get_random_feature_in_frame(feature_t &feature)
   }
   else
   {
-    cout << "\nGround Plane is not in camera frame " << endl;
+//    cout << "\nGround Plane is not in camera frame " << endl;
   }
   return false;
 }

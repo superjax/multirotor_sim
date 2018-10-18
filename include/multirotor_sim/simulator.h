@@ -150,8 +150,7 @@ public:
   bool feature_update_active_;
   bool drag_update_active_;
   bool altimeter_update_active_;
-  
-private:
+
   typedef struct
   {
     Vector3d zeta;
