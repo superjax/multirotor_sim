@@ -3,6 +3,7 @@
 #include <random>
 #include <algorithm>
 #include <deque>
+#include <fstream>
 
 #include "Eigen/Core"
 
@@ -129,8 +130,16 @@ public:
    */
   Matrix6d get_imu_noise_covariance() const;
 
+  /**
+   * @brief get_imu_noise
+   * @return 6x6 diagonal matrix of motion capture measurement [t, q]
+   */
+  Matrix6d get_mocap_noise_covariance() const;
+
   inline Vector3d get_accel_bias() const { return accel_bias_; }
   inline Vector3d get_gyro_bias() const { return gyro_bias_; }
+
+  void log_state();
   
   Environment env_;
   dynamics::Dynamics dyn_;
@@ -259,6 +268,8 @@ public:
   // Progress indicator, updated by run()
   ProgressBar prog_;
   bool prog_indicator_;
+  std::string log_filename_;
+  ofstream log_;
 
   // Command vector passed from controller to dynamics
   dynamics::commandVector u_;

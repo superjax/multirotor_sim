@@ -38,6 +38,9 @@ Simulator::~Simulator()
 {
     if (prog_indicator_)
         cout << endl;
+
+    if (log_.is_open())
+      log_.close();
 }
 
 
@@ -45,6 +48,13 @@ void Simulator::load(string filename)
 {
   t_ = 0;
   get_yaml_node("tmax", filename, tmax_);
+
+  // Log
+  get_yaml_node("log_filename", filename, log_filename_);
+  if (!log_filename_.empty())
+  {
+    log_.open(log_filename_);
+  }
 
   // Load IMU parameters
   get_yaml_node("imu_update_rate", filename, imu_update_rate_);
@@ -168,11 +178,22 @@ bool Simulator::run()
     dyn_.compute_accel(u_); // True acceleration is based on current control input
     if (prog_indicator_)
         prog_.print(t_/dt_);
+
+    log_state();
     return true;
   }
   else
   {
     return false;
+  }
+}
+
+void Simulator::log_state()
+{
+  if (log_.is_open())
+  {
+    log_.write((char*)&t_, sizeof(double));
+    log_.write((char*)dyn_.get_state().data(), sizeof(double)*dyn_.get_state().rows());
   }
 }
 
@@ -547,9 +568,23 @@ Matrix6d Simulator::get_imu_noise_covariance() const
                                   gyro_noise_stdev_*gyro_noise_stdev_,
                                   gyro_noise_stdev_*gyro_noise_stdev_).finished();
     if (cov.norm() < 1e-8)
-        return Matrix6d::Identity() * 1e-5;
+        return Matrix6d::Identity() * 1e-8;
     else
         return cov.asDiagonal();
+}
+
+Matrix6d Simulator::get_mocap_noise_covariance() const
+{
+  Vector6d cov = (Vector6d() << position_noise_stdev_*position_noise_stdev_,
+                                position_noise_stdev_*position_noise_stdev_,
+                                position_noise_stdev_*position_noise_stdev_,
+                                attitude_noise_stdev_*attitude_noise_stdev_,
+                                attitude_noise_stdev_*attitude_noise_stdev_,
+                                attitude_noise_stdev_*attitude_noise_stdev_).finished();
+  if (cov.norm() < 1e-8)
+      return Matrix6d::Identity() * 1e-8;
+  else
+      return cov.asDiagonal();
 }
 
 
