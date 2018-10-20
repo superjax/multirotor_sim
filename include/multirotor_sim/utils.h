@@ -1,4 +1,5 @@
 #pragma once
+#include <stdexcept>
 #include <stdio.h>
 #include <iostream>
 #include <sys/stat.h>
@@ -37,7 +38,7 @@ bool get_yaml_node(const std::string key, const std::string filename, T& val, bo
     {
       if (print_error)
       {
-        printf("Unable to load \"%s\" from %s\n", key.c_str(), filename.c_str());
+        throw std::runtime_error("Unable to load " + key + " from " + filename);
       }
       return false;
     }
@@ -69,13 +70,13 @@ bool get_yaml_eigen(const std::string key, const std::string filename, Eigen::Ma
     }
     else
     {
-      printf("Eigen Matrix Size does not match parameter size for \"%s\" in %s", key.c_str(), filename.c_str());
+      throw std::runtime_error("Eigen Matrix Size does not match parameter size for " + key + " in " + filename);
       return false;
     }
   }
   else if (print_error)
   {
-    printf("Unable to load \"%s\" from %s\n", key.c_str(), filename.c_str());
+    throw std::runtime_error("Unable to load " + key + " from " + filename);
   }
   return false;
 }

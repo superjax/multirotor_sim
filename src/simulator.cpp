@@ -124,9 +124,11 @@ void Simulator::load(string filename)
   get_yaml_node("use_position_truth", filename, use_position_truth_);
   get_yaml_node("attitude_noise_stdev", filename, att_noise);
   get_yaml_node("position_noise_stdev", filename, pos_noise);
-  get_yaml_node("truth_time_offset", filename, truth_time_offset_);
-  get_yaml_node("truth_transmission_noise", filename, truth_transmission_noise_);
-  get_yaml_node("truth_transmission_time", filename, truth_transmission_time_);
+  get_yaml_node("truth_time_offset", filename, mocap_time_offset_);
+  get_yaml_node("truth_transmission_noise", filename, mocap_transmission_noise_);
+  get_yaml_node("truth_transmission_time", filename, mocap_transmission_time_);
+  get_yaml_eigen("p_b_m", filename, p_b_m_);
+  get_yaml_eigen("q_b_m", filename, q_b_m_.arr_);
   attitude_noise_stdev_ = att_noise * !use_attitude_truth_;
   position_noise_stdev_ = pos_noise * !use_position_truth_;
 
@@ -365,35 +367,35 @@ void Simulator::get_alt_meas(std::vector<measurement_t, Eigen::aligned_allocator
 }
 
 
-void Simulator::get_truth_meas(std::vector<measurement_t, Eigen::aligned_allocator<measurement_t>>& meas_list)
+void Simulator::get_mocap_meas(std::vector<measurement_t, Eigen::aligned_allocator<measurement_t>>& meas_list)
 {
     if (t_ >= last_truth_update_ + 1.0/truth_update_rate_)
     {
       measurement_t att_meas;
-      att_meas.t = t_ - truth_time_offset_;
+      att_meas.t = t_ - mocap_time_offset_;
       att_meas.type = ATT;
       att_meas.z = get_attitude();
       att_meas.R = att_R_;
       att_meas.active = attitude_update_active_;
 
       measurement_t pose_meas;
-      pose_meas.t = t_ - truth_time_offset_;
+      pose_meas.t = t_ - mocap_time_offset_;
       pose_meas.type = POS;
       pose_meas.z = get_position();
       pose_meas.R = pos_R_;
       pose_meas.active = position_update_active_;
 
-      double pub_time = std::max(truth_transmission_time_ + normal_(generator_) * truth_transmission_noise_, 0.0) + t_;
+      double pub_time = std::max(mocap_transmission_time_ + normal_(generator_) * mocap_transmission_noise_, 0.0) + t_;
 
-      truth_measurement_buffer_.push_back(std::pair<double, measurement_t>{pub_time, pose_meas});
-      truth_measurement_buffer_.push_back(std::pair<double, measurement_t>{pub_time, att_meas});
+      mocap_measurement_buffer_.push_back(std::pair<double, measurement_t>{pub_time, pose_meas});
+      mocap_measurement_buffer_.push_back(std::pair<double, measurement_t>{pub_time, att_meas});
       last_truth_update_ = t_;
     }
 
-    while (truth_measurement_buffer_.size() > 0 && truth_measurement_buffer_[0].first > t_)
+    while (mocap_measurement_buffer_.size() > 0 && mocap_measurement_buffer_[0].first > t_)
     {
-      meas_list.push_back(truth_measurement_buffer_[0].second);
-      truth_measurement_buffer_.erase(truth_measurement_buffer_.begin());
+      meas_list.push_back(mocap_measurement_buffer_[0].second);
+      mocap_measurement_buffer_.erase(mocap_measurement_buffer_.begin());
     }
 }
 
@@ -404,7 +406,7 @@ void Simulator::get_measurements(std::vector<measurement_t, Eigen::aligned_alloc
   get_imu_meas(meas_list);
   get_camera_meas(meas_list);
   get_alt_meas(meas_list);
-  get_truth_meas(meas_list);
+  get_mocap_meas(meas_list);
 }
 
 int Simulator::global_to_local_feature_id(const int global_id) const
@@ -516,7 +518,9 @@ Vector4d Simulator::get_attitude()
 {
   Vector3d noise;
   random_normal_vec(noise, attitude_noise_stdev_, normal_, generator_);
-  return (Quatd(dyn_.get_state().segment<4>(dynamics::QW)) + noise).elements();
+  Quatd q_I_b(dyn_.get_state().segment<4>(dynamics::QW)); // q_I^b
+  Quatd q_I_m = q_I_b * q_b_m_; //  q_I^m = q_I^b * q_b^m
+  return (q_I_m + noise).elements();
 }
 
 
@@ -524,7 +528,10 @@ Vector3d Simulator::get_position()
 {
   Vector3d noise;
   random_normal_vec(noise, position_noise_stdev_, normal_, generator_);
-  return dyn_.get_state().segment<3>(dynamics::PX) + noise;
+  Quatd q_I_b(dyn_.get_state().segment<4>(dynamics::QW)); // q_I^b
+  Vector3d I_p_b_I_ = dyn_.get_state().segment<3>(dynamics::PX); // p_{b/I}^I
+  Vector3d I_p_m_I_ = I_p_b_I_ + q_I_b.rota(p_b_m_); // p_{m/I}^I = p_{b/I}^I + R(q_I^b)^T (p_{m/b}^b)
+  return I_p_m_I_;
 }
 
 

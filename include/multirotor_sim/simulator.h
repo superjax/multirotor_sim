@@ -99,7 +99,7 @@ public:
   void get_imu_meas(std::vector<measurement_t, Eigen::aligned_allocator<measurement_t> > &meas);
   void get_camera_meas(std::vector<measurement_t, Eigen::aligned_allocator<measurement_t> > &meas);
   void get_alt_meas(std::vector<measurement_t, Eigen::aligned_allocator<measurement_t> > &meas);
-  void get_truth_meas(std::vector<measurement_t, Eigen::aligned_allocator<measurement_t> > &meas);
+  void get_mocap_meas(std::vector<measurement_t, Eigen::aligned_allocator<measurement_t> > &meas);
 
 
   const Vector6d& get_imu_prev() const { return imu_prev_; }
@@ -340,6 +340,8 @@ public:
   double depth_noise_;
 
   // Truth
+  Quatd q_b_m_;
+  Vector3d p_b_m_;
   bool use_attitude_truth_;
   bool use_position_truth_;
   double truth_update_rate_; // determines how often to supply truth measurements
@@ -347,9 +349,9 @@ public:
   double position_noise_stdev_;
   double last_truth_update_ = 0.0;
   double next_truth_measurement_ = 0.0;
-  double truth_time_offset_;
-  double truth_transmission_noise_;
-  double truth_transmission_time_;
-  deque<std::pair<double, measurement_t>, aligned_allocator<std::pair<double, measurement_t>>> truth_measurement_buffer_; // container to hold measurements while waiting for delay
+  double mocap_time_offset_;
+  double mocap_transmission_noise_;
+  double mocap_transmission_time_;
+  deque<std::pair<double, measurement_t>, aligned_allocator<std::pair<double, measurement_t>>> mocap_measurement_buffer_; // container to hold measurements while waiting for delay
 
 };
