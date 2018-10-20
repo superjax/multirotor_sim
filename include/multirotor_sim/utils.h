@@ -227,6 +227,11 @@ public:
     }
     last_completed_ = completed;
   }
+
+  void finished()
+  {
+    print(total_);
+  }
 private:
 
   std::string ms_to_stamp(int ms)

@@ -184,6 +184,7 @@ bool Simulator::run()
   }
   else
   {
+    prog_.finished();
     return false;
   }
 }
