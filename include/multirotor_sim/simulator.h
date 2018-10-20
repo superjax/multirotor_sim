@@ -350,6 +350,6 @@ public:
   double truth_time_offset_;
   double truth_transmission_noise_;
   double truth_transmission_time_;
-  deque<measurement_t, aligned_allocator<measurement_t>> truth_measurement_buffer_; // container to hold measurements while waiting for delay
+  deque<std::pair<double, measurement_t>, aligned_allocator<std::pair<double, measurement_t>>> truth_measurement_buffer_; // container to hold measurements while waiting for delay
 
 };

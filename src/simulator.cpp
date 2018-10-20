@@ -374,7 +374,6 @@ void Simulator::get_truth_meas(std::vector<measurement_t, Eigen::aligned_allocat
       att_meas.z = get_attitude();
       att_meas.R = att_R_;
       att_meas.active = attitude_update_active_;
-      truth_measurement_buffer_.push_back(att_meas);
 
       measurement_t pose_meas;
       pose_meas.t = t_ - truth_time_offset_;
@@ -382,22 +381,19 @@ void Simulator::get_truth_meas(std::vector<measurement_t, Eigen::aligned_allocat
       pose_meas.z = get_position();
       pose_meas.R = pos_R_;
       pose_meas.active = position_update_active_;
-      truth_measurement_buffer_.push_back(pose_meas);
 
-      double offset = std::max(truth_transmission_time_ + normal_(generator_) * truth_transmission_noise_, 0.0);
-      next_truth_measurement_ = t_ + offset;
+      double pub_time = std::max(truth_transmission_time_ + normal_(generator_) * truth_transmission_noise_, 0.0) + t_;
+
+      truth_measurement_buffer_.push_back(std::pair<double, measurement_t>{pub_time, pose_meas});
+      truth_measurement_buffer_.push_back(std::pair<double, measurement_t>{pub_time, att_meas});
       last_truth_update_ = t_;
     }
 
-    if (t_ >= next_truth_measurement_ && truth_measurement_buffer_.size() > 0)
+    while (truth_measurement_buffer_.size() > 0 && truth_measurement_buffer_[0].first > t_)
     {
-        for (auto it = truth_measurement_buffer_.begin(); it != truth_measurement_buffer_.end(); it++)
-        {
-          meas_list.push_back(*it);
-        }
-        truth_measurement_buffer_.clear();
+      meas_list.push_back(truth_measurement_buffer_[0].second);
+      truth_measurement_buffer_.erase(truth_measurement_buffer_.begin());
     }
-
 }
 
 void Simulator::get_measurements(std::vector<measurement_t, Eigen::aligned_allocator<measurement_t>>& meas_list)
