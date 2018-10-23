@@ -102,13 +102,19 @@ void Dynamics::run(const double dt, const commandVector &u)
 
 Vector3d Dynamics::get_imu_accel() const
 {
-  return x_.segment<3>(AX) - Quatd(x_.segment<4>(QW)).rotp(gravity_) + x_.segment<3>(WX).cross(x_.segment<3>(VX));
+  return imu_.segment<3>(ACC);
 }
 
-void Dynamics::compute_accel(const commandVector &u)
+Vector3d Dynamics::get_imu_gyro() const
+{
+  return imu_.segment<3>(GYRO);
+}
+
+void Dynamics::compute_imu(const commandVector &u)
 {
   f(x_, u, dx_);
-  x_.segment<3>(AX) = dx_.segment<3>(VX);
+  imu_.segment<3>(ACC) = dx_.segment<3>(VX) - Quatd(x_.segment<4>(QW)).rotp(gravity_) + x_.segment<3>(WX).cross(x_.segment<3>(VX));
+  imu_.segment<3>(GYRO) = dx_.segment<3>(DQX);
 }
 
 }
