@@ -99,6 +99,8 @@ private:
   double angular_drag_;
   double max_thrust_;
   Vector6d imu_;
+  Vector3d p_b_u_; // Body to IMU translation
+  Quatd q_b_u_; // Body to IMU rotation
 
   bool wind_enabled_;
   double vw_walk_stdev_;

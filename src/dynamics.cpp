@@ -8,11 +8,15 @@ Dynamics::Dynamics() {}
 
 void Dynamics::load(std::string filename)
 {
+  Vector4d q_b_u;
   get_yaml_node("mass", filename, mass_);
   get_yaml_node("drag_constant", filename, drag_constant_);
   get_yaml_node("max_thrust", filename, max_thrust_);
   get_yaml_node("angular_drag_constant", filename, angular_drag_);
   get_yaml_node("RK4", filename, RK4_);
+  get_yaml_eigen("p_b_u", filename, p_b_u_);
+  get_yaml_eigen("q_b_u", filename, q_b_u);
+  q_b_u_ = Quatd(q_b_u);
 
   // Initialize wind and its random walk/noise parameters
   double vw_init_var, vw_walk_stdev;
@@ -113,8 +117,10 @@ Vector3d Dynamics::get_imu_gyro() const
 void Dynamics::compute_imu(const commandVector &u)
 {
   f(x_, u, dx_);
-  imu_.segment<3>(ACC) = dx_.segment<3>(VX) - Quatd(x_.segment<4>(QW)).rotp(gravity_) + x_.segment<3>(WX).cross(x_.segment<3>(VX));
-  imu_.segment<3>(GYRO) = dx_.segment<3>(DQX);
+  imu_.segment<3>(ACC) = q_b_u_.rotp(dx_.segment<3>(VX) + x_.segment<3>(WX).cross(x_.segment<3>(VX) +
+                         x_.segment<3>(WX).cross(x_.segment<3>(WX).cross(p_b_u_))) + dx_.segment<3>(DWX).cross(p_b_u_)
+                          - Quatd(x_.segment<4>(QW)).rotp(gravity_));
+  imu_.segment<3>(GYRO) = q_b_u_.rotp(x_.segment<3>(WX));
 }
 
 }
