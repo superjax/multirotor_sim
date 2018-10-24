@@ -57,8 +57,12 @@ void Simulator::load(string filename)
   }
 
   // Load IMU parameters
+  Vector4d q_b_u;
   get_yaml_node("imu_update_rate", filename, imu_update_rate_);
   dt_ = 1.0 / imu_update_rate_;
+  get_yaml_eigen("p_b_u", filename, p_b_u_);
+  get_yaml_eigen("q_b_u", filename, q_b_u);
+  q_b_u_ = Quatd(q_b_u);
 
   // Accelerometer
   double accel_noise, accel_walk, accel_init;

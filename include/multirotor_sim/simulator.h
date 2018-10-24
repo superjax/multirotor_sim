@@ -285,6 +285,8 @@ public:
   Vector6d imu_prev_; // Previous version for propagation
   double imu_update_rate_; // determines how often to generate an altitude measurement
   double last_imu_update_;
+  Quatd q_b_u_;
+  Vector3d p_b_u_;
 
   bool use_accel_truth_;
   Vector3d accel_bias_; // Memory for random walk
