@@ -158,7 +158,7 @@ void Simulator::load(string filename)
 
   // Compute initial control and corresponding acceleration
   cont_.computeControl(dyn_.get_state(), t_, u_);
-  dyn_.compute_accel(u_);
+  dyn_.compute_imu(u_);
   imu_.segment<3>(0) = dyn_.get_imu_accel() + accel_bias_ + accel_noise_ - dynamics::gravity_;
   imu_.segment<3>(3) = dyn_.get_state().segment<3>(dynamics::WX) + gyro_bias_ + gyro_noise_;
   imu_prev_.setZero();
@@ -177,7 +177,7 @@ bool Simulator::run()
     dyn_.run(dt_, u_);
     t_ += dt_;
     cont_.computeControl(dyn_.get_state(), t_, u_);
-    dyn_.compute_accel(u_); // True acceleration is based on current control input
+    dyn_.compute_imu(u_); // True acceleration is based on current control input
     if (prog_indicator_)
         prog_.print(t_/dt_);
 
@@ -251,7 +251,7 @@ void Simulator::get_imu_meas(std::vector<measurement_t, Eigen::aligned_allocator
 
       // Populate accelerometer and gyro measurements
       imu_.segment<3>(0) = dyn_.get_imu_accel() + accel_bias_ + accel_noise_;
-      imu_.segment<3>(3) = dyn_.get_state().segment<3>(dynamics::WX) + gyro_bias_ + gyro_noise_;
+      imu_.segment<3>(3) = dyn_.get_imu_gyro() + gyro_bias_ + gyro_noise_;
 
       // Collect x/y acceleration measurements for drag update
       measurement_t acc_meas;

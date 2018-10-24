@@ -14,11 +14,7 @@ using namespace xform;
 namespace dynamics {
 
 
-typedef Eigen::Matrix<double, 16, 1> xVector;
-typedef Eigen::Matrix<double, 12, 1> dxVector;
-typedef Eigen::Matrix<double, 4, 1> commandVector;
-
-// State Indexes
+// State Indices
 enum {
   PX = 0,
   PY = 1,
@@ -33,21 +29,31 @@ enum {
   WX = 10,
   WY = 11,
   WZ = 12,
-  AX = 13,
-  AY = 14,
-  AZ = 15,
+  STATE_SIZE = 13,
   
   DQX = 6, // Attitude derivative indexes
-  DWX = 9
+  DWX = 9,
+  DX_SIZE = 12
 };
 
-// Input indexes
+// Input indices
 enum {
   THRUST,
   TAUX,
   TAUY,
-  TAUZ
+  TAUZ,
+  INPUT_SIZE
 };
+
+// IMU indices
+enum {
+  ACC = 0,
+  GYRO = 3
+};
+
+typedef Eigen::Matrix<double, STATE_SIZE, 1> xVector;
+typedef Eigen::Matrix<double, DX_SIZE, 1> dxVector;
+typedef Eigen::Matrix<double, INPUT_SIZE, 1> commandVector;
 
 
 static const Vector3d gravity_ = [] {
@@ -77,7 +83,8 @@ public:
   const double& get_drag() const { return drag_constant_; }
   const Eigen::Vector3d& get_wind() const { return vw_; }
   Vector3d get_imu_accel() const;
-  void compute_accel(const commandVector& u);
+  Vector3d get_imu_gyro() const;
+  void compute_imu(const commandVector& u);
   
 private:
   // States and RK4 Workspace
@@ -91,6 +98,9 @@ private:
   double drag_constant_;
   double angular_drag_;
   double max_thrust_;
+  Vector6d imu_;
+  Vector3d p_b_u_; // Body to IMU translation
+  Quatd q_b_u_; // Body to IMU rotation
 
   bool wind_enabled_;
   double vw_walk_stdev_;
