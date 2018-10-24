@@ -6,6 +6,8 @@
 #include <unistd.h>
 #include <chrono>
 #include <random>
+#include <experimental/filesystem>
+#include <boost/algorithm/string.hpp>
 
 #include "Eigen/Core"
 #include "yaml-cpp/yaml.h"
@@ -106,6 +108,33 @@ bool get_yaml_priority_eigen(const std::string key, const std::string file1, con
     return get_yaml_eigen(key, file2, val, true);
   }
 }
+
+inline bool createDirIfNotExist(const std::string& dir)
+{
+  if(!std::experimental::filesystem::exists(dir))
+    return std::experimental::filesystem::create_directory(dir);
+  else
+    return false;
+}
+
+inline std::vector<std::string> split(const std::string& s, const char* delimeter)
+{
+   std::vector<std::string> tokens;
+   std::string token;
+   std::istringstream tokenStream(s);
+   while (std::getline(tokenStream, token, delimeter[0]))
+   {
+      tokens.push_back(token);
+   }
+   return tokens;
+}
+
+inline std::string baseName(const std::string& path)
+{
+  std::string filename = split(path, "/").back();
+  return split(filename, ".")[0];
+}
+
 
 namespace frame_helper
 {
@@ -274,6 +303,37 @@ private:
   
   std::chrono::system_clock::time_point start_time_;
   std::chrono::system_clock::time_point last_print_time_;  
+};
+
+class InputParser{
+public:
+  InputParser (int &argc, char **argv)
+  {
+    for (int i=1; i < argc; ++i)
+      this->tokens.push_back(std::string(argv[i]));
+  }
+
+  template<typename T>
+  bool getCmdOption(const std::string &option, T& ret) const
+  {
+    std::stringstream ss;
+    auto itr =  std::find(this->tokens.begin(), this->tokens.end(), option);
+    if (itr != this->tokens.end() && ++itr != this->tokens.end())
+    {
+      ss << *itr;
+      ss >> ret;
+    }
+    return false;
+  }
+
+  bool cmdOptionExists(const std::string &option) const
+  {
+    return std::find(this->tokens.begin(), this->tokens.end(), option)
+        != this->tokens.end();
+  }
+
+private:
+  std::vector <std::string> tokens;
 };
 
 template<typename T, int S>
