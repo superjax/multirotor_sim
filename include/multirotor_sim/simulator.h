@@ -160,6 +160,7 @@ public:
   bool drag_update_active_;
   bool altimeter_update_active_;
 
+
   typedef struct
   {
     Vector3d zeta;
@@ -189,17 +190,37 @@ public:
   void proj(const Vector3d& zeta, Vector2d& pix) const;
   
   /**
-   * @brief get_random_feature_in_frame
-   * Finds a new, randomly selected pixel in the camera frame from the environment and calculates its 
-   * projection - global_id is automatically incremented with each call
-   * @returns new feature with projection loaded
+   * @brief get_feature_in_frame
+   * If retrack is true first tries to find pixels previously tracked in the frame that are not
+   * currently being tracked.  If retrack is false, or there are no previously observed landmarks,
+   * or all previously observed landmarks are being tracked, creates a new, randomly selected landmark
+   * in the camera frame from the environment and calculates its projection - global_id is automatically
+   * incremented with each new landmark
+   * @param feature - ouput new feature with projection loaded
+   * @param retrack - flag of whether to rediscover old landmarks or always create new
+   * @returns bool - true if suceeded, false if the ground plane is not in the camera FOV.
    */
-  bool get_random_feature_in_frame(feature_t &feature);
+  bool get_feature_in_frame(feature_t &feature, bool retrack);
+
+
+  /**
+   * @brief get_previously_tracked_feature_in_frame
+   * @param feature
+   * @return true if success
+   */
+  bool get_previously_tracked_feature_in_frame(feature_t &feature);
+
+  /**
+   * @brief create_new_feature_in_frame
+   * @param feature
+   * @return true if success
+   */
+  bool create_new_feature_in_frame(feature_t &feature);
+
   
   /**
    * @brief is_feature_tracked
-   * Returns true if the pixel referred to by env_id is already in the tracked_features_
-   * object
+   * Returns true if the landmark referred to by env_id is already in the tracked_features_ list
    * @param env_id - the id of the point in the environment points array
    * @return true if tracked, false otherwise
    */
@@ -265,6 +286,13 @@ public:
    */
   int global_to_local_feature_id(int id) const;
 
+  /**
+   * @brief env_to_global_feature_id
+   * @param env_id
+   * @return the global id of the feature with env_id
+   */
+  int env_to_global_feature_id(const int env_id) const;
+
   // Progress indicator, updated by run()
   ProgressBar prog_;
   bool prog_indicator_;
@@ -311,6 +339,7 @@ public:
   deque<measurement_t, aligned_allocator<measurement_t>> camera_measurements_buffer_; // container to hold measurements while waiting for delay
   double camera_time_delay_;
   Vector2d pixel_noise_;
+  bool loop_closure_;
   
   // Pose of camera in the body frame - assumed to be fixed
   Quatd q_b_c_;

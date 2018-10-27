@@ -1,5 +1,6 @@
 #include "simulator.h"
 #include <Eigen/StdVector>
+#include <chrono>
 
 using namespace std;
 
@@ -98,6 +99,7 @@ void Simulator::load(string filename)
   get_yaml_eigen("t_b_c", filename, t_b_c_);
   get_yaml_eigen("focal_len", filename, focal_len);
   get_yaml_node("pixel_noise_stdev", filename, pixel_noise);
+  get_yaml_node("loop_closure", filename, loop_closure_);
   pixel_noise_stdev_ = !use_camera_truth_ * pixel_noise;
   pixel_noise_.setZero();
   cam_F_ << focal_len(0,0), 0, 0, 0, focal_len(1,0), 0; // Copy focal length into 2x3 matrix for future use
@@ -315,7 +317,8 @@ void Simulator::get_camera_meas(std::vector<measurement_t, Eigen::aligned_alloca
       {
         // Add the new feature to our "tracker"
         feature_t new_feature;
-        if (!get_random_feature_in_frame(new_feature)) break;
+        if (!get_feature_in_frame(new_feature, loop_closure_))
+          break;
         tracked_points_.push_back(new_feature);
         DBG("new feature - envID = %d globalID = %d [%f, %f, %f], [%f, %f]\n",
             new_feature.env_id, new_feature.global_id, new_feature.zeta(0,0), new_feature.zeta(1,0),
@@ -415,14 +418,24 @@ void Simulator::get_measurements(std::vector<measurement_t, Eigen::aligned_alloc
 
 int Simulator::global_to_local_feature_id(const int global_id) const
 {
-  int i = 0;
-  while (i < tracked_points_.size())
+  for (int i = 0; i < tracked_points_.size(); i++)
   {
     if (tracked_points_[i].global_id == global_id)
     {
       return i;
     }
-    i++;
+  }
+  return -1;
+}
+
+int Simulator::env_to_global_feature_id(const int env_id) const
+{
+  for (int i = 0; i < tracked_points_.size(); i++)
+  {
+    if (tracked_points_[i].env_id == env_id)
+    {
+      return tracked_points_[i].global_id;
+    }
   }
   return -1;
 }
@@ -486,8 +499,48 @@ bool Simulator::update_feature(feature_t &feature) const
     return true;
 }
 
-bool Simulator::get_random_feature_in_frame(feature_t &feature)
+bool Simulator::get_previously_tracked_feature_in_frame(feature_t &feature)
 {
+  for (int i = 0; i < env_.get_points().rows(); i++)
+  {
+    if (is_feature_tracked(i))
+      continue;
+    // Calculate the bearing vector to the feature
+    Vector3d pt = env_.get_points().row(i).transpose();
+    feature.zeta = q_I_c_.rotp(pt - t_I_c_);
+    if (feature.zeta(2) < 0.0)
+      continue;
+
+    feature.zeta /= feature.zeta.norm();
+    feature.depth = (env_.get_points().row(i).transpose() - t_I_c_).norm();
+    proj(feature.zeta, feature.pixel);
+    if ((feature.pixel.array() < 0).any() || (feature.pixel.array() > image_size_.array()).any())
+      continue;
+    else
+    {
+      feature.env_id = i;
+      feature.global_id = i;
+      return true;
+    }
+  }
+  return false;
+}
+
+bool Simulator::get_feature_in_frame(feature_t &feature, bool retrack)
+{
+  if (retrack && get_previously_tracked_feature_in_frame(feature))
+  {
+    return true;
+  }
+  else
+  {
+    return create_new_feature_in_frame(feature);
+  }
+}
+
+bool Simulator::create_new_feature_in_frame(feature_t &feature)
+{
+  // First, look for features in frame that are not currently being tracked
   feature.env_id = env_.add_point(t_I_c_, q_I_c_, feature.zeta, feature.pixel, feature.depth);
   if (feature.env_id != -1)
   {
@@ -497,8 +550,8 @@ bool Simulator::get_random_feature_in_frame(feature_t &feature)
   else
   {
 //    cout << "\nGround Plane is not in camera frame " << endl;
+    return false;
   }
-  return false;
 }
 
 bool Simulator::is_feature_tracked(int env_id) const

@@ -1,13 +1,18 @@
 #pragma once
 
 #include <Eigen/Core>
+#include <Eigen/Dense>
 
 #include "geometry/quat.h"
 #include "utils.h"
+//#include "nanoflann.hpp"
 
 using namespace Eigen;
 using namespace std;
 using namespace quat;
+//using namespace nanoflann;
+
+//typedef KDTreeEigenMatrixAdaptor< Eigen::Matrix<double, Eigen::Dynamic, 3>> KDTree3D;
 
 class Environment
 {

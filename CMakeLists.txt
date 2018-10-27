@@ -17,6 +17,7 @@ include_directories(include/multirotor_sim
     ${EIGEN3_INCLUDE_DIRS}
     ${catkin_INCLUDE_DIRS}
     ${YAML_CPP_INCLUDE_DIR}
+    lib/nanoflann/include
 )
 
 add_library(multirotor_sim STATIC
