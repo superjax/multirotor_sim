@@ -12,6 +12,11 @@ if (NOT TARGET geometry)
     include_directories(lib/geometry/include)
 endif()
 
+if (NOT TARGET nanoflann_eigen)
+    add_subdirectory(lib/nanoflann_eigen)
+    include_directories(lib/nanoflann_eigen/include)
+endif()
+
 include_directories(include/multirotor_sim
     ${Boost_INCLUDE_DIRS}
     ${EIGEN3_INCLUDE_DIRS}
@@ -26,4 +31,4 @@ add_library(multirotor_sim STATIC
     src/simulator.cpp
     src/environment.cpp
 )
-target_link_libraries(multirotor_sim ${YAML_CPP_LIBRARIES} stdc++fs geometry)
+target_link_libraries(multirotor_sim ${YAML_CPP_LIBRARIES} stdc++fs geometry nanoflann_eigen)

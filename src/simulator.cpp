@@ -211,14 +211,6 @@ void Simulator::update_camera_pose()
   Quatd q_I_b = Quatd(dyn_.get_state().segment<4>(dynamics::QW));
   t_I_c_ = dyn_.get_state().segment<3>(dynamics::PX) + q_I_b.rota(t_b_c_);
   q_I_c_ = q_I_b * q_b_c_;
-
-  for (auto it = tracked_points_.begin(); it != tracked_points_.end(); it++)
-  {
-    if (uniform_(generator_) < feat_move_prob_)
-    {
-      env_.move_point(it->env_id);
-    }
-  }
 }
 
 void Simulator::tracked_features(std::vector<int>& ids) const
@@ -478,14 +470,14 @@ void Simulator::get_truth(xVector &x, const std::vector<int>& tracked_features) 
 
 bool Simulator::update_feature(feature_t &feature) const
 {
-  if (feature.env_id > env_.get_points().rows() || feature.env_id < 0)
+  if (feature.env_id > env_.get_points().size() || feature.env_id < 0)
     return false;
   
   // Calculate the bearing vector to the feature
-  Vector3d pt = env_.get_points().row(feature.env_id).transpose();
+  Vector3d pt = env_.get_points()[feature.env_id];
   feature.zeta = q_I_c_.rotp(pt - t_I_c_);
   feature.zeta /= feature.zeta.norm();
-  feature.depth = (env_.get_points().row(feature.env_id).transpose() - t_I_c_).norm();
+  feature.depth = (env_.get_points()[feature.env_id] - t_I_c_).norm();
   
   // we can reject anything behind the camera
   if (feature.zeta(2) < 0.0)
@@ -501,26 +493,34 @@ bool Simulator::update_feature(feature_t &feature) const
 
 bool Simulator::get_previously_tracked_feature_in_frame(feature_t &feature)
 {
-  for (int i = 0; i < env_.get_points().rows(); i++)
-  {
-    if (is_feature_tracked(i))
-      continue;
-    // Calculate the bearing vector to the feature
-    Vector3d pt = env_.get_points().row(i).transpose();
-    feature.zeta = q_I_c_.rotp(pt - t_I_c_);
-    if (feature.zeta(2) < 0.0)
-      continue;
 
-    feature.zeta /= feature.zeta.norm();
-    feature.depth = (env_.get_points().row(i).transpose() - t_I_c_).norm();
-    proj(feature.zeta, feature.pixel);
-    if ((feature.pixel.array() < 0).any() || (feature.pixel.array() > image_size_.array()).any())
-      continue;
-    else
+  Vector3d ground_pt;
+  env_.get_center_img_center_on_ground_plane(t_I_c_, q_I_c_, ground_pt);
+  vector<Vector3d, aligned_allocator<Vector3d>> pts;
+  vector<size_t> ids;
+  if (env_.get_closest_points(ground_pt, NUM_FEATURES, 2.0, pts, ids))
+  {
+    for (int i = 0; i < pts.size(); i++)
     {
-      feature.env_id = i;
-      feature.global_id = i;
-      return true;
+      if (is_feature_tracked(ids[i]))
+        continue;
+      // Calculate the bearing vector to the feature
+      Vector3d pt = env_.get_points()[ids[i]];
+      feature.zeta = q_I_c_.rotp(pt - t_I_c_);
+      if (feature.zeta(2) < 0.0)
+        continue;
+
+      feature.zeta /= feature.zeta.norm();
+      feature.depth = (pts[i] - t_I_c_).norm();
+      proj(feature.zeta, feature.pixel);
+      if ((feature.pixel.array() < 0).any() || (feature.pixel.array() > image_size_.array()).any())
+        continue;
+      else
+      {
+        feature.env_id = ids[i];
+        feature.global_id = ids[i];
+        return true;
+      }
     }
   }
   return false;
