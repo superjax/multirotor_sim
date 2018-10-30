@@ -43,6 +43,7 @@ public:
       PIXEL_VEL,
       DEPTH,
       INV_DEPTH,
+      VO,
       TOTAL_MEAS
     } measurement_type_t;
 
@@ -97,9 +98,21 @@ public:
    */
   void get_measurements(std::vector<measurement_t, Eigen::aligned_allocator<measurement_t> > &meas);
   void get_imu_meas(std::vector<measurement_t, Eigen::aligned_allocator<measurement_t> > &meas);
-  void get_camera_meas(std::vector<measurement_t, Eigen::aligned_allocator<measurement_t> > &meas);
+  void get_feature_meas(std::vector<measurement_t, Eigen::aligned_allocator<measurement_t> > &meas);
   void get_alt_meas(std::vector<measurement_t, Eigen::aligned_allocator<measurement_t> > &meas);
   void get_mocap_meas(std::vector<measurement_t, Eigen::aligned_allocator<measurement_t> > &meas);
+
+  /**
+   * @brief get_vo_meas
+   * Computes the relative pose from current camera to keyframe camera and
+   * adds it to the measurement list.
+   * Relative position is given in current camera frame pointing from current
+   * camera to keyframe camera.
+   * Relative rotation is the rotation from current camera frame to keyframe
+   * camera frame.
+   * @param meas
+   */
+  void get_vo_meas(std::vector<measurement_t, Eigen::aligned_allocator<measurement_t> > &meas);
 
 
   const Vector6d& get_imu_prev() const { return imu_prev_; }
@@ -152,6 +165,7 @@ public:
   Matrix2d feat_R_;
   Matrix<double, 1, 1> alt_R_;
   Matrix<double, 1, 1> depth_R_;
+  Matrix<double, 6, 6> vo_R_;
   
   bool attitude_update_active_;
   bool position_update_active_;
@@ -159,6 +173,7 @@ public:
   bool feature_update_active_;
   bool drag_update_active_;
   bool altimeter_update_active_;
+  bool vo_update_active_;
 
 
   typedef struct
@@ -343,7 +358,7 @@ public:
   
   // Pose of camera in the body frame - assumed to be fixed
   Quatd q_b_c_;
-  Vector3d t_b_c_;
+  Vector3d p_b_c_;
   
   // Pose of camera in the inertial frame, updated by update_camera_pose()
   Quatd q_I_c_;
@@ -369,6 +384,14 @@ public:
   double last_depth_update_;
   double depth_noise_stdev_; // Standard deviation of altimeter noise
   double depth_noise_;
+
+  // Visual Odometry
+  xform::Xformd T_i2bk_; // Inertial to body keyframe pose
+  bool use_vo_truth_;
+  double vo_delta_position_;
+  double vo_delta_attitude_;
+  double vo_translation_noise_stdev_;
+  double vo_rotation_noise_stdev_;
 
   // Truth
   Quatd q_b_m_;

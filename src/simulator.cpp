@@ -57,6 +57,11 @@ void Simulator::load(string filename)
     log_.open(log_filename_);
   }
 
+  // Load sub-class parameters
+  cont_.load(filename);
+  env_.load(filename);
+  dyn_.load(filename);
+
   // Load IMU parameters
   Vector4d q_b_u;
   get_yaml_node("imu_update_rate", filename, imu_update_rate_);
@@ -95,8 +100,7 @@ void Simulator::load(string filename)
   get_yaml_eigen("cam_center", filename, cam_center_);
   get_yaml_eigen("image_size", filename, image_size_);
   get_yaml_eigen("q_b_c", filename, q_b_c_.arr_);
-//  get_yaml_eigen("p_b_c", filename, t_b_c_);
-  get_yaml_eigen("t_b_c", filename, t_b_c_);
+  get_yaml_eigen("p_b_c", filename, p_b_c_);
   get_yaml_eigen("focal_len", filename, focal_len);
   get_yaml_node("pixel_noise_stdev", filename, pixel_noise);
   get_yaml_node("loop_closure", filename, loop_closure_);
@@ -123,6 +127,17 @@ void Simulator::load(string filename)
   depth_noise_stdev_ = depth_noise * !use_depth_truth_;
   depth_noise_ = 0;
 
+  // Visual Odometry
+  double vo_translation_noise, vo_rotation_noise;
+  T_i2bk_ = dyn_.get_global_pose();
+  get_yaml_node("use_vo_truth", filename, use_vo_truth_);
+  get_yaml_node("vo_delta_position", filename, vo_delta_position_);
+  get_yaml_node("vo_delta_attitude", filename, vo_delta_attitude_);
+  get_yaml_node("vo_translation_noise_stdev", filename, vo_translation_noise);
+  get_yaml_node("vo_rotation_noise_stdev", filename, vo_rotation_noise);
+  vo_translation_noise_stdev_ = vo_translation_noise * !use_vo_truth_;
+  vo_rotation_noise_stdev_ = vo_rotation_noise * !use_vo_truth_;
+
   // Truth
   double att_noise, pos_noise;
   get_yaml_node("truth_update_rate", filename, truth_update_rate_);
@@ -138,10 +153,6 @@ void Simulator::load(string filename)
   attitude_noise_stdev_ = att_noise * !use_attitude_truth_;
   position_noise_stdev_ = pos_noise * !use_position_truth_;
 
-  cont_.load(filename);
-  env_.load(filename);
-  dyn_.load(filename);
-
   // EKF
   get_yaml_node("feature_update_active", filename, feature_update_active_);
   get_yaml_node("drag_update_active", filename, drag_update_active_);
@@ -149,6 +160,7 @@ void Simulator::load(string filename)
   get_yaml_node("altimeter_update_active", filename, altimeter_update_active_);
   get_yaml_node("attitude_update_active", filename, attitude_update_active_);
   get_yaml_node("position_update_active", filename, position_update_active_);
+  get_yaml_node("vo_update_active", filename, vo_update_active_);
 
   att_R_ = att_noise * att_noise * I_3x3;
   pos_R_ = pos_noise * pos_noise * I_3x3;
@@ -156,6 +168,9 @@ void Simulator::load(string filename)
   feat_R_ = pixel_noise * pixel_noise * I_2x2;
   alt_R_ << altimeter_noise * altimeter_noise;
   depth_R_ << depth_noise * depth_noise;
+  vo_R_.setIdentity();
+  vo_R_.block<3,3>(0,0) *= vo_translation_noise * vo_translation_noise;
+  vo_R_.block<3,3>(3,3) *= vo_rotation_noise * vo_rotation_noise;
 
   // To get initial measurements
   last_imu_update_ = 0.0;
@@ -209,7 +224,7 @@ void Simulator::log_state()
 void Simulator::update_camera_pose()
 {
   Quatd q_I_b = Quatd(dyn_.get_state().segment<4>(dynamics::QW));
-  t_I_c_ = dyn_.get_state().segment<3>(dynamics::PX) + q_I_b.rota(t_b_c_);
+  t_I_c_ = dyn_.get_state().segment<3>(dynamics::PX) + q_I_b.rota(p_b_c_);
   q_I_c_ = q_I_b * q_b_c_;
 }
 
@@ -263,7 +278,7 @@ void Simulator::get_imu_meas(std::vector<measurement_t, Eigen::aligned_allocator
 }
 
 
-void Simulator::get_camera_meas(std::vector<measurement_t, Eigen::aligned_allocator<measurement_t>>& meas_list)
+void Simulator::get_feature_meas(std::vector<measurement_t, Eigen::aligned_allocator<measurement_t>>& meas_list)
 {
     // If it's time to capture new measurements, then do it
     if (t_ > last_camera_update_ + 1.0/camera_update_rate_)
@@ -377,16 +392,16 @@ void Simulator::get_mocap_meas(std::vector<measurement_t, Eigen::aligned_allocat
       att_meas.R = att_R_;
       att_meas.active = attitude_update_active_;
 
-      measurement_t pose_meas;
-      pose_meas.t = t_ - mocap_time_offset_;
-      pose_meas.type = POS;
-      pose_meas.z = get_position();
-      pose_meas.R = pos_R_;
-      pose_meas.active = position_update_active_;
+      measurement_t pos_meas;
+      pos_meas.t = t_ - mocap_time_offset_;
+      pos_meas.type = POS;
+      pos_meas.z = get_position();
+      pos_meas.R = pos_R_;
+      pos_meas.active = position_update_active_;
 
       double pub_time = std::max(mocap_transmission_time_ + normal_(generator_) * mocap_transmission_noise_, 0.0) + t_;
 
-      mocap_measurement_buffer_.push_back(std::pair<double, measurement_t>{pub_time, pose_meas});
+      mocap_measurement_buffer_.push_back(std::pair<double, measurement_t>{pub_time, pos_meas});
       mocap_measurement_buffer_.push_back(std::pair<double, measurement_t>{pub_time, att_meas});
       last_truth_update_ = t_;
     }
@@ -398,14 +413,43 @@ void Simulator::get_mocap_meas(std::vector<measurement_t, Eigen::aligned_allocat
     }
 }
 
+
+void Simulator::get_vo_meas(std::vector<measurement_t, Eigen::aligned_allocator<measurement_t>>& meas_list)
+{
+  Xformd T_i2b = dyn_.get_global_pose();
+  Vector6d delta = T_i2b - T_i2bk_;
+  if (delta.segment<3>(0).norm() >= vo_delta_position_ || delta.segment<3>(3).norm() >= vo_delta_attitude_)
+  {
+    // Compute position and attitude relative to the keyframe
+    Xformd T_c2ck;
+    T_c2ck.t_ = q_b_c_.rotp(T_i2b.q().rotp(T_i2bk_.t() + T_i2bk_.q().inverse().rotp(p_b_c_) -
+                                          (T_i2b.t() + T_i2b.q().inverse().rotp(p_b_c_))));
+    T_c2ck.q_ = q_b_c_.inverse() * T_i2b.q().inverse() * T_i2bk_.q().inverse() * q_b_c_;
+
+    // Populate measurement output
+    measurement_t vo_meas;
+    vo_meas.t = t_;
+    vo_meas.type = VO;
+    vo_meas.z = T_c2ck.arr();
+    vo_meas.R = vo_R_;
+    vo_meas.active = vo_update_active_;
+    meas_list.push_back(vo_meas);
+
+    // Set new keyframe to current pose
+    T_i2bk_ = dyn_.get_global_pose();
+  }
+}
+
+
 void Simulator::get_measurements(std::vector<measurement_t, Eigen::aligned_allocator<measurement_t>>& meas_list)
 {
   meas_list.clear();
 
   get_imu_meas(meas_list);
-  get_camera_meas(meas_list);
+  get_feature_meas(meas_list);
   get_alt_meas(meas_list);
   get_mocap_meas(meas_list);
+  get_vo_meas(meas_list);
 }
 
 int Simulator::global_to_local_feature_id(const int global_id) const
