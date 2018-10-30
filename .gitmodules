@@ -1,9 +1,6 @@
 [submodule "lib/geometry"]
 	path = lib/geometry
 	url = git@github.com:superjax/geometry
-[submodule "lib/nanoflann"]
-	path = lib/nanoflann
-	url = https://github.com/jlblancoc/nanoflann.git
 [submodule "lib/nanoflann_eigen"]
 	path = lib/nanoflann_eigen
 	url = git@github.com:superjax/nanoflann_eigen.git
