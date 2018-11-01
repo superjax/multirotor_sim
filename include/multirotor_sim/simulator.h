@@ -66,7 +66,7 @@ public:
     measurement_type_t type;
     VectorXd z;
     MatrixXd R;
-    int global_id;
+    int feature_id;
     double depth;
     bool active;
   } measurement_t;
@@ -181,8 +181,7 @@ public:
     Vector3d zeta;
     Vector2d pixel;
     double depth;
-    int env_id;
-    int global_id;
+    int id;
   } feature_t;
   
   /**
@@ -294,20 +293,6 @@ public:
    */
   Vector3d get_acc();
 
-  /**
-   * @brief global_to_local_feature_id
-   * @param id a global id
-   * @returns the local id (posiiton in the 'tracked_points' vector)
-   */
-  int global_to_local_feature_id(int id) const;
-
-  /**
-   * @brief env_to_global_feature_id
-   * @param env_id
-   * @return the global id of the feature with env_id
-   */
-  int env_to_global_feature_id(const int env_id) const;
-
   // Progress indicator, updated by run()
   ProgressBar prog_;
   bool prog_indicator_;
@@ -349,7 +334,7 @@ public:
   vector<Vector3d> cam_; // Elements are landmarks in camera FOV given by a vector containing [pixel_x,pixel_y,label]
   double camera_update_rate_;  // determines how often to supply a set of feature measurements
   double last_camera_update_;
-  int next_global_feature_id_; 
+  int next_feature_id_;
   vector<feature_t, aligned_allocator<feature_t>> tracked_points_; // currently tracked features
   deque<measurement_t, aligned_allocator<measurement_t>> camera_measurements_buffer_; // container to hold measurements while waiting for delay
   double camera_time_delay_;
