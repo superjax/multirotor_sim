@@ -2,7 +2,7 @@
 
 using namespace std;
 
-Controller_ROS::Controller_ROS() :
+Controller_ROS::Controller_ROS()
 {
     controller_ = controller::Controller();
     odometry_sub_ = nh_.subscribe("odom", 100, &Controller_ROS::odometry_callback, this);
