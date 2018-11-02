@@ -95,6 +95,7 @@ void Simulator::load(string filename)
   // Camera
   double pixel_noise;
   Vector2d focal_len;
+  get_yaml_node("camera_time_delay", filename, camera_time_delay_);
   get_yaml_node("use_camera_truth", filename, use_camera_truth_);
   get_yaml_node("camera_update_rate", filename, camera_update_rate_);
   get_yaml_eigen("cam_center", filename, cam_center_);
