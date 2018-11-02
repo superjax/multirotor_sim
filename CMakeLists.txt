@@ -1,6 +1,7 @@
 cmake_minimum_required (VERSION 2.8.11)
 project (multirotor_sim)
 
+set(CMAKE_CXX_FLAGS "--std=c++17")
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
 find_package(catkin REQUIRED COMPONENTS
@@ -42,4 +43,15 @@ add_library(multirotor_sim STATIC
     src/simulator.cpp
     src/environment.cpp
 )
-target_link_libraries(multirotor_sim ${YAML_CPP_LIBRARIES} stdc++fs geometry nanoflann_eigen)
+target_link_libraries(multirotor_sim 
+    ${YAML_CPP_LIBRARIES} 
+    stdc++fs 
+    geometry 
+    nanoflann_eigen
+)
+
+add_executable(multirotor_node src/controller_ros.cpp)
+target_link_libraries(multirotor_node 
+    ${catkin_LIBRARIES}
+    multirotor_sim
+)

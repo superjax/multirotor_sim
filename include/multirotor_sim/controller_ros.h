@@ -3,6 +3,7 @@
 #include <ros/ros.h>
 #include <ros/package.h>
 #include <nav_msgs/Odometry.h>
+#include <rosflight_msgs/Command.h>
 
 class Controller_ROS
 {

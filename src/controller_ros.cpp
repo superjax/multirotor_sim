@@ -5,14 +5,14 @@ Controller_ROS::Controller_ROS() :
     nh_("~")
 {
     controller_ = controller::Controller();
-    controller.load("~/catkin_ws/src/multirotor_sim/params/sim_params.yaml"); //todo: change to ros params?
-    odometry_sub_ = nh.subscribe("nav_msgs/Odometry", 100, &odometry_callback, this);
-    command_pub_  = nh.advertise<rosflight_io::Command>("command", 100);
+    controller_.load("~/catkin_ws/src/multirotor_sim/params/sim_params.yaml"); //todo: change to ros params?
+    odometry_sub_ = nh_.subscribe("nav_msgs/Odometry", 100, &Controller_ROS::odometry_callback, this);
+    command_pub_  = nh_.advertise<rosflight_msgs::Command>("command", 1);
 }
 
-Controller_ROS::odometry_callback(const nav_msgs::Odometry& msg)
+void Controller_ROS::odometry_callback(const nav_msgs::Odometry& msg)
 {
-    std::cout << "odom callback" << endl;
+    std::cout << "odom callback" << std::endl;
 }
 
 int main(int argc, char* argv[])
