@@ -1,4 +1,5 @@
 #include "controller.h"
+#include "dynamics.h"
 
 #include <iostream>
 
@@ -18,4 +19,6 @@ private:
     ros::Subscriber odometry_sub_;
     ros::Publisher command_pub_;
     controller::Controller controller_;
-};
+    dynamics::xVector parsed_odom_;
+    dynamics::commandVector command_out;
+}; 
