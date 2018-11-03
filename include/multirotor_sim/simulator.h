@@ -118,13 +118,6 @@ public:
   const Vector6d& get_imu_prev() const { return imu_prev_; }
 
   /**
-   * @brief tracked_features
-   * Returns a vector of the currently tracked features (global ids)
-   * @param (modified) vector of currently tracked features (global_id)
-   */
-  void tracked_features(std::vector<int>& ids) const;
-
-  /**
    * @brief get_pose
    * Returns the current (true) state of the multirotor
    * @returns current pose (position, attitude)

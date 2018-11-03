@@ -65,7 +65,7 @@ void Simulator::load(string filename)
   // Load IMU parameters
   Vector4d q_b_u;
   get_yaml_node("imu_update_rate", filename, imu_update_rate_);
-  dt_ = 1.0 / imu_update_rate_;
+  dt_ = 0.001;
   get_yaml_eigen("p_b_u", filename, p_b_u_);
   get_yaml_eigen("q_b_u", filename, q_b_u);
   q_b_u_ = Quatd(q_b_u);
@@ -229,19 +229,10 @@ void Simulator::update_camera_pose()
   q_I_c_ = q_I_b * q_b_c_;
 }
 
-void Simulator::tracked_features(std::vector<int>& ids) const
-{
-  ids.clear();
-  for (auto it = tracked_points_.begin(); it != tracked_points_.end(); it++)
-  {
-    ids.push_back(it->id);
-  }
-}
-
 
 void Simulator::get_imu_meas(std::vector<measurement_t, Eigen::aligned_allocator<measurement_t>>& meas_list)
 {
-    if (t_ >= last_imu_update_ + 1.0/imu_update_rate_)
+    if (fabs(t_ - last_imu_update_ - 1.0/imu_update_rate_) < 0.0005)
     {
       double dt = t_ - last_imu_update_;
       last_imu_update_ = t_;
@@ -282,7 +273,7 @@ void Simulator::get_imu_meas(std::vector<measurement_t, Eigen::aligned_allocator
 void Simulator::get_feature_meas(std::vector<measurement_t, Eigen::aligned_allocator<measurement_t>>& meas_list)
 {
     // If it's time to capture new measurements, then do it
-    if (t_ > last_camera_update_ + 1.0/camera_update_rate_)
+    if (fabs(t_ - last_camera_update_ - 1.0/camera_update_rate_) < 0.0005)
     {
       last_camera_update_ = t_;
       update_camera_pose();
@@ -362,7 +353,7 @@ void Simulator::get_feature_meas(std::vector<measurement_t, Eigen::aligned_alloc
 
 void Simulator::get_alt_meas(std::vector<measurement_t, Eigen::aligned_allocator<measurement_t>>& meas_list)
 {
-    if (t_ >= last_altimeter_update_ + 1.0/altimeter_update_rate_)
+    if (fabs(t_ - last_altimeter_update_ - 1.0/altimeter_update_rate_) < 0.0005)
     {
       // Altimeter noise
       if (!use_altimeter_truth_)
@@ -383,7 +374,7 @@ void Simulator::get_alt_meas(std::vector<measurement_t, Eigen::aligned_allocator
 
 void Simulator::get_mocap_meas(std::vector<measurement_t, Eigen::aligned_allocator<measurement_t>>& meas_list)
 {
-    if (t_ >= last_truth_update_ + 1.0/truth_update_rate_)
+    if (fabs(t_ - last_truth_update_ - 1.0/truth_update_rate_) < 0.0005)
     {
       measurement_t att_meas;
       att_meas.t = t_ - mocap_time_offset_;
@@ -406,7 +397,7 @@ void Simulator::get_mocap_meas(std::vector<measurement_t, Eigen::aligned_allocat
       last_truth_update_ = t_;
     }
 
-    while (mocap_measurement_buffer_.size() > 0 && mocap_measurement_buffer_[0].first > t_)
+    while (mocap_measurement_buffer_.size() > 0 && mocap_measurement_buffer_[0].first >= t_)
     {
       meas_list.push_back(mocap_measurement_buffer_[0].second);
       mocap_measurement_buffer_.erase(mocap_measurement_buffer_.begin());
@@ -573,10 +564,10 @@ bool Simulator::create_new_feature_in_frame(feature_t &feature)
   }
 }
 
-bool Simulator::is_feature_tracked(int env_id) const
+bool Simulator::is_feature_tracked(int id) const
 {
   auto it = tracked_points_.begin();
-  while (it < tracked_points_.end() && it->id != env_id)
+  while (it < tracked_points_.end() && it->id != id)
   {
     it++;
   }
