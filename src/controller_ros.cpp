@@ -17,6 +17,14 @@ Controller_ROS::Controller_ROS()
 
 void Controller_ROS::odometry_callback(const nav_msgs::Odometry &msg)
 {   
+    if (!odom_init_) 
+    {
+        //this is the first time callback was run, get the start time
+        odom_init_ = true;
+        start_time_ = msg.header.stamp;
+        return;
+    }
+
     // parse message
     //todo: TYLER -> why is it msg. instead of msg-> ??
     parsed_odom_(dynamics::PX, 0) = msg.pose.pose.position.x;
@@ -36,14 +44,22 @@ void Controller_ROS::odometry_callback(const nav_msgs::Odometry &msg)
     parsed_odom_(dynamics::WY, 0) = msg.twist.twist.angular.y;
     parsed_odom_(dynamics::WZ, 0) = msg.twist.twist.angular.z;
 
-    //figure out time stuff:
-
+    ros::Time ros_ts = msg.header.stamp;
+    const double t = (ros_ts - start_time_).toSec()
 
     //compute control
-
-    // computeControl(parsed_odom_, TIME_STAMPPPPP, command_out);
+    controller_.computeControl(parsed_odom_, t, command_out_);
 
     // publish resulting command
+    command_msg_.header.stamp = ros_ts;
+    command_msg_.mode = rosflight_msgs::MODE_ROLL_PITCH_YAWRATE_THROTTLE;
+    command_msg_.ignore = rosflight_msgs::IGNORE_NONE;
+    command_msg_.x = command_out_(dynamics::TAUX);
+    command_msg_.y = command_out_(dynamics::TAUY);
+    command_msg_.z = command_out_(dynamics::TAUZ);
+    command_msg_.F = command_out_(dynamics::THRUST);
+
+    command_pub_.publish(command_msg_);
 }
 
 int main(int argc, char* argv[])

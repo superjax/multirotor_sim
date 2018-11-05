@@ -18,7 +18,10 @@ private:
     ros::NodeHandle nh_;
     ros::Subscriber odometry_sub_;
     ros::Publisher command_pub_;
+    rosflight_msgs::Command command_msg_;
     controller::Controller controller_;
     dynamics::xVector parsed_odom_;
-    dynamics::commandVector command_out;
+    dynamics::commandVector command_out_;
+    ros::Time start_time_;
+    bool odom_init_ = false;
 }; 
