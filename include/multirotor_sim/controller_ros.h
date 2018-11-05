@@ -12,7 +12,7 @@ class Controller_ROS
 {
 public:
     Controller_ROS();
-    void odometry_callback(const nav_msgs::Odometry& msg);
+    void odometry_callback(const nav_msgs::OdometryConstPtr &msg);
 
 private: 
     ros::NodeHandle nh_;
