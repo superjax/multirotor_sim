@@ -15,45 +15,45 @@ Controller_ROS::Controller_ROS()
     controller_.load(param_file); //todo: change to ros params?
 }
 
-void Controller_ROS::odometry_callback(const nav_msgs::Odometry &msg)
+void Controller_ROS::odometry_callback(const nav_msgs::OdometryConstPtr &msg)
 {   
     if (!odom_init_) 
     {
         //this is the first time callback was run, get the start time
         odom_init_ = true;
-        start_time_ = msg.header.stamp;
+        start_time_ = msg->header.stamp;
         return;
     }
 
     // parse message
     //todo: TYLER -> why is it msg. instead of msg-> ??
-    parsed_odom_(dynamics::PX, 0) = msg.pose.pose.position.x;
-    parsed_odom_(dynamics::PY, 0) = msg.pose.pose.position.y;
-    parsed_odom_(dynamics::PZ, 0) = msg.pose.pose.position.z;
+    parsed_odom_(dynamics::PX, 0) = msg->pose.pose.position.x;
+    parsed_odom_(dynamics::PY, 0) = msg->pose.pose.position.y;
+    parsed_odom_(dynamics::PZ, 0) = msg->pose.pose.position.z;
 
-    parsed_odom_(dynamics::VX, 0) = msg.twist.twist.linear.x;
-    parsed_odom_(dynamics::VY, 0) = msg.twist.twist.linear.y;
-    parsed_odom_(dynamics::VZ, 0) = msg.twist.twist.linear.z;
+    parsed_odom_(dynamics::VX, 0) = msg->twist.twist.linear.x;
+    parsed_odom_(dynamics::VY, 0) = msg->twist.twist.linear.y;
+    parsed_odom_(dynamics::VZ, 0) = msg->twist.twist.linear.z;
 
-    parsed_odom_(dynamics::QW, 0) = msg.pose.pose.orientation.w;
-    parsed_odom_(dynamics::QX, 0) = msg.pose.pose.orientation.x;
-    parsed_odom_(dynamics::QY, 0) = msg.pose.pose.orientation.y;
-    parsed_odom_(dynamics::QZ, 0) = msg.pose.pose.orientation.z;
+    parsed_odom_(dynamics::QW, 0) = msg->pose.pose.orientation.w;
+    parsed_odom_(dynamics::QX, 0) = msg->pose.pose.orientation.x;
+    parsed_odom_(dynamics::QY, 0) = msg->pose.pose.orientation.y;
+    parsed_odom_(dynamics::QZ, 0) = msg->pose.pose.orientation.z;
 
-    parsed_odom_(dynamics::WX, 0) = msg.twist.twist.angular.x;
-    parsed_odom_(dynamics::WY, 0) = msg.twist.twist.angular.y;
-    parsed_odom_(dynamics::WZ, 0) = msg.twist.twist.angular.z;
+    parsed_odom_(dynamics::WX, 0) = msg->twist.twist.angular.x;
+    parsed_odom_(dynamics::WY, 0) = msg->twist.twist.angular.y;
+    parsed_odom_(dynamics::WZ, 0) = msg->twist.twist.angular.z;
 
-    ros::Time ros_ts = msg.header.stamp;
-    const double t = (ros_ts - start_time_).toSec()
+    ros::Time ros_ts = msg->header.stamp;
+    const double t = (ros_ts - start_time_).toSec();
 
     //compute control
     controller_.computeControl(parsed_odom_, t, command_out_);
 
     // publish resulting command
     command_msg_.header.stamp = ros_ts;
-    command_msg_.mode = rosflight_msgs::MODE_ROLL_PITCH_YAWRATE_THROTTLE;
-    command_msg_.ignore = rosflight_msgs::IGNORE_NONE;
+    command_msg_.mode = rosflight_msgs::Command::MODE_ROLL_PITCH_YAWRATE_THROTTLE;
+    command_msg_.ignore = rosflight_msgs::Command::IGNORE_NONE;
     command_msg_.x = command_out_(dynamics::TAUX);
     command_msg_.y = command_out_(dynamics::TAUY);
     command_msg_.z = command_out_(dynamics::TAUZ);
