@@ -47,12 +47,12 @@ void Controller_ROS::log_controller(const double t)
     // log the output command from the controller
     logs_[COMMAND_OUT].write((char*)&t, sizeof(double));
     logs_[COMMAND_OUT].write((char*)command_out_.data(), sizeof(double) * command_out_.rows());
-
 }
 
 void Controller_ROS::init_log(string baseLogDir)
 {
-    // logs_ = ofstream[TOTAL_LOGS];
+    // initialize the logs variable for each log file
+
     // make the log directory if it doesn't already exist
     system(("mkdir -p " + baseLogDir).c_str());
 
