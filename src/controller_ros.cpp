@@ -1,4 +1,5 @@
 #include <controller_ros.h>
+#include <ros/package.h>
 
 using namespace std;
 
@@ -13,10 +14,57 @@ Controller_ROS::Controller_ROS()
     ROS_WARN_COND(!nh_private.getParam("param_file", param_file), "Didn't specify `param_file` parameter! Using default location...");
 
     controller_.load(param_file); //todo: change to ros params?
+
+    #ifdef ROS_LOG_DUMP
+        std::string defaultLogDir = ros::package::getPath("multirotor_sim") + "/logs"; //+ to_string(ros::Time::now().sec);
+        //get or use default log dir
+        string logDir;
+        nh_private.param<std::string>("log_directory", logDir, defaultLogDir);
+        init_log(logDir);
+    #endif
+}
+
+Controller_ROS::~Controller_ROS()
+{
+    #ifdef ROS_LOG_DUMP
+        // close out our loggers
+        for (int i = 0; i < TOTAL_LOGS; i++)
+        {
+            logs_[i] << endl;
+            logs_[i].close();
+        }
+    #endif
+}
+
+void Controller_ROS::log_controller(const double t)
+{
+    // logs the current input and output to the controller
+
+    // log the input odometry from estimator
+    logs_[ODOM_IN].write((char*)&t, sizeof(double));
+    logs_[ODOM_IN].write((char*)parsed_odom_.data(), sizeof(double) * parsed_odom_.rows());
+
+    // log the output command from the controller
+    logs_[COMMAND_OUT].write((char*)&t, sizeof(double));
+    logs_[COMMAND_OUT].write((char*)command_out_.data(), sizeof(double) * command_out_.rows());
+
+}
+
+void Controller_ROS::init_log(string baseLogDir)
+{
+    // logs_ = ofstream[TOTAL_LOGS];
+    // make the log directory if it doesn't already exist
+    system(("mkdir -p " + baseLogDir).c_str());
+
+    // initialize the log files
+    logs_[ODOM_IN].open(baseLogDir + "/odom.bin", std::ofstream::out | std::ofstream::trunc);
+    logs_[COMMAND_OUT].open(baseLogDir + "/command.bin", std::ofstream::out | std::ofstream::trunc);
 }
 
 void Controller_ROS::odometry_callback(const nav_msgs::OdometryConstPtr &msg)
 {   
+    // subscribes to the 'Odom' topic of the estimator. The odometry message
+    // here is the output of the estimator
     if (!odom_init_) 
     {
         //this is the first time callback was run, get the start time
@@ -26,7 +74,6 @@ void Controller_ROS::odometry_callback(const nav_msgs::OdometryConstPtr &msg)
     }
 
     // parse message
-    //todo: TYLER -> why is it msg. instead of msg-> ??
     parsed_odom_(dynamics::PX, 0) = msg->pose.pose.position.x;
     parsed_odom_(dynamics::PY, 0) = msg->pose.pose.position.y;
     parsed_odom_(dynamics::PZ, 0) = msg->pose.pose.position.z;
@@ -60,6 +107,11 @@ void Controller_ROS::odometry_callback(const nav_msgs::OdometryConstPtr &msg)
     command_msg_.F = command_out_(dynamics::THRUST);
 
     command_pub_.publish(command_msg_);
+
+    // log all this out if we're supposed to:
+    #ifdef ROS_LOG_DUMP
+        log_controller(t);
+    #endif
 }
 
 int main(int argc, char* argv[])

@@ -6,6 +6,7 @@ set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
 find_package(catkin REQUIRED COMPONENTS
     roscpp
+    roslib
     rosflight_msgs
     nav_msgs
 )
@@ -16,7 +17,7 @@ find_package(yaml-cpp REQUIRED)
 
 catkin_package (
     INCLUDE_DIRS include
-    CATKIN_DEPENDS roscpp nav_msgs rosflight_msgs
+    CATKIN_DEPENDS roscpp nav_msgs rosflight_msgs roslib
 )
 
 if (NOT TARGET geometry)
