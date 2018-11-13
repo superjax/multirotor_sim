@@ -28,26 +28,30 @@ inline std::string current_working_dir( void ) {
 template <typename T>
 bool get_yaml_node(const std::string key, const std::string filename, T& val, bool print_error = true) 
 {
+  // Try to load the YAML file
+  YAML::Node node;
   try
   {
-    YAML::Node node = YAML::LoadFile(filename);
-    if (node[key])
-    {
-      val = node[key].as<T>();
-      return true;
-    }
-    else
-    {
-      if (print_error)
-      {
-        throw std::runtime_error("Unable to load " + key + " from " + filename);
-      }
-      return false;
-    }
+    node = YAML::LoadFile(filename);
   }
   catch (...)
   {
     std::cout << "Failed to Read yaml file " << filename << std::endl;
+  }
+
+  // Throw error if unable to load a parameter
+  if (node[key])
+  {
+    val = node[key].as<T>();
+    return true;
+  }
+  else
+  {
+    if (print_error)
+    {
+      throw std::runtime_error("Unable to load " + key + " from " + filename);
+    }
+    return false;
   }
 }
 template <typename Derived1>
