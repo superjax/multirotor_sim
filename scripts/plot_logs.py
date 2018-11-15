@@ -28,16 +28,40 @@ def main():
         plt.plot(rawCommand[:,0], rawCommand[:,i], colors[i-1])
         plt.ylabel(commandYLabels[i-1])
 
+    genericLabels = ['W', 'X', 'Y', 'Z']
 
-    odomPoseLabels = ['Estimator: X', 'Estimator: Y', 'Estimator: Z']
     plt.figure("Estimator Pose In")
+    labelBase = 'Estimator: '
     for i in range(1, 4):
         plt.subplot(3,1,i)
-        plt.plot(rawOdom[:,0], rawOdom[:,i], colors[i-1])
-        plt.ylabel(odomPoseLabels[i-1])
+        plt.plot(rawOdom[:,0], rawOdom[:,i], colors[i])
+        plt.ylabel(labelBase + genericLabels[i])
+
+    plt.figure('Estimator Vel In')
+    labelBase = 'Estimator Vel: '
+    indexBase = 3
+    for i in range(1,4):
+        plt.subplot(3,1,i)
+        plt.plot(rawOdom[:,0], rawOdom[:,(indexBase + i)], colors[i])
+        plt.ylabel(labelBase + genericLabels[i])
+
+    plt.figure('Estimator Orientation In')
+    labelBase = 'Estimator Orientation: '
+    indexBase = 6
+    for i in range(1,5):
+        plt.subplot(2,2,i)
+        plt.plot(rawOdom[:,0], rawOdom[:,(indexBase + i)], colors[i-1])
+        plt.ylabel(labelBase + genericLabels[i-1])
+
+    plt.figure('Estimator Angular In')
+    labelBase = 'Estimator Angular: '
+    indexBase = 10
+    for i in range(1,4):
+        plt.subplot(3,1,i)
+        plt.plot(rawOdom[:,0], rawOdom[:,(indexBase + i)], colors[i])
+        plt.ylabel(labelBase + genericLabels[i])
 
     plt.show()
-
 
 if __name__ == '__main__':
     main()
