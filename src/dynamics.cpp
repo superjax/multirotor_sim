@@ -117,8 +117,8 @@ Vector3d Dynamics::get_imu_gyro() const
 void Dynamics::compute_imu(const commandVector &u)
 {
   f(x_, u, dx_);
-  imu_.segment<3>(ACC) = q_b_u_.rotp(dx_.segment<3>(VX) + x_.segment<3>(WX).cross(x_.segment<3>(VX) +
-                         x_.segment<3>(WX).cross(x_.segment<3>(WX).cross(p_b_u_))) + dx_.segment<3>(DWX).cross(p_b_u_)
+  imu_.segment<3>(ACC) = q_b_u_.rotp(dx_.segment<3>(VX) + x_.segment<3>(WX).cross(x_.segment<3>(VX)) +
+                         x_.segment<3>(WX).cross(x_.segment<3>(WX).cross(p_b_u_)) + dx_.segment<3>(DWX).cross(p_b_u_)
                           - Quatd(x_.segment<4>(QW)).rotp(gravity_));
   imu_.segment<3>(GYRO) = q_b_u_.rotp(x_.segment<3>(WX));
 }
