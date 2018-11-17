@@ -87,7 +87,7 @@ public:
   PID yaw_rate_;
 
   // Parameters
-  double throttle_eq_;
+  double sh_;
   double mass_;
   double max_thrust_;
   double drag_constant_;
@@ -99,6 +99,13 @@ public:
   double traj_heading_straight_gain_;
   std::default_random_engine rng_;
   std::uniform_real_distribution<double> udist_;
+
+  // Hover throttle estimation
+  Vector3d vhat_;
+  double sh_inv_hat_;
+  double s_prev_;
+  double sh_kv_;
+  double sh_ks_;
 
   // Circular Trajectory Parameters
   double traj_delta_north_;
