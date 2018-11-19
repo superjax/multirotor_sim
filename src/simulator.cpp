@@ -65,7 +65,7 @@ void Simulator::load(string filename)
   // Load IMU parameters
   Vector4d q_b_u;
   get_yaml_node("imu_update_rate", filename, imu_update_rate_);
-  dt_ = 1.0 / imu_update_rate_;
+  dt_ = 0.001;
   get_yaml_eigen("p_b_u", filename, p_b_u_);
   get_yaml_eigen("q_b_u", filename, q_b_u);
   q_b_u_ = Quatd(q_b_u);
@@ -95,6 +95,7 @@ void Simulator::load(string filename)
   // Camera
   double pixel_noise;
   Vector2d focal_len;
+  get_yaml_node("camera_time_delay", filename, camera_time_delay_);
   get_yaml_node("use_camera_truth", filename, use_camera_truth_);
   get_yaml_node("camera_update_rate", filename, camera_update_rate_);
   get_yaml_eigen("cam_center", filename, cam_center_);
@@ -107,7 +108,7 @@ void Simulator::load(string filename)
   pixel_noise_stdev_ = !use_camera_truth_ * pixel_noise;
   pixel_noise_.setZero();
   cam_F_ << focal_len(0,0), 0, 0, 0, focal_len(1,0), 0; // Copy focal length into 2x3 matrix for future use
-  next_global_feature_id_ = 0;
+  next_feature_id_ = 0;
 
   // Altimeter
   double altimeter_noise;
@@ -228,19 +229,10 @@ void Simulator::update_camera_pose()
   q_I_c_ = q_I_b * q_b_c_;
 }
 
-void Simulator::tracked_features(std::vector<int>& ids) const
-{
-  ids.clear();
-  for (auto it = tracked_points_.begin(); it != tracked_points_.end(); it++)
-  {
-    ids.push_back(it->global_id);
-  }
-}
-
 
 void Simulator::get_imu_meas(std::vector<measurement_t, Eigen::aligned_allocator<measurement_t>>& meas_list)
 {
-    if (t_ >= last_imu_update_ + 1.0/imu_update_rate_)
+    if (fabs(t_ - last_imu_update_ - 1.0/imu_update_rate_) < 0.0005)
     {
       double dt = t_ - last_imu_update_;
       last_imu_update_ = t_;
@@ -281,7 +273,7 @@ void Simulator::get_imu_meas(std::vector<measurement_t, Eigen::aligned_allocator
 void Simulator::get_feature_meas(std::vector<measurement_t, Eigen::aligned_allocator<measurement_t>>& meas_list)
 {
     // If it's time to capture new measurements, then do it
-    if (t_ > last_camera_update_ + 1.0/camera_update_rate_)
+    if (fabs(t_ - last_camera_update_ - 1.0/camera_update_rate_) < 0.0005)
     {
       last_camera_update_ = t_;
       update_camera_pose();
@@ -296,25 +288,24 @@ void Simulator::get_feature_meas(std::vector<measurement_t, Eigen::aligned_alloc
           meas.type = FEAT;
           meas.z = get_pixel((*it));
           meas.R = feat_R_;
-          meas.global_id = (*it).global_id;
+          meas.feature_id = (*it).id;
           meas.depth = get_depth((*it));
           meas.active = feature_update_active_;
           camera_measurements_buffer_.push_back(meas);
-          DBG("update feature - envID = %d globalID = %d\n",
-              it->env_id, it->global_id);
+          DBG("update feature - ID = %d\n", it->id);
           it++;
         }
         else
         {
           if (it->zeta(2,0) < 0)
           {
-            DBG("clearing feature - envID = %d globalID = %d because went negative [%f, %f, %f]\n",
-                it->env_id, it->global_id, it->zeta(0,0), it->zeta(1,0), it->zeta(2,0));
+            DBG("clearing feature - ID = %d because went negative [%f, %f, %f]\n",
+                it->id, it->zeta(0,0), it->zeta(1,0), it->zeta(2,0));
           }
           else if ((it->pixel.array() < 0).any() || (it->pixel.array() > image_size_.array()).any())
           {
-            DBG("clearing feature - envID = %d globalID = %d because went out of frame [%f, %f]\n",
-                it->env_id, it->global_id, it->pixel(0,0), it->pixel(1,0));
+            DBG("clearing feature - ID = %d because went out of frame [%f, %f]\n",
+                it->id, it->pixel(0,0), it->pixel(1,0));
           }
           tracked_points_.erase(it);
         }
@@ -327,8 +318,8 @@ void Simulator::get_feature_meas(std::vector<measurement_t, Eigen::aligned_alloc
         if (!get_feature_in_frame(new_feature, loop_closure_))
           break;
         tracked_points_.push_back(new_feature);
-        DBG("new feature - envID = %d globalID = %d [%f, %f, %f], [%f, %f]\n",
-            new_feature.env_id, new_feature.global_id, new_feature.zeta(0,0), new_feature.zeta(1,0),
+        DBG("new feature - ID = %d [%f, %f, %f], [%f, %f]\n",
+            new_feature.id, new_feature.zeta(0,0), new_feature.zeta(1,0),
             new_feature.zeta(2,0), new_feature.pixel(0,0), new_feature.pixel(1,0));
 
         // Pixel noise
@@ -341,7 +332,7 @@ void Simulator::get_feature_meas(std::vector<measurement_t, Eigen::aligned_alloc
         meas.type = FEAT;
         meas.z = get_pixel(new_feature) + pixel_noise_;
         meas.R = feat_R_;
-        meas.global_id = new_feature.global_id;
+        meas.feature_id = new_feature.id;
         meas.depth = get_depth(new_feature, init_depth_);
         meas.active = true; // always true for new features
         camera_measurements_buffer_.push_back(meas);
@@ -362,7 +353,7 @@ void Simulator::get_feature_meas(std::vector<measurement_t, Eigen::aligned_alloc
 
 void Simulator::get_alt_meas(std::vector<measurement_t, Eigen::aligned_allocator<measurement_t>>& meas_list)
 {
-    if (t_ >= last_altimeter_update_ + 1.0/altimeter_update_rate_)
+    if (fabs(t_ - last_altimeter_update_ - 1.0/altimeter_update_rate_) < 0.0005)
     {
       // Altimeter noise
       if (!use_altimeter_truth_)
@@ -383,7 +374,7 @@ void Simulator::get_alt_meas(std::vector<measurement_t, Eigen::aligned_allocator
 
 void Simulator::get_mocap_meas(std::vector<measurement_t, Eigen::aligned_allocator<measurement_t>>& meas_list)
 {
-    if (t_ >= last_truth_update_ + 1.0/truth_update_rate_)
+    if (fabs(t_ - last_truth_update_ - 1.0/truth_update_rate_) < 0.0005)
     {
       measurement_t att_meas;
       att_meas.t = t_ - mocap_time_offset_;
@@ -406,7 +397,7 @@ void Simulator::get_mocap_meas(std::vector<measurement_t, Eigen::aligned_allocat
       last_truth_update_ = t_;
     }
 
-    while (mocap_measurement_buffer_.size() > 0 && mocap_measurement_buffer_[0].first > t_)
+    while (mocap_measurement_buffer_.size() > 0 && mocap_measurement_buffer_[0].first >= t_)
     {
       meas_list.push_back(mocap_measurement_buffer_[0].second);
       mocap_measurement_buffer_.erase(mocap_measurement_buffer_.begin());
@@ -452,30 +443,6 @@ void Simulator::get_measurements(std::vector<measurement_t, Eigen::aligned_alloc
   get_vo_meas(meas_list);
 }
 
-int Simulator::global_to_local_feature_id(const int global_id) const
-{
-  for (int i = 0; i < tracked_points_.size(); i++)
-  {
-    if (tracked_points_[i].global_id == global_id)
-    {
-      return i;
-    }
-  }
-  return -1;
-}
-
-int Simulator::env_to_global_feature_id(const int env_id) const
-{
-  for (int i = 0; i < tracked_points_.size(); i++)
-  {
-    if (tracked_points_[i].env_id == env_id)
-    {
-      return tracked_points_[i].global_id;
-    }
-  }
-  return -1;
-}
-
 Xformd Simulator::get_pose() const
 {
   Xformd x;
@@ -492,7 +459,7 @@ void Simulator::get_truth(xVector &x, const std::vector<int>& tracked_features) 
   x(xMU,0) = dyn_.get_drag();
   for (auto it = tracked_features.begin(); it != tracked_features.end(); it++)
   {
-    int i = global_to_local_feature_id(*it);
+    int i = *it;
     if (i < 0)
     {
       continue;
@@ -514,14 +481,14 @@ void Simulator::get_truth(xVector &x, const std::vector<int>& tracked_features) 
 
 bool Simulator::update_feature(feature_t &feature) const
 {
-  if (feature.env_id > env_.get_points().size() || feature.env_id < 0)
+  if (feature.id > env_.get_points().size() || feature.id < 0)
     return false;
   
   // Calculate the bearing vector to the feature
-  Vector3d pt = env_.get_points()[feature.env_id];
+  Vector3d pt = env_.get_points()[feature.id];
   feature.zeta = q_I_c_.rotp(pt - t_I_c_);
   feature.zeta /= feature.zeta.norm();
-  feature.depth = (env_.get_points()[feature.env_id] - t_I_c_).norm();
+  feature.depth = (env_.get_points()[feature.id] - t_I_c_).norm();
   
   // we can reject anything behind the camera
   if (feature.zeta(2) < 0.0)
@@ -561,8 +528,7 @@ bool Simulator::get_previously_tracked_feature_in_frame(feature_t &feature)
         continue;
       else
       {
-        feature.env_id = ids[i];
-        feature.global_id = ids[i];
+        feature.id = ids[i];
         return true;
       }
     }
@@ -585,10 +551,10 @@ bool Simulator::get_feature_in_frame(feature_t &feature, bool retrack)
 bool Simulator::create_new_feature_in_frame(feature_t &feature)
 {
   // First, look for features in frame that are not currently being tracked
-  feature.env_id = env_.add_point(t_I_c_, q_I_c_, feature.zeta, feature.pixel, feature.depth);
-  if (feature.env_id != -1)
+  feature.id = env_.add_point(t_I_c_, q_I_c_, feature.zeta, feature.pixel, feature.depth);
+  if (feature.id != -1)
   {
-    feature.global_id = next_global_feature_id_++;
+    feature.id = next_feature_id_++;
     return true;
   }
   else
@@ -598,10 +564,10 @@ bool Simulator::create_new_feature_in_frame(feature_t &feature)
   }
 }
 
-bool Simulator::is_feature_tracked(int env_id) const
+bool Simulator::is_feature_tracked(int id) const
 {
   auto it = tracked_points_.begin();
-  while (it < tracked_points_.end() && it->env_id != env_id)
+  while (it < tracked_points_.end() && it->id != id)
   {
     it++;
   }
