@@ -346,3 +346,8 @@ void random_normal_vec(Eigen::Matrix<T,S,1>& vec, double stdev, std::normal_dist
   for (int i = 0; i < S; ++i)
     vec(i) = stdev*dist(gen);
 }
+
+inline bool isNan(const Eigen::Ref<const Eigen::MatrixXd>& A)
+{
+  return (A.array() != A.array()).any();
+}
