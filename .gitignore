@@ -1,2 +1,5 @@
 build/*
 *.user
+.vscode/
+.DS_Store
+logs/

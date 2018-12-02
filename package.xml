@@ -1,0 +1,18 @@
+<package format="2">
+  <name>multirotor_sim</name>
+  <version>0.0.1</version>
+  <description>
+  This is a tightly-coupled visual-inertial EKF which operates on the manifold
+  </description>
+  <maintainer email="jerelbn@github.com">jerelbn</maintainer>
+  <license>BSD-3</license>
+
+  <buildtool_depend>catkin</buildtool_depend>
+
+  <depend>roscpp</depend>
+  <depend>roslib</depend>
+  <depend>rosflight_msgs</depend>
+  <depend>nav_msgs</depend>
+  <depend>message_generation</depend>
+
+</package>
