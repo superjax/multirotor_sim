@@ -4,3 +4,6 @@
 [submodule "lib/nanoflann_eigen"]
 	path = lib/nanoflann_eigen
 	url = git@github.com:superjax/nanoflann_eigen.git
+[submodule "lib/solve_care"]
+	path = lib/solve_care
+	url = git@github.com:jerelbn/solve_care.git
