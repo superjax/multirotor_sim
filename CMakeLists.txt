@@ -17,9 +17,9 @@ if (NOT TARGET nanoflann_eigen)
     include_directories(lib/nanoflann_eigen/include)
 endif()
 
-if (NOT TARGET solve_care)
-  add_subdirectory(lib/solve_care)
-  include_directories(lib/solve_care/include)
+if (NOT TARGET lin_alg_tools)
+  add_subdirectory(lib/lin_alg_tools)
+  include_directories(lib/lin_alg_tools/include)
 endif()
 
 include_directories(include/multirotor_sim
@@ -36,4 +36,4 @@ add_library(multirotor_sim STATIC
     src/simulator.cpp
     src/environment.cpp
 )
-target_link_libraries(multirotor_sim ${YAML_CPP_LIBRARIES} stdc++fs geometry nanoflann_eigen solve_care)
+target_link_libraries(multirotor_sim ${YAML_CPP_LIBRARIES} stdc++fs geometry nanoflann_eigen lin_alg_tools)

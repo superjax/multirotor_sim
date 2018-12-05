@@ -6,6 +6,7 @@
 
 #include "geometry/quat.h"
 #include "geometry/support.h"
+#include "lin_alg_tools/care.h"
 
 #include "utils.h"
 #include "dynamics.h"
