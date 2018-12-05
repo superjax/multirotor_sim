@@ -4,3 +4,6 @@
 [submodule "lib/nanoflann_eigen"]
 	path = lib/nanoflann_eigen
 	url = git@github.com:superjax/nanoflann_eigen.git
+[submodule "lib/lin_alg_tools"]
+	path = lib/lin_alg_tools
+	url = git@github.com:jerelbn/lin_alg_tools.git
