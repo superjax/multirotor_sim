@@ -12,7 +12,6 @@ Controller::Controller() :
   prev_time_(0),
   initialized_(false)
 {
-  dhat_.setZero();
   vhat_.setZero();
   s_prev_ = 0;
 }
@@ -54,81 +53,12 @@ void Controller::computeControl(const dynamics::xVector &x, const double t, dyna
   if (path_type_ == 2)
     updateTrajectoryManager();
   
-  // Different velocity and yaw rate commands depending on path type
-  if (path_type_ < 3)
-  {
-    // Compute vehicle-1 velocity command
-    Vector3d phat(xhat_.pn, xhat_.pe, xhat_.pd); // position estimate
-    Vector3d pc(xc_.pn, xc_.pe, xc_.pd); // position command
-    Vector3d vc = frame_helper::R_v_to_v1(euler(2)) * K_p_ * (pc-phat); // velocity command
-
-    // enforce max commanded velocity
-    double vmag = vc.norm();
-    if (vmag > max_.vel)
-      vc *= max_.vel/vmag;
-
-    // store velocity command
-    xc_.u = vc(0);
-    xc_.v = vc(1);
-    xc_.w = vc(2);
-
-    // get yaw rate direction and allow it to saturate
-    xc_.r = xc_.psi - xhat_.psi;
-  }
+  // Compute control
+  if (control_type_ == 0)
+    nlc_.computeControl(xhat_, xc_, dt, sh_);
   else
-  {
-    // Constant forward velocity and constant altitude
-    xc_.u += traj_heading_walk_ * udist_(rng_) * dt - ((xc_.u - vmag_) *traj_heading_straight_gain_);
-    xc_.v += traj_heading_walk_ * udist_(rng_) * dt - (xc_.v *traj_heading_straight_gain_);
-    xc_.w = K_p_(2,2) * (xc_.pd - xhat_.pd);
+    throw std::runtime_error("Undefined control type in controller.cpp");
 
-    // Wandering yaw rate
-    xc_.r += traj_heading_walk_ * udist_(rng_) * dt - (xc_.r *traj_heading_straight_gain_);
-  }
-
-  // Saturate and prevent wrong direction in yaw rate
-  if (xc_.r > M_PI)
-    xc_.r -= 2*M_PI;
-  if (xc_.r < -M_PI)
-    xc_.r += 2*M_PI;
-  xc_.r = sat(xc_.r, max_.yaw_rate, -max_.yaw_rate);
-
-  // Compute vehicle-1 thrust vector and update disturbance term
-  Vector3d vb(xhat_.u,xhat_.v,xhat_.w);
-  Vector3d vc(xc_.u, xc_.v, xc_.w);
-  Matrix3d R_v1_to_b = frame_helper::R_v_to_b(xhat_.phi, xhat_.theta, 0);
-  Vector3d vhat = R_v1_to_b.transpose()*vb;
-  dhat_ = dhat_ - K_d_*(vc-vhat)*dt; // update disturbance estimate
-  Vector3d k_tilde = sh_ * (e3 - (1.0 / g) * (K_v_ * (vc - vhat) - dhat_));
-  
-  // pack up throttle command
-  xc_.throttle = e3.transpose() * R_v1_to_b * k_tilde;
-  xc_.throttle = sat(xc_.throttle, max_.throttle, 0.001);
-  
-  // Compute the desired tilt angle
-  Vector3d kd = (1.0 / xc_.throttle) * k_tilde; // desired body z direction
-  kd = kd / kd.norm(); // need direction only
-  double kTkd = e3.transpose() * kd;
-  double tilt_angle;
-  if (fabs(kTkd - 1.0) > 1.0e-6)
-    tilt_angle = acos(kTkd); // desired tilt
-  else
-    tilt_angle = 0;
-  
-  // Shortest rotation to desired tilt
-  Quatd q_c;
-  if (tilt_angle < 1e-6)
-    q_c = Quatd::Identity();
-  else
-  {
-    Vector3d k_cross_kd = e3.cross(kd);
-    q_c = Quatd::exp(tilt_angle * k_cross_kd / k_cross_kd.norm());
-  }
-  
-  // Pack up roll/pitch commands
-  xc_.phi = sat(q_c.roll(), max_.roll, -max_.roll);
-  xc_.theta = sat(q_c.pitch(), max_.pitch, -max_.pitch);
-  
   // Calculate the Final Output Torques using PID
   u(dynamics::THRUST) = xc_.throttle;
   u(dynamics::TAUX) = roll_.run(dt, xhat_.phi, xc_.phi, false, xhat_.p);
@@ -136,6 +66,8 @@ void Controller::computeControl(const dynamics::xVector &x, const double t, dyna
   u(dynamics::TAUZ) = yaw_rate_.run(dt, xhat_.r, xc_.r, false);
 
   // Hover throttle observer
+  Vector3d vb(xhat_.u, xhat_.v, xhat_.w);
+  Matrix3d R_v1_to_b = frame_helper::R_v_to_b(xhat_.phi, xhat_.theta, 0);
   Vector3d omega(xhat_.p, xhat_.q, xhat_.r);
   Vector3d vhat_dot = g * (I_3x3 - sh_inv_hat_ * s_prev_ * R_v1_to_b.transpose()) * e3 -
                       omega.cross(vhat_) + sh_kv_ * (vb - vhat_);
@@ -144,84 +76,6 @@ void Controller::computeControl(const dynamics::xVector &x, const double t, dyna
   sh_inv_hat_ += sh_inv_hat_dot * dt;
   sh_ = 1.0 / sh_inv_hat_;
   s_prev_ = xc_.throttle;
-}
-
-Controller::PID::PID() :
-  kp_(0.0f),
-  ki_(0.0f),
-  kd_(0.0f),
-  max_(1.0f),
-  integrator_(0.0f),
-  differentiator_(0.0f),
-  prev_x_(0.0f),
-  tau_(0.05)
-{}
-
-void Controller::PID::init(float kp, float ki, float kd, float max, float min, float tau)
-{
-  kp_ = kp;
-  ki_ = ki;
-  kd_ = kd;
-  max_ = max;
-  tau_ = tau;
-}
-
-float Controller::PID::run(float dt, float x, float x_c, bool update_integrator)
-{
-  float xdot;
-  if (dt > 0.0001f)
-  {
-    // calculate D term (use dirty derivative if we don't have access to a measurement of the derivative)
-    // The dirty derivative is a sort of low-pass filtered version of the derivative.
-    //// (Include reference to Dr. Beard's notes here)
-    differentiator_ = (2.0f * tau_ - dt) / (2.0f * tau_ + dt) * differentiator_
-        + 2.0f / (2.0f * tau_ + dt) * (x - prev_x_);
-    xdot = differentiator_;
-  }
-  else
-  {
-    xdot = 0.0f;
-  }
-  prev_x_ = x;
-
-  return run(dt, x, x_c, update_integrator, xdot);
-}
-
-float Controller::PID::run(float dt, float x, float x_c, bool update_integrator, float xdot)
-{
-  // Calculate Error
-  float error = x_c - x;
-
-  // Initialize Terms
-  float p_term = error * kp_;
-  float i_term = 0.0f;
-  float d_term = 0.0f;
-
-  // If there is a derivative term
-  if (kd_ > 0.0f)
-  {
-    d_term = kd_ * xdot;
-  }
-
-  //If there is an integrator term and we are updating integrators
-  if ((ki_ > 0.0f) && update_integrator)
-  {
-    // integrate
-    integrator_ += error * dt;
-    // calculate I term
-    i_term = ki_ * integrator_;
-  }
-
-  // sum three terms
-  float u = p_term - d_term + i_term;
-
-  // Integrator anti-windup
-  float u_sat = (u > max_) ? max_ : (u < -1.0 * max_) ? -1.0 * max_ : u;
-  if (u != u_sat && fabs(i_term) > fabs(u - p_term + d_term) && ki_ > 0.0f)
-    integrator_ = (u_sat - p_term + d_term)/ki_;
-
-  // Set output
-  return u_sat;
 }
 
 void Controller::load(const std::string filename)
@@ -364,7 +218,13 @@ void Controller::load(const std::string filename)
   }
   else
     printf("Unable to find file %s\n", (current_working_dir() + filename).c_str());
-  
+
+  // Initialize controller
+  get_yaml_node("control_type", filename, control_type_);
+  if (control_type_ == 0)
+    nlc_.init(K_p_, K_v_, K_d_, path_type_, max_, traj_heading_walk_, traj_heading_straight_gain_, rng_, udist_);
+  else
+    throw std::runtime_error("Undefined control type in controller.cpp");
 }
 
 void Controller::updateWaypointManager()
