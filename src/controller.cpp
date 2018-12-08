@@ -56,6 +56,8 @@ void Controller::computeControl(const dynamics::xVector &x, const double t, dyna
   // Compute control
   if (control_type_ == 0)
     nlc_.computeControl(xhat_, xc_, dt, sh_);
+  else if (control_type_ == 1)
+    lqr_.computeControl(xhat_, xc_, sh_);
   else
     throw std::runtime_error("Undefined control type in controller.cpp");
 
@@ -223,6 +225,8 @@ void Controller::load(const std::string filename)
   get_yaml_node("control_type", filename, control_type_);
   if (control_type_ == 0)
     nlc_.init(K_p_, K_v_, K_d_, path_type_, max_, traj_heading_walk_, traj_heading_straight_gain_, rng_, udist_);
+  else if (control_type_ == 1)
+    lqr_.init(path_type_, max_);
   else
     throw std::runtime_error("Undefined control type in controller.cpp");
 }

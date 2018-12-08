@@ -12,6 +12,7 @@
 #include "dynamics.h"
 #include "pid.h"
 #include "nlc.h"
+#include "lqr.h"
 
 using namespace quat;
 using namespace Eigen;
@@ -45,6 +46,9 @@ public:
   Eigen::Matrix3d K_p_; // position
   Eigen::Matrix3d K_v_; // velocity
   Eigen::Matrix3d K_d_; // disturbance acceleration
+
+  // LQR controller
+  LQR<double> lqr_;
 
   // Parameters
   int control_type_;
