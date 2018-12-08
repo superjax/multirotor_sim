@@ -221,12 +221,23 @@ void Controller::load(const std::string filename)
   else
     printf("Unable to find file %s\n", (current_working_dir() + filename).c_str());
 
+  // Load LQR parameters
+  Eigen::Matrix<double,6,1> lqr_Q_diag;
+  Eigen::Vector4d lqr_R_diag;
+  get_yaml_node("lqr_max_pos_error", filename, lqr_p_err_max_);
+  get_yaml_node("lqr_max_vel_error", filename, lqr_v_err_max_);
+  get_yaml_node("lqr_max_yaw_error", filename, lqr_yaw_err_max_);
+  get_yaml_eigen("lqr_Q", filename, lqr_Q_diag);
+  get_yaml_eigen("lqr_R", filename, lqr_R_diag);
+  lqr_Q_ = lqr_Q_diag.asDiagonal();
+  lqr_R_ = lqr_R_diag.asDiagonal();
+
   // Initialize controller
   get_yaml_node("control_type", filename, control_type_);
   if (control_type_ == 0)
     nlc_.init(K_p_, K_v_, K_d_, path_type_, max_, traj_heading_walk_, traj_heading_straight_gain_, rng_, udist_);
   else if (control_type_ == 1)
-    lqr_.init(path_type_, max_);
+    lqr_.init(path_type_, max_, lqr_p_err_max_, lqr_v_err_max_, lqr_yaw_err_max_, lqr_Q_, lqr_R_);
   else
     throw std::runtime_error("Undefined control type in controller.cpp");
 }

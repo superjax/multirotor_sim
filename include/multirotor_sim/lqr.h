@@ -55,26 +55,20 @@ public:
     B_.setZero();
     Q_.setIdentity();
     R_.setIdentity();
-
-    p_err_max_ = (T)0.5;
-    v_err_max_ = (T)0.5;
-    yaw_err_max_ = (T)0.1;
     s_prev_ = (T)0.001;
-
-    Q_(2,2) = (T)10;
-    Q_.template block<3,3>(3,3) = (T)100 * Matrix<T,3,3>::Identity();
-
-    R_(0,0) = 1e4;
-    R_(1,1) = 1e3;
-    R_(2,2) = 1e3;
-    R_(3,3) = 1e3;
-    R_inv_ = R_.inverse();
   }
 
-  void init(const int& path_type, const max_t& max)
+  void init(const int& path_type, const max_t& max, const T& p_err_max, const T& v_err_max,
+            const T& yaw_err_max, const Matrix<T,6,6>& Q, const Matrix<T,4,4>& R)
   {
     max_ = max;
     path_type_ = path_type;
+    p_err_max_ = p_err_max;
+    v_err_max_ = v_err_max;
+    yaw_err_max_ = yaw_err_max;
+    Q_ = Q;
+    R_ = R;
+    R_inv_ = R_.inverse();
   }
 
   void computeControl(const state_t& xhat, state_t& xc, const T& sh)

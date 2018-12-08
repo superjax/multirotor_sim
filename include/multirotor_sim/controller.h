@@ -49,6 +49,11 @@ public:
 
   // LQR controller
   LQR<double> lqr_;
+  double lqr_p_err_max_;
+  double lqr_v_err_max_;
+  double lqr_yaw_err_max_;
+  Eigen::Matrix<double,6,6> lqr_Q_;
+  Eigen::Matrix4d lqr_R_;
 
   // Parameters
   int control_type_;
