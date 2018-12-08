@@ -61,13 +61,13 @@ public:
     yaw_err_max_ = (T)0.1;
     s_prev_ = (T)0.001;
 
-    Q_(2,2) = (T)100;
+    Q_(2,2) = (T)10;
     Q_.template block<3,3>(3,3) = (T)100 * Matrix<T,3,3>::Identity();
 
     R_(0,0) = 1e4;
-    R_(1,1) = 1e2;
-    R_(2,2) = 1e2;
-    R_(3,3) = 1e2;
+    R_(1,1) = 1e3;
+    R_(2,2) = 1e3;
+    R_(3,3) = 1e3;
     R_inv_ = R_.inverse();
   }
 
