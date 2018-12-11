@@ -63,6 +63,12 @@ Kv: [2, 2, 2]
 sh_kv: 50 # Hover throttle velocity gain
 sh_ks: 0.1 # Hover throttle gain
 
+lqr_max_pos_error: 0.5
+lqr_max_vel_error: 0.5
+lqr_max_yaw_error: 0.1
+lqr_Q: [1, 1, 10, 100, 100, 100]
+lqr_R: [10000, 1000, 1000, 1000]
+
 roll_kp: 10.0
 roll_ki: 0.0
 roll_kd: 1.0
@@ -88,6 +94,11 @@ x0: [0, 0, -5,    # POS
      1, 0, 0, 0, # ATT 
      0, 0, 0,    # OMEGA 
      0, 0, 0]    # ACC
+
+# Control type
+# 0: Nonlinear controller
+# 1: LQR controller
+control_type: 1
 
 
 # Environment Setup
