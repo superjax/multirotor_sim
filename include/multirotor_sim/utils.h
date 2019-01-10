@@ -5,6 +5,7 @@
 #include <sys/stat.h>
 #include <unistd.h>
 #include <chrono>
+#include <string>
 #include <random>
 #include <experimental/filesystem>
 #include <boost/algorithm/string.hpp>
@@ -76,7 +77,9 @@ bool get_yaml_eigen(const std::string key, const std::string filename, Eigen::Ma
     }
     else
     {
-      throw std::runtime_error("Eigen Matrix Size does not match parameter size for " + key + " in " + filename);
+      throw std::runtime_error("Eigen Matrix Size does not match parameter size for " + key + " in " + filename +
+                               ". Requested " + std::to_string(Derived1::RowsAtCompileTime) + "x" + std::to_string(Derived1::ColsAtCompileTime) +
+                               ", Found " + std::to_string(vec.size()));
       return false;
     }
   }

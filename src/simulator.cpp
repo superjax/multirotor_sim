@@ -189,6 +189,8 @@ void Simulator::load(string filename)
   // Start Progress Bar
   if (prog_indicator_)
     prog_.init(std::round(tmax_/dt_), 40);
+
+  u_(dynamics::THRUST) = dyn_.mass_ / dyn_.max_thrust_ * dynamics::G;
 }
 
 bool Simulator::run()
@@ -208,7 +210,8 @@ bool Simulator::run()
   }
   else
   {
-    prog_.finished();
+    if (prog_indicator_)
+        prog_.finished();
     return false;
   }
 }
@@ -421,7 +424,7 @@ void Simulator::get_vo_meas(std::vector<measurement_t, Eigen::aligned_allocator<
     measurement_t vo_meas;
     vo_meas.t = t_;
     vo_meas.type = VO;
-    vo_meas.z = T_c2ck.arr();
+    vo_meas.z = T_c2ck.arr_;
     vo_meas.R = vo_R_;
     vo_meas.active = vo_update_active_;
     meas_list.push_back(vo_meas);
@@ -441,6 +444,13 @@ void Simulator::get_measurements(std::vector<measurement_t, Eigen::aligned_alloc
   get_alt_meas(meas_list);
   get_mocap_meas(meas_list);
   get_vo_meas(meas_list);
+}
+
+Vector3d Simulator::get_vel() const
+{
+    Vector3d vel;
+    vel = dyn_.get_state().segment<3>(dynamics::VX);
+    return vel;
 }
 
 Xformd Simulator::get_pose() const
@@ -604,7 +614,7 @@ Vector3d Simulator::get_position()
 
 Vector3d Simulator::get_acc()
 {
-  return get_imu_prev().segment<3>(0);
+  return get_true_imu().segment<3>(0);
 }
 
 Vector2d Simulator::get_pixel(const feature_t &feature)
@@ -626,7 +636,6 @@ double Simulator::get_depth(const feature_t &feature, bool override)
 
 Matrix<double, 1, 1> Simulator::get_altitude()
 {
-  /// TODO simulate sensor noise
   return -1.0 * dyn_.get_state().segment<1>(dynamics::PZ).array() + altimeter_noise_stdev_ * normal_(generator_);
 }
 

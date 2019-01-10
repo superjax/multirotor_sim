@@ -114,8 +114,8 @@ public:
    */
   void get_vo_meas(std::vector<measurement_t, Eigen::aligned_allocator<measurement_t> > &meas);
 
-
-  const Vector6d& get_imu_prev() const { return imu_prev_; }
+//  const Vector6d& get_imu_prev() const { return imu_prev_; }
+  const Vector6d& get_true_imu() const { return dyn_.imu_;}
 
   /**
    * @brief get_pose
@@ -123,6 +123,13 @@ public:
    * @returns current pose (position, attitude)
    */
   Xformd get_pose() const;
+
+  /**
+   * @brief get_vel
+   * Returns the current (true) state of the multirotor
+   * @returns current velocity (body-fixed coordinate frame)
+   */
+  Vector3d get_vel() const;
 
   /**
    * @brief get_truth
