@@ -204,6 +204,7 @@ bool Simulator::run()
     dyn_.compute_imu(u_); // True acceleration is based on current control input
     if (prog_indicator_)
         prog_.print(t_/dt_);
+    update_measurements();
 
     log_state();
     return true;
@@ -265,10 +266,12 @@ void Simulator::get_imu_meas(std::vector<measurement_t, Eigen::aligned_allocator
       measurement_t acc_meas;
       acc_meas.t = t_;
       acc_meas.type = ACC;
-      acc_meas.z = get_acc();
+      acc_meas.z = imu_.segment<3>(0);
       acc_meas.R = acc_R_;
       acc_meas.active = drag_update_active_;
       meas_list.push_back(acc_meas);
+      if (acc_cb_)
+          acc_cb_(imu_.segment<3>(0), acc_R_, drag_update_active_);
     }
 }
 
@@ -348,6 +351,8 @@ void Simulator::get_feature_meas(std::vector<measurement_t, Eigen::aligned_alloc
       for (auto it = camera_measurements_buffer_.begin(); it != camera_measurements_buffer_.end(); it++)
       {
         meas_list.push_back(*it);
+        if (feature_cb_)
+            feature_cb_(it->z, it->R, it->active, it->feature_id, it->depth);
       }
       camera_measurements_buffer_.clear();
     }
@@ -371,6 +376,8 @@ void Simulator::get_alt_meas(std::vector<measurement_t, Eigen::aligned_allocator
       meas.R = alt_R_;
       meas.active = altimeter_update_active_;
       meas_list.push_back(meas);
+      if (alt_cb_)
+          alt_cb_(get_altitude() + noise, alt_R_, altimeter_update_active_);
     }
 }
 
@@ -403,6 +410,12 @@ void Simulator::get_mocap_meas(std::vector<measurement_t, Eigen::aligned_allocat
     while (mocap_measurement_buffer_.size() > 0 && mocap_measurement_buffer_[0].first >= t_)
     {
       meas_list.push_back(mocap_measurement_buffer_[0].second);
+      measurement_t* m = &(mocap_measurement_buffer_[0].second);
+      if (pos_cb_ && m->type == POS)
+          pos_cb_(m->z, m->R, m->active);
+      else if (att_cb_ && m->type == ATT)
+          att_cb_(Quatd(m->z), m->R, m->active);
+
       mocap_measurement_buffer_.erase(mocap_measurement_buffer_.begin());
     }
 }
@@ -428,6 +441,8 @@ void Simulator::get_vo_meas(std::vector<measurement_t, Eigen::aligned_allocator<
     vo_meas.R = vo_R_;
     vo_meas.active = vo_update_active_;
     meas_list.push_back(vo_meas);
+    if (vo_cb_)
+        vo_cb_(T_c2ck, vo_R_, vo_update_active_);
 
     // Set new keyframe to current pose
     T_i2bk_ = dyn_.get_global_pose();
@@ -435,15 +450,14 @@ void Simulator::get_vo_meas(std::vector<measurement_t, Eigen::aligned_allocator<
 }
 
 
-void Simulator::get_measurements(std::vector<measurement_t, Eigen::aligned_allocator<measurement_t>>& meas_list)
+void Simulator::update_measurements()
 {
-  meas_list.clear();
-
-  get_imu_meas(meas_list);
-  get_feature_meas(meas_list);
-  get_alt_meas(meas_list);
-  get_mocap_meas(meas_list);
-  get_vo_meas(meas_list);
+  meas_.clear();
+  get_imu_meas(meas_);
+  get_feature_meas(meas_);
+  get_alt_meas(meas_);
+  get_mocap_meas(meas_);
+  get_vo_meas(meas_);
 }
 
 Vector3d Simulator::get_vel() const
