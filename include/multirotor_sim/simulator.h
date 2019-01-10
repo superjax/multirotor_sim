@@ -161,23 +161,6 @@ public:
   controller::Controller cont_;
   double t_, dt_, tmax_;
 
-  Matrix3d att_R_;
-  Matrix3d pos_R_;
-  Matrix3d acc_R_;
-  Matrix2d feat_R_;
-  Matrix<double, 1, 1> alt_R_;
-  Matrix<double, 1, 1> depth_R_;
-  Matrix<double, 6, 6> vo_R_;
-  
-  bool attitude_update_active_;
-  bool position_update_active_;
-  bool depth_update_active_;
-  bool feature_update_active_;
-  bool drag_update_active_;
-  bool altimeter_update_active_;
-  bool vo_update_active_;
-
-
   typedef struct
   {
     Vector3d zeta;
@@ -304,6 +287,7 @@ public:
   // Command vector passed from controller to dynamics
   dynamics::commandVector u_;
 
+  // measurement vector
   std::vector<measurement_t, Eigen::aligned_allocator<measurement_t> > meas_;
   
   /* === Sensors === */
@@ -315,11 +299,13 @@ public:
   // IMU
   Vector6d imu_; // Vector containing [accel;gyro]
   Vector6d imu_prev_; // Previous version for propagation
-  double imu_update_rate_; // determines how often to generate an altitude measurement
-  double last_imu_update_;
   Quatd q_b_u_;
   Vector3d p_b_u_;
 
+  double imu_update_rate_;
+  bool drag_update_active_;
+  double last_imu_update_;
+  Matrix3d acc_R_;
   bool use_accel_truth_;
   Vector3d accel_bias_; // Memory for random walk
   double accel_noise_stdev_; // Standard deviation of accelerometer noise
@@ -332,27 +318,27 @@ public:
   double gyro_walk_stdev_; // Strength of gyro random walk
   Vector3d gyro_noise_;
   
-  // Camera
+  // Camera (Features)
+  Quatd q_b_c_;
+  Vector3d p_b_c_;
+  bool feature_update_active_;
   bool use_camera_truth_;
-  double pixel_noise_stdev_; // Standard deviation of camera pixel noise
-  vector<Vector3d> cam_; // Elements are landmarks in camera FOV given by a vector containing [pixel_x,pixel_y,label]
-  double camera_update_rate_;  // determines how often to supply a set of feature measurements
+  Matrix2d feat_R_;
+  double pixel_noise_stdev_;
+  double camera_update_rate_;
   double last_camera_update_;
   int next_feature_id_;
-  vector<feature_t, aligned_allocator<feature_t>> tracked_points_; // currently tracked features
-  deque<measurement_t, aligned_allocator<measurement_t>> camera_measurements_buffer_; // container to hold measurements while waiting for delay
   double camera_time_delay_;
   Vector2d pixel_noise_;
   bool loop_closure_;
-  
-  // Pose of camera in the body frame - assumed to be fixed
-  Quatd q_b_c_;
-  Vector3d p_b_c_;
+  vector<Vector3d> cam_; // Elements are landmarks in camera FOV given by a vector containing [pixel_x,pixel_y,label]
+  vector<feature_t, aligned_allocator<feature_t>> tracked_points_; // currently tracked features
+  deque<measurement_t, aligned_allocator<measurement_t>> camera_measurements_buffer_; // container to hold measurements while waiting for delay
   
   // Pose of camera in the inertial frame, updated by update_camera_pose()
   Quatd q_I_c_;
   Vector3d t_I_c_;
-  double feat_move_prob_;
+  double feat_move_prob_; // probability of moving a feature (simulating bad data association)
   
   // Camera intrinsics - assmed to be fixed
   Matrix<double, 2, 3> cam_F_;
@@ -360,6 +346,8 @@ public:
   Vector2d image_size_;
 
   // Altimeter
+  bool altimeter_update_active_;
+  Matrix<double, 1, 1> alt_R_;
   bool use_altimeter_truth_;
   double altimeter_update_rate_; // determines how often to generate an altitude measurement
   double last_altimeter_update_;
@@ -367,15 +355,19 @@ public:
   double altimeter_noise_;
 
   // Depth
+  bool depth_update_active_;
   bool use_depth_truth_;
   bool init_depth_;
+  Matrix1d depth_R_;
   double depth_update_rate_; // determines how often to generate an altitude measurement
   double last_depth_update_;
   double depth_noise_stdev_; // Standard deviation of altimeter noise
   double depth_noise_;
 
   // Visual Odometry
+  bool vo_update_active_;
   xform::Xformd T_i2bk_; // Inertial to body keyframe pose
+  Matrix<double, 6, 6> vo_R_;
   bool use_vo_truth_;
   double vo_delta_position_;
   double vo_delta_attitude_;
@@ -385,6 +377,10 @@ public:
   // Truth
   Quatd q_b_m_;
   Vector3d p_b_m_;
+  Matrix3d att_R_;
+  Matrix3d pos_R_;
+  bool attitude_update_active_;
+  bool position_update_active_;
   bool use_attitude_truth_;
   bool use_position_truth_;
   double truth_update_rate_; // determines how often to supply truth measurements
@@ -397,6 +393,17 @@ public:
   double mocap_transmission_time_;
   deque<std::pair<double, measurement_t>, aligned_allocator<std::pair<double, measurement_t>>> mocap_measurement_buffer_; // container to hold measurements while waiting for delay
 
+  // GPS
+  Xformd T_E_I_; // transform from the ECEF frame to the Inertial (NED) frame
+  Matrix6d gps_R_;
+  bool use_gps_truth_;
+  double gps_update_rate_;
+  double gps_horizontal_position_stdev_;
+  double gps_vertical_position_stdev_;
+  double gps_velocity_stdev_;
+  double last_gps_update_;
+  Vector3d gps_position_noise_;
+
   std::function<void(const Vector3d&, const Matrix3d&, bool)> acc_cb_ = nullptr;
   std::function<void(const Vector1d&, const Matrix1d&, bool)> alt_cb_ = nullptr;
   std::function<void(const Quatd&, const Matrix3d&, bool)> att_cb_ = nullptr;
@@ -408,7 +415,6 @@ public:
   std::function<void(const Vector1d&, const Matrix1d&, bool, int)> depth_cb_ = nullptr;
   std::function<void(const Vector1d&, const Matrix1d&, bool, int)> inv_depth_cb_ = nullptr;
 
-public:
   void register_acc_cb(std::function<void(const Vector3d&, const Matrix3d&, bool)>& cb) { acc_cb_ = cb; }
   void register_alt_cb(std::function<void(const Vector1d&, const Matrix1d&, bool)>& cb) { alt_cb_ = cb; }
   void register_att_cb(std::function<void(const Quatd&, const Matrix3d&, bool)>& cb) { att_cb_ = cb; }
