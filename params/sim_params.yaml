@@ -1,5 +1,5 @@
 tmax: 300.0 # Simulation total time, time step is determined by IMU rate
-
+log_filename: ""
 random_seed: -1 # -1 initializes seed with time
 
 # Path type:
@@ -7,7 +7,7 @@ random_seed: -1 # -1 initializes seed with time
 #   1 : random waypoints
 #   2 : circular trajectory
 #   3 : constant velocity, randomly varying heading
-path_type: 3
+path_type: 0
 
 # User-defined waypoints
 waypoints: [    
@@ -89,16 +89,15 @@ max_tau_z: 1.0
 
 inertia: [0.1, 0.1, 0.1]
 
-x0: [0, 0, -5,    # POS
+x0: [0, 0, -5,   # POS
      1, 0, 0,    # VEL
      1, 0, 0, 0, # ATT 
-     0, 0, 0,    # OMEGA 
-     0, 0, 0]    # ACC
+     0, 0, 0]    # OMEGA
 
 # Control type
 # 0: Nonlinear controller
 # 1: LQR controller
-control_type: 1
+control_type: 0
 
 
 # Environment Setup
@@ -119,6 +118,7 @@ use_gyro_truth: false
 use_camera_truth: false
 use_altimeter_truth: false
 use_depth_truth: false
+use_vo_truth: false
 
 RK4: true
 
@@ -133,6 +133,7 @@ attitude_update_active: false
 position_update_active: false
 depth_update_active: false
 altimeter_update_active: false
+vo_update_active: false
 
 ## IMU
 imu_update_rate: 250
@@ -150,12 +151,19 @@ pixel_noise_stdev: 2.0
 focal_len: [250.0, 250.0]
 cam_center: [320, 240]
 image_size: [640, 480]
+loop_closure: false
 # q_b_c: [1, 0, 0, 0]
 q_b_c: [0.712301460669, -0.00770717975554, 0.0104993233706, 0.701752800292]
 p_b_c: [1.0, 0.0, 0.0 ]
 # p_b_c: [-0.0216401454975, -0.064676986768, 0.00981073058949 ]
 # t_b_c: [-0.0216401454975, -0.064676986768, 0.00981073058949 ]
 t_b_c: [1.0, 0.0, 0.0 ]
+p_b_u: [0.0, 0.0, 0.0 ]
+q_b_u: [1.0, 0.0, 0.0, 0.0]
+vo_delta_position: 1.0
+vo_delta_attitude: 0.1
+vo_translation_noise_stdev: 0.1
+vo_rotation_noise_stdev: 0.01
 
 ## Altimeter
 altimeter_update_rate: 25
@@ -166,6 +174,8 @@ depth_update_rate: 30
 depth_noise_stdev: 0.1
 
 ## Truth
+p_b_m: [0.0, 0.0, 0.0]
+q_b_m: [1.0, 0.0, 0.0, 0.0]
 truth_update_rate: 100
 use_attitude_truth: false
 use_position_truth: false

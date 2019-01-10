@@ -79,7 +79,7 @@ public:
 
     // Unpack states
     Matrix<T,3,1> p(xhat.pn, xhat.pe, xhat.pd);
-    quat::Quat<T> q(xhat.phi, xhat.theta, xhat.psi);
+    quat::Quat<T> q = quat::Quat<T>::from_euler(xhat.phi, xhat.theta, xhat.psi);
     Matrix<T,3,1> v = q.rota(Matrix<T,3,1>(xhat.u, xhat.v, xhat.w));
 
     // Reference states/inputs
