@@ -294,7 +294,7 @@ public:
   ofstream log_;
 
   // Command vector passed from controller to dynamics [F, Omega]
-  dynamics::commandVector u_;
+  Vector4d u_;
 
   // measurement vector
   std::vector<measurement_t, Eigen::aligned_allocator<measurement_t> > meas_;

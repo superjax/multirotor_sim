@@ -34,7 +34,7 @@ void Dynamics::load(std::string filename)
   rng_ = std::default_random_engine(seed);
 
   Vector3d inertia_diag;
-  get_yaml_eigen<xVector>("x0", filename, x_);
+  get_yaml_eigen("x0", filename, x_.arr);
   if (get_yaml_eigen<Vector3d>("inertia", filename, inertia_diag))
   {
     inertia_matrix_ = inertia_diag.asDiagonal();
@@ -42,21 +42,18 @@ void Dynamics::load(std::string filename)
   }
 }
 
-void Dynamics::f(const xVector &x, const commandVector &u, dxVector &dx)
+void Dynamics::f(const State &x, const Vector4d &u, ErrorState &dx)
 {
-  Quatd q_i2b = Quatd(x.segment<4>(QW));
-  Eigen::Vector3d v_rel_ = x.segment<3>(VX) - q_i2b.rotp(vw_); // Vehicle air velocity
-  dx.segment<3>(PX) = q_i2b.rota(x.segment<3>(VX));
-  dx.segment<3>(VX) = -1.0 * e_z * u(THRUST)*max_thrust_ / mass_ - drag_constant_ * v_rel_ +
-                      q_i2b.rotp(gravity_) - x.segment<3>(WX).cross(x.segment<3>(VX));
+  Eigen::Vector3d v_rel_ = x.v - x.q.rotp(vw_); // Vehicle air velocity
+  dx.p = x.q.rota(x.v);
+  dx.v = -1.0 * e_z * u(THRUST)*max_thrust_ / mass_ - drag_constant_ * v_rel_ + x.q.rotp(gravity_) - x.w.cross(x.v);
 //  dx.segment<3>(VX) = -1.0 * e_z * u(THRUST)*max_thrust_ / mass_ - drag_constant_ * M_ * v_rel_.cwiseProduct(v_rel_) +
 //          q_i2b.rotp(gravity_) - x.segment<3>(WX).cross(x.segment<3>(VX));
-  dx.segment<3>(DQX) = x.segment<3>(WX);
-  dx.segment<3>(DWX) = inertia_inv_ * (u.segment<3>(TAUX) - x.segment<3>(WX).cross(inertia_matrix_ * x.segment<3>(WX)) -
-                       angular_drag_ * x.segment<3>(WX).cwiseProduct(x.segment<3>(WX)));
+  dx.q = x.w;
+  dx.w = inertia_inv_ * (u.segment<3>(TAUX) - x.w.cross(inertia_matrix_ * x.w) - angular_drag_ * x.w.cwiseProduct(x.w));
 }
 
-void Dynamics::run(const double dt, const commandVector &u)
+void Dynamics::run(const double dt, const Vector4d &u)
 {
   if (RK4_)
   {
@@ -64,36 +61,43 @@ void Dynamics::run(const double dt, const commandVector &u)
     f(x_, u, k1_);
 
     x2_ = x_;
-    x2_.segment<6>(PX) += k1_.segment<6>(PX) * dt / 2;
-    x2_.segment<4>(QW) = (Quatd(x2_.segment<4>(QW)) + (k1_.segment<3>(DQX)) * dt / 2).elements();
-    x2_.segment<3>(WX) += k1_.segment<3>(DWX) * dt / 2;
+    k1_.arr *= dt*0.5;
+    x2_ += k1_;
+//    x2_.p += k1_.p * dt / 2.0;
+//    x2_.q += k1_.q * dt / 2.0;
+//    x2_.v += k1_.v * dt / 2.0;
+//    x2_.w += k1_.w * dt / 2.0;
     f(x2_, u, k2_);
 
     x3_ = x_;
-    x3_.segment<6>(PX) += k2_.segment<6>(PX) * dt / 2;
-    x3_.segment<4>(QW) = (Quatd(x3_.segment<4>(QW)) + (k2_.segment<3>(DQX)) * dt / 2).elements();
-    x3_.segment<3>(WX) += k2_.segment<3>(DWX) * dt / 2;
+    k2_.arr *= dt *0.5;
+    x3_ += k2_;
+//    x3_.p += k2_.p * dt / 2.0;
+//    x3_.q += k2_.q * dt / 2.0;
+//    x3_.v += k2_.v * dt / 2.0;
+//    x3_.w += k2_.w * dt / 2.0;
     f(x3_, u, k3_);
 
     x4_ = x_;
-    x4_.segment<6>(PX) += k3_.segment<6>(PX) * dt;
-    x4_.segment<4>(QW) = (Quatd(x4_.segment<4>(QW)) + (k3_.segment<3>(DQX)) * dt).elements();
-    x4_.segment<3>(WX) += k3_.segment<3>(DWX) * dt;
+    k3_.arr *= dt;
+    x4_ += k3_;
+//    x4_.p += k3_.p * dt;
+//    x4_.q += k3_.q * dt;
+//    x4_.v += k3_.v * dt;
+//    x4_.w += k3_.w * dt;
     f(x4_, u, k4_);
 
-    dx_ = (k1_ + 2 * k2_ + 2 * k3_ + k4_) * dt / 6.0;
+    dx_.arr = (k1_.arr + 2 * k2_.arr + 2 * k3_.arr + k4_.arr) * dt / 6.0;
   }
   else
   {
     // Euler integration
     f(x_, u, dx_);
-    dx_ = dx_ * dt;
+    dx_.arr *= dt;
   }
 
   // Copy output
-  x_.segment<6>(PX) += dx_.segment<6>(PX);
-  x_.segment<4>(QW) = (Quatd(x_.segment<4>(QW)) + dx_.segment<3>(DQX)).elements();
-  x_.segment<3>(WX) += dx_.segment<3>(DWX);
+  x_ += dx_;
 
   // Update wind velocity for next iteration
   if (wind_enabled_)
@@ -114,13 +118,11 @@ Vector3d Dynamics::get_imu_gyro() const
   return imu_.segment<3>(GYRO);
 }
 
-void Dynamics::compute_imu(const commandVector &u)
+void Dynamics::compute_imu(const Vector4d &u)
 {
   f(x_, u, dx_);
-  imu_.segment<3>(ACC) = q_b_u_.rotp(dx_.segment<3>(VX) + x_.segment<3>(WX).cross(x_.segment<3>(VX)) +
-                         x_.segment<3>(WX).cross(x_.segment<3>(WX).cross(p_b_u_)) + dx_.segment<3>(DWX).cross(p_b_u_)
-                          - Quatd(x_.segment<4>(QW)).rotp(gravity_));
-  imu_.segment<3>(GYRO) = q_b_u_.rotp(x_.segment<3>(WX));
+  imu_.segment<3>(ACC) = q_b_u_.rotp(dx_.v + x_.w.cross(x_.v) + x_.w.cross(x_.w.cross(p_b_u_)) + dx_.w.cross(p_b_u_) - x_.q.rotp(gravity_));
+  imu_.segment<3>(GYRO) = q_b_u_.rotp(x_.w);
 }
 
 }

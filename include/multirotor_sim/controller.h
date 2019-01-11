@@ -104,7 +104,7 @@ public:
   void load(const std::string filename);
   void updateWaypointManager();
   void updateTrajectoryManager();
-  void computeControl(const dynamics::xVector &x, const double t, dynamics::commandVector& u); 
+  void computeControl(const State &x, const double t, Vector4d& u);
   
   inline state_t getCommandedState() const { return xc_; } 
   const Eigen::MatrixXd get_waypoints() const { return waypoints_; }

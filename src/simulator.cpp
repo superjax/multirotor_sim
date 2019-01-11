@@ -145,7 +145,7 @@ void Simulator::init_imu()
     cont_.computeControl(dyn_.get_state(), t_, u_);
     dyn_.compute_imu(u_);
     imu_.segment<3>(0) = dyn_.get_imu_accel() + accel_bias_ + accel_noise_ - dynamics::gravity_;
-    imu_.segment<3>(3) = dyn_.get_state().segment<3>(dynamics::WX) + gyro_bias_ + gyro_noise_;
+    imu_.segment<3>(3) = dyn_.get_state().w + gyro_bias_ + gyro_noise_;
     imu_prev_.setZero();
     imu_prev_.segment<3>(0) = -dynamics::gravity_;
 }
@@ -279,16 +279,15 @@ void Simulator::log_state()
   if (log_.is_open())
   {
     log_.write((char*)&t_, sizeof(double));
-    log_.write((char*)dyn_.get_state().data(), sizeof(double)*dyn_.get_state().rows());
+    log_.write((char*)dyn_.get_state().arr.data(), sizeof(double)*State::SIZE);
   }
 }
 
 
 void Simulator::update_camera_pose()
 {
-  Quatd q_I_b = Quatd(dyn_.get_state().segment<4>(dynamics::QW));
-  t_I_c_ = dyn_.get_state().segment<3>(dynamics::PX) + q_I_b.rota(p_b_c_);
-  q_I_c_ = q_I_b * q_b_c_;
+  t_I_c_ = dyn_.get_state().p + dyn_.get_state().q.rota(p_b_c_);
+  q_I_c_ = dyn_.get_state().q * q_b_c_;
 }
 
 
@@ -515,23 +514,22 @@ void Simulator::update_measurements()
 Vector3d Simulator::get_vel() const
 {
     Vector3d vel;
-    vel = dyn_.get_state().segment<3>(dynamics::VX);
+    vel = dyn_.get_state().v;
     return vel;
 }
 
 
 Xformd Simulator::get_pose() const
 {
-  Xformd x;
-  x.t_ = dyn_.get_state().segment<3>(dynamics::PX);
-  x.q_ = dyn_.get_state().segment<4>(dynamics::QW);
-  return x;
+  return dyn_.get_state().X;
 }
 
 
 void Simulator::get_truth(xVector &x, const std::vector<int>& tracked_features) const
 {
-  x.block<10,1>(0,0) = dyn_.get_state().block<10,1>(0,0);
+  x.block<3,1>(xPOS,0) = dyn_.get_state().p;
+  x.block<3,1>(xVEL,0) = dyn_.get_state().v;
+  x.block<4,1>(xATT,0) = dyn_.get_state().q.elements();
   x.block<3,1>(xB_A,0) = accel_bias_;
   x.block<3,1>(xB_G,0) = gyro_bias_;
   x(xMU,0) = dyn_.get_drag();
@@ -663,8 +661,7 @@ Vector4d Simulator::get_attitude()
 {
   Vector3d noise;
   random_normal_vec(noise, attitude_noise_stdev_, normal_, generator_);
-  Quatd q_I_b(dyn_.get_state().segment<4>(dynamics::QW)); // q_I^b
-  Quatd q_I_m = q_I_b * q_b_m_; //  q_I^m = q_I^b * q_b^m
+  Quatd q_I_m = dyn_.get_state().q * q_b_m_; //  q_I^m = q_I^b * q_b^m
   return (q_I_m + noise).elements();
 }
 
@@ -673,9 +670,8 @@ Vector3d Simulator::get_position()
 {
   Vector3d noise;
   random_normal_vec(noise, position_noise_stdev_, normal_, generator_);
-  Quatd q_I_b(dyn_.get_state().segment<4>(dynamics::QW)); // q_I^b
-  Vector3d I_p_b_I_ = dyn_.get_state().segment<3>(dynamics::PX); // p_{b/I}^I
-  Vector3d I_p_m_I_ = I_p_b_I_ + q_I_b.rota(p_b_m_); // p_{m/I}^I = p_{b/I}^I + R(q_I^b)^T (p_{m/b}^b)
+  Vector3d I_p_b_I_ = dyn_.get_state().p; // p_{b/I}^I
+  Vector3d I_p_m_I_ = I_p_b_I_ + dyn_.get_state().q.rota(p_b_m_); // p_{m/I}^I = p_{b/I}^I + R(q_I^b)^T (p_{m/b}^b)
   return I_p_m_I_;
 }
 
@@ -697,9 +693,11 @@ double Simulator::get_depth(const feature_t &feature)
   return feature.depth + depth_noise_stdev_ * normal_(generator_);
 }
 
-Matrix<double, 1, 1> Simulator::get_altitude()
+Vector1d Simulator::get_altitude()
 {
-  return -1.0 * dyn_.get_state().segment<1>(dynamics::PZ).array() + altimeter_noise_stdev_ * normal_(generator_);
+  Vector1d out;
+  out << -1.0 * dyn_.get_state().p.z() + altimeter_noise_stdev_ * normal_(generator_);
+  return out;
 }
 
 Matrix6d Simulator::get_imu_noise_covariance() const

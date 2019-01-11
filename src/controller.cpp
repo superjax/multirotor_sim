@@ -16,26 +16,25 @@ Controller::Controller() :
   s_prev_ = 0;
 }
 
-void Controller::computeControl(const dynamics::xVector &x, const double t, dynamics::commandVector& u)
+void Controller::computeControl(const State &x, const double t, Vector4d& u)
 {
   // Function constants
-  static Vector3d e3(0,0,1); // general unit vector in z-direction
-  static double g = 9.80665; // gravity, m/s^2
+  static const Vector3d e3(0,0,1); // general unit vector in z-direction
 
   // Copy the current state
-  Vector3d euler = Quatd(x.segment<4>(dynamics::QW)).euler();
-  xhat_.pn = x(dynamics::PX);
-  xhat_.pe = x(dynamics::PY);
-  xhat_.pd = x(dynamics::PZ);
-  xhat_.u = x(dynamics::VX);
-  xhat_.v = x(dynamics::VY);
-  xhat_.w = x(dynamics::VZ);
+  Vector3d euler = x.q.euler();
+  xhat_.pn = x.p.x();
+  xhat_.pe = x.p.y();
+  xhat_.pd = x.p.z();
+  xhat_.u = x.v.x();
+  xhat_.v = x.v.y();
+  xhat_.w = x.v.z();
   xhat_.phi = euler(0);
   xhat_.theta = euler(1);
   xhat_.psi = euler(2);
-  xhat_.p = x(dynamics::WX);
-  xhat_.q = x(dynamics::WY);
-  xhat_.r = x(dynamics::WZ); 
+  xhat_.p = x.w.x();
+  xhat_.q = x.w.y();
+  xhat_.r = x.w.z();
   
   // Time data
   xc_.t = t;
@@ -71,9 +70,9 @@ void Controller::computeControl(const dynamics::xVector &x, const double t, dyna
   Vector3d vb(xhat_.u, xhat_.v, xhat_.w);
   Matrix3d R_v1_to_b = frame_helper::R_v_to_b(xhat_.phi, xhat_.theta, 0);
   Vector3d omega(xhat_.p, xhat_.q, xhat_.r);
-  Vector3d vhat_dot = g * (I_3x3 - sh_inv_hat_ * s_prev_ * R_v1_to_b.transpose()) * e3 -
+  Vector3d vhat_dot = dynamics::G * (I_3x3 - sh_inv_hat_ * s_prev_ * R_v1_to_b.transpose()) * e3 -
                       omega.cross(vhat_) + sh_kv_ * (vb - vhat_);
-  double sh_inv_hat_dot = -sh_ks_ * g * s_prev_ * (vb - vhat_).transpose() * R_v1_to_b.transpose() * e3;
+  double sh_inv_hat_dot = -sh_ks_ * dynamics::G * s_prev_ * (vb - vhat_).transpose() * R_v1_to_b.transpose() * e3;
   vhat_ += vhat_dot * dt;
   sh_inv_hat_ += sh_inv_hat_dot * dt;
   sh_ = 1.0 / sh_inv_hat_;
@@ -107,13 +106,13 @@ void Controller::load(const std::string filename)
     {
       // Load random waypoint parameters
       double random_heading_bound, altitude, alt_var, wp_sep, wp_var;
-      dynamics::xVector x0;
+      State x0;
       get_yaml_node("heading_walk", filename, random_heading_bound);
       get_yaml_node("altitude", filename, altitude);
       get_yaml_node("altitude_variance", filename, alt_var);
       get_yaml_node("waypoint_separation", filename, wp_sep);
       get_yaml_node("waypoint_sep_variance", filename, wp_var);
-      get_yaml_eigen("x0", filename, x0); // need initial horizontal position
+      get_yaml_eigen("x0", filename, x0.arr); // need initial horizontal position
 
       // Get number of waypoints to create and initialize array and heading
       get_yaml_node("num_random_waypoints", filename, num_waypoints);
@@ -126,8 +125,8 @@ void Controller::load(const std::string filename)
         double pn, pe, psi;
         if (i == 0)
         {
-          pn = x0(PX);
-          pe = x0(PY);
+          pn = x0.p.x();
+          pe = x0.p.y();
           psi = 0;
         }
         else
