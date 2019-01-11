@@ -70,7 +70,7 @@ TEST (ErrorState, CopyConstruct)
     }
 }
 
-TEST (State, Compile)
+TEST (State, Construct)
 {
     State x;
 }

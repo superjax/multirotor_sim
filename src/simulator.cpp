@@ -7,7 +7,7 @@ using namespace std;
 Simulator::Simulator() :
   seed_(std::chrono::system_clock::now().time_since_epoch().count()),
   env_(seed_),
-  generator_(seed_),
+  rng_(seed_),
   uniform_(0.0, 1.0)
 {
   srand(seed_);
@@ -16,12 +16,12 @@ Simulator::Simulator() :
 Simulator::Simulator(bool prog_indicator) :
   seed_(std::chrono::system_clock::now().time_since_epoch().count()),
   env_(seed_),
-  generator_(seed_),
+  rng_(seed_),
   uniform_(0.0, 1.0),
   prog_indicator_(prog_indicator)
 {
   uint64_t seed = std::chrono::system_clock::now().time_since_epoch().count();
-  generator_ = std::default_random_engine(seed);
+  rng_ = std::default_random_engine(seed);
   srand(seed);
 }
 
@@ -29,7 +29,7 @@ Simulator::Simulator(bool prog_indicator) :
 Simulator::Simulator(bool prog_indicator, uint64_t seed):
     seed_(seed),
     env_(seed_),
-    generator_(seed_),
+    rng_(seed_),
     uniform_(0.0, 1.0),
     prog_indicator_(prog_indicator)
 {
@@ -52,6 +52,12 @@ void Simulator::load(string filename)
   param_filename_ = filename;
   t_ = 0;
   get_yaml_node("tmax", filename, tmax_);
+  get_yaml_node("seed", filename, seed_);
+  if (seed_ > 1)
+  {
+    rng_ = default_random_engine(seed_);
+    srand(seed_);
+  }
 
   // Log
   get_yaml_node("log_filename", filename, log_filename_);
@@ -251,7 +257,7 @@ void Simulator::init_gps()
     Vector3d refLla;
     double gps_pos_noise_h, gps_pos_noise_v, gps_vel_noise;
     get_yaml_eigen("ref_LLA", param_filename_, refLla);
-    x_e2n_ = WSG84::ecef2ned(refLla);
+    x_e2n_ = WSG84::ecef2ned(WSG84::lla2ecef(refLla));
     get_yaml_node("gps_update_rate", param_filename_, gps_update_rate_);
     get_yaml_node("use_gps_truth", param_filename_, use_gps_truth_);
     get_yaml_node("gps_horizontal_position_stdev", param_filename_, gps_pos_noise_h);
@@ -264,7 +270,7 @@ void Simulator::init_gps()
     gps_R_.setIdentity();
     gps_R_.block<2,2>(0,0) *= gps_pos_noise_h;
     gps_R_(2,2) *= gps_pos_noise_v;
-    gps_R_.block<3,3>(0,0) *= gps_vel_noise;
+    gps_R_.block<3,3>(3,3) *= gps_vel_noise;
     auto gps_pos_block = gps_R_.block<3,3>(0,0);
     auto gps_vel_block = gps_R_.block<3,3>(3,3);
     gps_pos_block = x_e2n_.q().R().transpose() * gps_pos_block * x_e2n_.q().R();
@@ -303,16 +309,16 @@ void Simulator::get_imu_meas(std::vector<measurement_t, Eigen::aligned_allocator
       if (!use_accel_truth_)
       {
         Vector3d accel_walk;
-        random_normal_vec(accel_walk, accel_walk_stdev_, normal_, generator_);
+        random_normal_vec(accel_walk, accel_walk_stdev_, normal_, rng_);
         accel_bias_ += accel_walk * accel_walk_stdev_ * dt;
-        random_normal_vec(accel_noise_, accel_noise_stdev_, normal_,  generator_);
+        random_normal_vec(accel_noise_, accel_noise_stdev_, normal_,  rng_);
       }
       if (!use_gyro_truth_)
       {
         Vector3d gyro_walk;
-        random_normal_vec(gyro_walk, gyro_walk_stdev_, normal_,  generator_);
+        random_normal_vec(gyro_walk, gyro_walk_stdev_, normal_,  rng_);
         gyro_bias_ += gyro_walk * dt;
-        random_normal_vec(gyro_noise_, gyro_noise_stdev_, normal_,  generator_);
+        random_normal_vec(gyro_noise_, gyro_noise_stdev_, normal_,  rng_);
       }
 
       // Populate accelerometer and gyro measurements
@@ -385,7 +391,7 @@ void Simulator::get_feature_meas(std::vector<measurement_t, Eigen::aligned_alloc
 
         // Pixel noise
         if (!use_camera_truth_)
-          random_normal_vec(pixel_noise_, pixel_noise_stdev_, normal_, generator_);
+          random_normal_vec(pixel_noise_, pixel_noise_stdev_, normal_, rng_);
 
         // Create a measurement for this new feature
         measurement_t meas;
@@ -419,7 +425,7 @@ void Simulator::get_alt_meas(std::vector<measurement_t, Eigen::aligned_allocator
     {
       // Altimeter noise
       if (!use_altimeter_truth_)
-        altimeter_noise_ = altimeter_noise_stdev_ * normal_(generator_);
+        altimeter_noise_ = altimeter_noise_stdev_ * normal_(rng_);
       Matrix<double, 1, 1> noise(altimeter_noise_);
 
       last_altimeter_update_ = t_;
@@ -451,7 +457,7 @@ void Simulator::get_mocap_meas(std::vector<measurement_t, Eigen::aligned_allocat
       pos_meas.z = get_position();
       pos_meas.R = pos_R_;
 
-      double pub_time = std::max(mocap_transmission_time_ + normal_(generator_) * mocap_transmission_noise_, 0.0) + t_;
+      double pub_time = std::max(mocap_transmission_time_ + normal_(rng_) * mocap_transmission_noise_, 0.0) + t_;
 
       mocap_measurement_buffer_.push_back(std::pair<double, measurement_t>{pub_time, pos_meas});
       mocap_measurement_buffer_.push_back(std::pair<double, measurement_t>{pub_time, att_meas});
@@ -525,34 +531,29 @@ Xformd Simulator::get_pose() const
 }
 
 
-void Simulator::get_truth(xVector &x, const std::vector<int>& tracked_features) const
-{
-  x.block<3,1>(xPOS,0) = dyn_.get_state().p;
-  x.block<3,1>(xVEL,0) = dyn_.get_state().v;
-  x.block<4,1>(xATT,0) = dyn_.get_state().q.elements();
-  x.block<3,1>(xB_A,0) = accel_bias_;
-  x.block<3,1>(xB_G,0) = gyro_bias_;
-  x(xMU,0) = dyn_.get_drag();
-  for (auto it = tracked_features.begin(); it != tracked_features.end(); it++)
-  {
-    int i = *it;
-    if (i < 0)
-    {
-      continue;
-      // This happens if the feature hasn't been added yet (because of the camera time offset)
-      // This usually happens when no features are in the camera's field of view
-//      std::stringstream err;
-//      err << "File: " << __FILE__ << ", Line: " << __LINE__;
-//      err << "\nEKF feature not found in truth - cannot compare";
-//      throw std::runtime_error(err.str());
-    }
+//void Simulator::get_features(const std::vector<int>& ids, ) const
+//{
+//  x = dyn_.get_state();
+//  for (auto it = ids.begin(); it != ids.end(); it++)
+//  {
+//    int i = *it;
+//    if (i < 0)
+//    {
+//      continue;
+//      // This happens if the feature hasn't been added yet (because of the camera time offset)
+//      // This usually happens when no features are in the camera's field of view
+////      std::stringstream err;
+////      err << "File: " << __FILE__ << ", Line: " << __LINE__;
+////      err << "\nEKF feature not found in truth - cannot compare";
+////      throw std::runtime_error(err.str());
+//    }
 
-    int xZETA = xZ + 5 * i;
-    int xRHO = xZ + 5*i + 4;
-    x.block<4,1>(xZETA,0) = Quatd::from_two_unit_vectors(e_z, tracked_points_[i].zeta).elements();
-    x(xRHO,0) =1.0/ tracked_points_[i].depth;
-  }
-}
+//    int xZETA = 5*i;
+//    int xRHO = 5*i + 4;
+//    xf.block<4,1>(xZETA,0) = Quatd::from_two_unit_vectors(e_z, tracked_points_[i].zeta).elements();
+//    x(xRHO,0) =1.0/ tracked_points_[i].depth;
+//  }
+//}
 
 
 bool Simulator::update_feature(feature_t &feature) const
@@ -660,7 +661,7 @@ void Simulator::proj(const Vector3d &zeta, Vector2d& pix) const
 Vector4d Simulator::get_attitude()
 {
   Vector3d noise;
-  random_normal_vec(noise, attitude_noise_stdev_, normal_, generator_);
+  random_normal_vec(noise, attitude_noise_stdev_, normal_, rng_);
   Quatd q_I_m = dyn_.get_state().q * q_b_m_; //  q_I^m = q_I^b * q_b^m
   return (q_I_m + noise).elements();
 }
@@ -669,7 +670,7 @@ Vector4d Simulator::get_attitude()
 Vector3d Simulator::get_position()
 {
   Vector3d noise;
-  random_normal_vec(noise, position_noise_stdev_, normal_, generator_);
+  random_normal_vec(noise, position_noise_stdev_, normal_, rng_);
   Vector3d I_p_b_I_ = dyn_.get_state().p; // p_{b/I}^I
   Vector3d I_p_m_I_ = I_p_b_I_ + dyn_.get_state().q.rota(p_b_m_); // p_{m/I}^I = p_{b/I}^I + R(q_I^b)^T (p_{m/b}^b)
   return I_p_m_I_;
@@ -684,19 +685,19 @@ Vector3d Simulator::get_acc()
 Vector2d Simulator::get_pixel(const feature_t &feature)
 {
   Vector2d pixel_noise;
-  random_normal_vec(pixel_noise, pixel_noise_stdev_, normal_, generator_);
+  random_normal_vec(pixel_noise, pixel_noise_stdev_, normal_, rng_);
   return feature.pixel + pixel_noise;
 }
 
 double Simulator::get_depth(const feature_t &feature)
 {
-  return feature.depth + depth_noise_stdev_ * normal_(generator_);
+  return feature.depth + depth_noise_stdev_ * normal_(rng_);
 }
 
 Vector1d Simulator::get_altitude()
 {
   Vector1d out;
-  out << -1.0 * dyn_.get_state().p.z() + altimeter_noise_stdev_ * normal_(generator_);
+  out << -1.0 * dyn_.get_state().p.z() + altimeter_noise_stdev_ * normal_(rng_);
   return out;
 }
 

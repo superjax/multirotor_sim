@@ -4,9 +4,8 @@
 #include <Eigen/Dense>
 
 #include "geometry/quat.h"
-#include "utils.h"
 #include "nanoflann_eigen/nanoflann_eigen.h"
-#include "utils.h"
+#include "multirotor_sim/utils.h"
 
 using namespace Eigen;
 using namespace std;

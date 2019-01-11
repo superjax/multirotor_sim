@@ -47,8 +47,6 @@ void Dynamics::f(const State &x, const Vector4d &u, ErrorState &dx)
   Eigen::Vector3d v_rel_ = x.v - x.q.rotp(vw_); // Vehicle air velocity
   dx.p = x.q.rota(x.v);
   dx.v = -1.0 * e_z * u(THRUST)*max_thrust_ / mass_ - drag_constant_ * v_rel_ + x.q.rotp(gravity_) - x.w.cross(x.v);
-//  dx.segment<3>(VX) = -1.0 * e_z * u(THRUST)*max_thrust_ / mass_ - drag_constant_ * M_ * v_rel_.cwiseProduct(v_rel_) +
-//          q_i2b.rotp(gravity_) - x.segment<3>(WX).cross(x.segment<3>(VX));
   dx.q = x.w;
   dx.w = inertia_inv_ * (u.segment<3>(TAUX) - x.w.cross(inertia_matrix_ * x.w) - angular_drag_ * x.w.cwiseProduct(x.w));
 }
@@ -63,28 +61,16 @@ void Dynamics::run(const double dt, const Vector4d &u)
     x2_ = x_;
     k1_.arr *= dt*0.5;
     x2_ += k1_;
-//    x2_.p += k1_.p * dt / 2.0;
-//    x2_.q += k1_.q * dt / 2.0;
-//    x2_.v += k1_.v * dt / 2.0;
-//    x2_.w += k1_.w * dt / 2.0;
     f(x2_, u, k2_);
 
     x3_ = x_;
     k2_.arr *= dt *0.5;
     x3_ += k2_;
-//    x3_.p += k2_.p * dt / 2.0;
-//    x3_.q += k2_.q * dt / 2.0;
-//    x3_.v += k2_.v * dt / 2.0;
-//    x3_.w += k2_.w * dt / 2.0;
     f(x3_, u, k3_);
 
     x4_ = x_;
     k3_.arr *= dt;
     x4_ += k3_;
-//    x4_.p += k3_.p * dt;
-//    x4_.q += k3_.q * dt;
-//    x4_.v += k3_.v * dt;
-//    x4_.w += k3_.w * dt;
     f(x4_, u, k4_);
 
     dx_.arr = (k1_.arr + 2 * k2_.arr + 2 * k3_.arr + k4_.arr) * dt / 6.0;

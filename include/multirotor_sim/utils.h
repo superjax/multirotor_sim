@@ -378,20 +378,39 @@ struct WSG84
 
     static void ecef2lla(const Vector3d& ecef, Vector3d& lla)
     {
-        static const double eps = e_sq / (1.0 - e_sq);
-        double s = ecef.template segment<2>(0).norm();
-        double beta = std::atan2((ecef.z() * a), (s * b));
-        double sin_q = std::sin(beta);
-        double cos_q = std::cos(beta);
-        double sin_q_3 = sin_q * sin_q * sin_q;
-        double cos_q_3 = cos_q * cos_q * cos_q;
-        double mu = std::atan2((ecef.z() + eps * b * sin_q_3), (s - e_sq * a * cos_q_3));
-        double lambda = std::atan2(ecef.y(), ecef.x());
-        double v = a / std::sqrt(1.0 - e_sq * std::sin(mu) * std::sin(mu));
+        static const double e2 = f * (2.0 - f);
 
-        lla(0) = mu;
-        lla(1) = lambda;
-        lla(2) = (s / std::cos(mu)) - v;
+        double r2 = ecef.x()*ecef.x() + ecef.y()*ecef.y();
+        // double z,zk,v=RE_WGS84,sinp;
+        double z=ecef.z();
+        double v;
+        double zk;
+        do
+        {
+            zk = z;
+            double sinp = z / std::sqrt(r2 + z*z);
+            v = a / std::sqrt(1.0 - e2*sinp*sinp);
+            z = ecef.z() + v*e2*sinp;
+        }
+        while (std::abs(z - zk) >= 1e-4);
+
+        lla.x() = r2 > 1e-12 ? std::atan(z / std::sqrt(r2)) : (ecef.z() > 0.0 ? M_PI/2.0 : -M_PI/2.0);
+        lla.y() = r2 > 1e-12 ? std::atan2(ecef.y(), ecef.x()) : 0.0;
+        lla.z() = std::sqrt(r2+z*z) - v;
+//        static const double eps = e_sq / (1.0 - e_sq);
+//        double s = ecef.template segment<2>(0).norm();
+//        double beta = std::atan2((ecef.z() * a), (s * b));
+//        double sin_q = std::sin(beta);
+//        double cos_q = std::cos(beta);
+//        double sin_q_3 = sin_q * sin_q * sin_q;
+//        double cos_q_3 = cos_q * cos_q * cos_q;
+//        double mu = std::atan2((ecef.z() + eps * b * sin_q_3), (s - e_sq * a * cos_q_3));
+//        double lambda = std::atan2(ecef.y(), ecef.x());
+//        double v = a / std::sqrt(1.0 - e_sq * std::sin(mu) * std::sin(mu));
+
+//        lla(0) = mu;
+//        lla(1) = lambda;
+//        lla(2) = (s / std::cos(mu)) - v;
     }
 
     static Vector3d lla2ecef(const Vector3d& lla)
@@ -403,27 +422,29 @@ struct WSG84
 
     static void lla2ecef(const Vector3d& lla, Vector3d& ecef)
     {
-        double lambda = lla(0);
-        double phi = lla(1);
-        double s = sin(lambda);
-        double N = a / std::sqrt(1 - e_sq * s * s);
+        double sinp=sin(lla[0]);
+        double cosp=cos(lla[0]);
+        double sinl=sin(lla[1]);
+        double cosl=cos(lla[1]);
+        double e2=f*(2.0-f);
+        double v=a/sqrt(1.0-e2*sinp*sinp);
 
-        double sl = std::sin(lambda);
-        double cl = std::cos(lambda);
-        double cp = std::cos(phi);
-        double sp = std::sin(phi);
-
-        ecef.x() = (lla.z() + N) * cl * cp;
-        ecef.y() = (lla.z() + N) * cl * sp;
-        ecef.z() = (lla.z() + (1 - e_sq) * N) * sl;
+        ecef[0]=(v+lla[2])*cosp*cosl;
+        ecef[1]=(v+lla[2])*cosp*sinl;
+        ecef[2]=(v*(1.0-e2)+lla[2])*sinp;
     }
 
     static void ecef2ned(const Vector3d& ecef, xform::Xformd& X_e2n)
     {
         Vector3d lla;
         ecef2lla(ecef, lla);
-        X_e2n.q_ = quat::Quatd::from_euler(0, lla(1), lla(0)).inverse();
+        Quatd q1, q2;
+        q1 = quat::Quatd::from_axis_angle(e_z, lla(1));
+        q2 = quat::Quatd::from_axis_angle(e_y, -M_PI/2.0 - lla(0));
+        X_e2n.q_ = q1 * q2;
+//        X_e2n.q_ = quat::Quatd::from_euler(0, -(M_PI/2.0) - lla(0), lla(1));
         X_e2n.t_ = ecef;
+
     }
 
     static xform::Xformd ecef2ned(const Vector3d& ecef)

@@ -5,15 +5,18 @@
 #include <deque>
 #include <fstream>
 #include <functional>
+#include <stdint.h>
 
-#include "Eigen/Core"
-
-#include "utils.h"
-#include "environment.h"
-#include "dynamics.h"
-#include "controller.h"
+#include <Eigen/Core>
 
 #include "geometry/quat.h"
+
+#include "multirotor_sim/utils.h"
+#include "multirotor_sim/environment.h"
+#include "multirotor_sim/state.h"
+#include "multirotor_sim/dynamics.h"
+#include "multirotor_sim/controller.h"
+
 
 #ifndef NUM_FEATURES  // allows you to override the number of features in the build
 #define NUM_FEATURES 12
@@ -51,19 +54,6 @@ public:
       TOTAL_MEAS
     } measurement_type_t;
 
-  enum : int{
-      xPOS = 0,
-      xVEL = 3,
-      xATT = 6,
-      xB_A = 10,
-      xB_G = 13,
-      xMU = 16,
-      xZ = 17
-    };
-
-  typedef Matrix<double, MAX_X, 1> xVector;
-  typedef Matrix<double, MAX_DX, 1> dxVector;
-
   typedef struct
   {
     double t;
@@ -79,32 +69,15 @@ public:
   Simulator(bool prog_indicator);
   Simulator(bool prog_indicator, uint64_t seed);
   
-  /**
-   * @brief load
-   * loads parameters from file
-   * @param filename
-   */
   void load(std::string filename);
   void init_imu();
   void init_camera();
   void init_altimeter();
   void init_vo();
   void init_truth();
-  void init_gps();
-  
-  /**
-   * @brief run
-   * Main driver of the simulation loop
-   * @return true if not yet at final time, false if complete
-   */
+  void init_gps();  
+
   bool run();
-  
-  /**
-   * @brief get_measurements
-   * returns a list of measurements which occurred since the last get_measurements call
-   * these measurements all occur at the current time
-   * @param meas
-   */
   const std::vector<measurement_t, Eigen::aligned_allocator<measurement_t> > get_measurements() const { return meas_; }
 
   void update_measurements();
@@ -112,53 +85,20 @@ public:
   void get_feature_meas(std::vector<measurement_t, Eigen::aligned_allocator<measurement_t> > &meas);
   void get_alt_meas(std::vector<measurement_t, Eigen::aligned_allocator<measurement_t> > &meas);
   void get_mocap_meas(std::vector<measurement_t, Eigen::aligned_allocator<measurement_t> > &meas);
-  /**
-   * @brief get_vo_meas
-   * Computes the relative pose from current camera to keyframe camera and
-   * adds it to the measurement list.
-   * Relative position is given in current camera frame pointing from current
-   * camera to keyframe camera.
-   * Relative rotation is the rotation from current camera frame to keyframe
-   * camera frame.
-   * @param meas
-   */
   void get_vo_meas(std::vector<measurement_t, Eigen::aligned_allocator<measurement_t> > &meas);
 
-//  const Vector6d& get_imu_prev() const { return imu_prev_; }
+  inline void register_acc_cb(std::function<void(const Vector3d&, const Matrix3d&)>& cb) { acc_cb_ = cb; }
+  inline void register_alt_cb(std::function<void(const Vector1d&, const Matrix1d&)>& cb) { alt_cb_ = cb; }
+  inline void register_att_cb(std::function<void(const Quatd&, const Matrix3d&)>& cb) { att_cb_ = cb; }
+  inline void register_pos_cb(std::function<void(const Vector3d&, const Matrix3d&)>& cb) { pos_cb_ = cb; }
+  inline void register_vo_cb(std::function<void(const Xformd&, const Matrix6d&)>& cb) { vo_cb_ = cb; }
+  inline void register_feature_cb(std::function<void(const Vector2d&, const Matrix2d&, int, double)>& cb) { feature_cb_ = cb; }
+
   const Vector6d& get_true_imu() const { return dyn_.imu_;}
-
-  /**
-   * @brief get_pose
-   * Returns the current (true) state of the multirotor
-   * @returns current pose (position, attitude)
-   */
   Xformd get_pose() const;
-
-  /**
-   * @brief get_vel
-   * Returns the current (true) state of the multirotor
-   * @returns current velocity (body-fixed coordinate frame)
-   */
   Vector3d get_vel() const;
-
-  /**
-   * @brief get_truth
-   * @return the full truth vector (as supplied by EKF class)
-   */
-  void get_truth(xVector& x, const std::vector<int> &tracked_features) const;
-
-  /**
-   * @brief get_imu_noise
-   * @return 6x6 diagonal matrix of IMU covariance [acc, gyro]
-   */
   Matrix6d get_imu_noise_covariance() const;
-
-  /**
-   * @brief get_imu_noise
-   * @return 6x6 diagonal matrix of motion capture measurement [t, q]
-   */
   Matrix6d get_mocap_noise_covariance() const;
-
   inline Vector3d get_accel_bias() const { return accel_bias_; }
   inline Vector3d get_gyro_bias() const { return gyro_bias_; }
 
@@ -301,7 +241,7 @@ public:
   
   // Random number Generation
   uint64_t seed_;
-  default_random_engine generator_;
+  default_random_engine rng_;
   uniform_real_distribution<double> uniform_;
   normal_distribution<double> normal_;
 
@@ -412,14 +352,4 @@ public:
   std::function<void(const Vector2d&, const Matrix2d&, int, double)> feature_cb_ = nullptr;
   std::function<void(const Vector1d&, const Matrix1d&, int)> depth_cb_ = nullptr;
   std::function<void(const Vector1d&, const Matrix1d&, int)> inv_depth_cb_ = nullptr;
-
-  void register_acc_cb(std::function<void(const Vector3d&, const Matrix3d&)>& cb) { acc_cb_ = cb; }
-  void register_alt_cb(std::function<void(const Vector1d&, const Matrix1d&)>& cb) { alt_cb_ = cb; }
-  void register_att_cb(std::function<void(const Quatd&, const Matrix3d&)>& cb) { att_cb_ = cb; }
-  void register_pos_cb(std::function<void(const Vector3d&, const Matrix3d&)>& cb) { pos_cb_ = cb; }
-  void register_vo_cb(std::function<void(const Xformd&, const Matrix6d&)>& cb) { vo_cb_ = cb; }
-  void register_qzeta_cb(std::function<void(const Quatd&, const Matrix2d&, int, double)>& cb) { qzeta_cb_ = cb; }
-  void register_feature_cb(std::function<void(const Vector2d&, const Matrix2d&, int, double)>& cb) { feature_cb_ = cb; }
-  void register_depth_cb(std::function<void(const Vector1d&, const Matrix1d&, int)>& cb) { depth_cb_ = cb; }
-  void register_inv_depth_cb(std::function<void(const Vector1d&, const Matrix1d&, int)>& cb) { inv_depth_cb_ = cb; }
 };
