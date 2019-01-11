@@ -15,18 +15,21 @@
 
 #include "geometry/quat.h"
 
+#ifndef NUM_FEATURES  // allows you to override the number of features in the build
 #define NUM_FEATURES 12
+#endif
+
 #define MAX_X 17+NUM_FEATURES*5
 #define MAX_DX 16+NUM_FEATURES*3
 
-//#ifndef NDEBUG
-//#define DBG(msg, ...)\
-//  { \
-//    printf((msg), ##__VA_ARGS__); \
-//  }
-//#else
+#ifndef NDEBUG
+#define DBG(msg, ...)\
+  { \
+    printf((msg), ##__VA_ARGS__); \
+  }
+#else
 #define DBG(msg, ...) {}
-//#endif
+#endif
 
 using namespace quat;
 
@@ -69,7 +72,6 @@ public:
     MatrixXd R;
     int feature_id;
     double depth;
-    bool active;
   } measurement_t;
   
   Simulator();
@@ -83,6 +85,12 @@ public:
    * @param filename
    */
   void load(std::string filename);
+  void init_imu();
+  void init_camera();
+  void init_altimeter();
+  void init_vo();
+  void init_truth();
+  void init_gps();
   
   /**
    * @brief run
@@ -262,7 +270,7 @@ public:
    * @return current feature depth of feature sampled from normal distribution 
    * centered at true mean with variance R_depth_
    */
-  double get_depth(const feature_t& feature, bool override= false);
+  double get_depth(const feature_t& feature);
   
   /**
    * @brief get_altitude
@@ -282,15 +290,16 @@ public:
   ProgressBar prog_;
   bool prog_indicator_;
   std::string log_filename_;
+  std::string param_filename_;
   ofstream log_;
 
-  // Command vector passed from controller to dynamics
+  // Command vector passed from controller to dynamics [F, Omega]
   dynamics::commandVector u_;
 
   // measurement vector
   std::vector<measurement_t, Eigen::aligned_allocator<measurement_t> > meas_;
   
-  /* === Sensors === */
+  // Random number Generation
   uint64_t seed_;
   default_random_engine generator_;
   uniform_real_distribution<double> uniform_;
@@ -303,7 +312,6 @@ public:
   Vector3d p_b_u_;
 
   double imu_update_rate_;
-  bool drag_update_active_;
   double last_imu_update_;
   Matrix3d acc_R_;
   bool use_accel_truth_;
@@ -321,32 +329,26 @@ public:
   // Camera (Features)
   Quatd q_b_c_;
   Vector3d p_b_c_;
-  bool feature_update_active_;
-  bool use_camera_truth_;
   Matrix2d feat_R_;
+  bool use_camera_truth_;
   double pixel_noise_stdev_;
   double camera_update_rate_;
   double last_camera_update_;
   int next_feature_id_;
   double camera_time_delay_;
   Vector2d pixel_noise_;
-  bool loop_closure_;
+  bool loop_closure_; // whether to re-use features if they show up in the frame again
   vector<Vector3d> cam_; // Elements are landmarks in camera FOV given by a vector containing [pixel_x,pixel_y,label]
   vector<feature_t, aligned_allocator<feature_t>> tracked_points_; // currently tracked features
   deque<measurement_t, aligned_allocator<measurement_t>> camera_measurements_buffer_; // container to hold measurements while waiting for delay
-  
-  // Pose of camera in the inertial frame, updated by update_camera_pose()
-  Quatd q_I_c_;
-  Vector3d t_I_c_;
+  Quatd q_I_c_; // rotation from inertial frame to camera frame (updated by update_camera_pose())
+  Vector3d t_I_c_; // translation from inertial frame to camera frame (updated by update_camera_pose())
   double feat_move_prob_; // probability of moving a feature (simulating bad data association)
-  
-  // Camera intrinsics - assmed to be fixed
-  Matrix<double, 2, 3> cam_F_;
-  Vector2d cam_center_;
-  Vector2d image_size_;
+  Matrix<double, 2, 3> cam_F_; // Camera intrinsics
+  Vector2d cam_center_; // Camera intrinsics
+  Vector2d image_size_; // Camera intrinsics
 
   // Altimeter
-  bool altimeter_update_active_;
   Matrix<double, 1, 1> alt_R_;
   bool use_altimeter_truth_;
   double altimeter_update_rate_; // determines how often to generate an altitude measurement
@@ -355,7 +357,6 @@ public:
   double altimeter_noise_;
 
   // Depth
-  bool depth_update_active_;
   bool use_depth_truth_;
   bool init_depth_;
   Matrix1d depth_R_;
@@ -365,7 +366,6 @@ public:
   double depth_noise_;
 
   // Visual Odometry
-  bool vo_update_active_;
   xform::Xformd T_i2bk_; // Inertial to body keyframe pose
   Matrix<double, 6, 6> vo_R_;
   bool use_vo_truth_;
@@ -379,22 +379,20 @@ public:
   Vector3d p_b_m_;
   Matrix3d att_R_;
   Matrix3d pos_R_;
-  bool attitude_update_active_;
-  bool position_update_active_;
   bool use_attitude_truth_;
   bool use_position_truth_;
   double truth_update_rate_; // determines how often to supply truth measurements
   double attitude_noise_stdev_;
   double position_noise_stdev_;
-  double last_truth_update_ = 0.0;
-  double next_truth_measurement_ = 0.0;
+  double last_truth_update_;
+  double next_truth_measurement_;
   double mocap_time_offset_;
   double mocap_transmission_noise_;
   double mocap_transmission_time_;
   deque<std::pair<double, measurement_t>, aligned_allocator<std::pair<double, measurement_t>>> mocap_measurement_buffer_; // container to hold measurements while waiting for delay
 
   // GPS
-  Xformd T_E_I_; // transform from the ECEF frame to the Inertial (NED) frame
+  Xformd x_e2n_; // transform from the ECEF frame to the Inertial (NED) frame
   Matrix6d gps_R_;
   bool use_gps_truth_;
   double gps_update_rate_;
@@ -404,24 +402,24 @@ public:
   double last_gps_update_;
   Vector3d gps_position_noise_;
 
-  std::function<void(const Vector3d&, const Matrix3d&, bool)> acc_cb_ = nullptr;
-  std::function<void(const Vector1d&, const Matrix1d&, bool)> alt_cb_ = nullptr;
-  std::function<void(const Quatd&, const Matrix3d&, bool)> att_cb_ = nullptr;
-  std::function<void(const Vector3d&, const Matrix3d&, bool)> pos_cb_ = nullptr;
-  std::function<void(const Xformd&, const Matrix6d&, bool)> vo_cb_ = nullptr;
+  std::function<void(const Vector3d&, const Matrix3d&)> acc_cb_ = nullptr;
+  std::function<void(const Vector1d&, const Matrix1d&)> alt_cb_ = nullptr;
+  std::function<void(const Quatd&, const Matrix3d&)> att_cb_ = nullptr;
+  std::function<void(const Vector3d&, const Matrix3d&)> pos_cb_ = nullptr;
+  std::function<void(const Xformd&, const Matrix6d&)> vo_cb_ = nullptr;
 
-  std::function<void(const Quatd&, const Matrix2d&, bool, int, double)> qzeta_cb_ = nullptr;
-  std::function<void(const Vector2d&, const Matrix2d&, bool, int, double)> feature_cb_ = nullptr;
-  std::function<void(const Vector1d&, const Matrix1d&, bool, int)> depth_cb_ = nullptr;
-  std::function<void(const Vector1d&, const Matrix1d&, bool, int)> inv_depth_cb_ = nullptr;
+  std::function<void(const Quatd&, const Matrix2d&, int, double)> qzeta_cb_ = nullptr;
+  std::function<void(const Vector2d&, const Matrix2d&, int, double)> feature_cb_ = nullptr;
+  std::function<void(const Vector1d&, const Matrix1d&, int)> depth_cb_ = nullptr;
+  std::function<void(const Vector1d&, const Matrix1d&, int)> inv_depth_cb_ = nullptr;
 
-  void register_acc_cb(std::function<void(const Vector3d&, const Matrix3d&, bool)>& cb) { acc_cb_ = cb; }
-  void register_alt_cb(std::function<void(const Vector1d&, const Matrix1d&, bool)>& cb) { alt_cb_ = cb; }
-  void register_att_cb(std::function<void(const Quatd&, const Matrix3d&, bool)>& cb) { att_cb_ = cb; }
-  void register_pos_cb(std::function<void(const Vector3d&, const Matrix3d&, bool)>& cb) { pos_cb_ = cb; }
-  void register_vo_cb(std::function<void(const Xformd&, const Matrix6d&, bool)>& cb) { vo_cb_ = cb; }
-  void register_qzeta_cb(std::function<void(const Quatd&, const Matrix2d&, bool, int, double)>& cb) { qzeta_cb_ = cb; }
-  void register_feature_cb(std::function<void(const Vector2d&, const Matrix2d&, bool, int, double)>& cb) { feature_cb_ = cb; }
-  void register_depth_cb(std::function<void(const Vector1d&, const Matrix1d&, bool, int)>& cb) { depth_cb_ = cb; }
-  void register_inv_depth_cb(std::function<void(const Vector1d&, const Matrix1d&, bool, int)>& cb) { inv_depth_cb_ = cb; }
+  void register_acc_cb(std::function<void(const Vector3d&, const Matrix3d&)>& cb) { acc_cb_ = cb; }
+  void register_alt_cb(std::function<void(const Vector1d&, const Matrix1d&)>& cb) { alt_cb_ = cb; }
+  void register_att_cb(std::function<void(const Quatd&, const Matrix3d&)>& cb) { att_cb_ = cb; }
+  void register_pos_cb(std::function<void(const Vector3d&, const Matrix3d&)>& cb) { pos_cb_ = cb; }
+  void register_vo_cb(std::function<void(const Xformd&, const Matrix6d&)>& cb) { vo_cb_ = cb; }
+  void register_qzeta_cb(std::function<void(const Quatd&, const Matrix2d&, int, double)>& cb) { qzeta_cb_ = cb; }
+  void register_feature_cb(std::function<void(const Vector2d&, const Matrix2d&, int, double)>& cb) { feature_cb_ = cb; }
+  void register_depth_cb(std::function<void(const Vector1d&, const Matrix1d&, int)>& cb) { depth_cb_ = cb; }
+  void register_inv_depth_cb(std::function<void(const Vector1d&, const Matrix1d&, int)>& cb) { inv_depth_cb_ = cb; }
 };

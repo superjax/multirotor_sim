@@ -11,8 +11,8 @@
 using namespace quat;
 using namespace xform;
 
-namespace dynamics {
-
+namespace dynamics
+{
 
 // State Indices
 enum {
@@ -30,7 +30,7 @@ enum {
   WY = 11,
   WZ = 12,
   STATE_SIZE = 13,
-  
+
   DQX = 6, // Attitude derivative indexes
   DWX = 9,
   DX_SIZE = 12

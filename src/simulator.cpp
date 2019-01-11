@@ -25,6 +25,7 @@ Simulator::Simulator(bool prog_indicator) :
   srand(seed);
 }
 
+
 Simulator::Simulator(bool prog_indicator, uint64_t seed):
     seed_(seed),
     env_(seed_),
@@ -34,6 +35,7 @@ Simulator::Simulator(bool prog_indicator, uint64_t seed):
 {
   srand(seed);
 }
+
 
 Simulator::~Simulator()
 {
@@ -47,6 +49,7 @@ Simulator::~Simulator()
 
 void Simulator::load(string filename)
 {
+  param_filename_ = filename;
   t_ = 0;
   get_yaml_node("tmax", filename, tmax_);
 
@@ -62,136 +65,21 @@ void Simulator::load(string filename)
   env_.load(filename);
   dyn_.load(filename);
 
-  // Load IMU parameters
-  Vector4d q_b_u;
-  get_yaml_node("imu_update_rate", filename, imu_update_rate_);
-  dt_ = 0.001;
-  get_yaml_eigen("p_b_u", filename, p_b_u_);
-  get_yaml_eigen("q_b_u", filename, q_b_u);
-  q_b_u_ = Quatd(q_b_u);
-
-  // Accelerometer
-  double accel_noise, accel_walk, accel_init;
-  get_yaml_node("use_accel_truth", filename, use_accel_truth_);
-  get_yaml_node("accel_init_stdev", filename, accel_init);
-  get_yaml_node("accel_noise_stdev", filename, accel_noise);
-  get_yaml_node("accel_bias_walk", filename, accel_walk);
-  accel_bias_ =  !use_accel_truth_ * accel_init * Vector3d::Random(); // Uniformly random init within +-accel_walk
-  accel_noise_stdev_ = !use_accel_truth_ * accel_noise;
-  accel_walk_stdev_ = !use_accel_truth_ * accel_walk;
-  accel_noise_.setZero();
-
-  // Gyro
-  double gyro_noise, gyro_walk, gyro_init;
-  get_yaml_node("use_gyro_truth", filename, use_gyro_truth_);
-  get_yaml_node("gyro_noise_stdev", filename, gyro_noise);
-  get_yaml_node("gyro_init_stdev", filename, gyro_init);
-  get_yaml_node("gyro_bias_walk", filename, gyro_walk);
-  gyro_bias_ = gyro_init * Vector3d::Random()  * !use_gyro_truth_; // Uniformly random init within +-gyro_walk
-  gyro_noise_stdev_ = gyro_noise * !use_gyro_truth_;
-  gyro_walk_stdev_ = gyro_walk * !use_gyro_truth_;
-  gyro_noise_.setZero();
-
-  // Camera
-  double pixel_noise;
-  Vector2d focal_len;
-  get_yaml_node("camera_time_delay", filename, camera_time_delay_);
-  get_yaml_node("use_camera_truth", filename, use_camera_truth_);
-  get_yaml_node("camera_update_rate", filename, camera_update_rate_);
-  get_yaml_eigen("cam_center", filename, cam_center_);
-  get_yaml_eigen("image_size", filename, image_size_);
-  get_yaml_eigen("q_b_c", filename, q_b_c_.arr_);
-  get_yaml_eigen("p_b_c", filename, p_b_c_);
-  get_yaml_eigen("focal_len", filename, focal_len);
-  get_yaml_node("pixel_noise_stdev", filename, pixel_noise);
-  get_yaml_node("loop_closure", filename, loop_closure_);
-  pixel_noise_stdev_ = !use_camera_truth_ * pixel_noise;
-  pixel_noise_.setZero();
-  cam_F_ << focal_len(0,0), 0, 0, 0, focal_len(1,0), 0; // Copy focal length into 2x3 matrix for future use
-  next_feature_id_ = 0;
-
-  // Altimeter
-  double altimeter_noise;
-  get_yaml_node("use_altimeter_truth", filename, use_altimeter_truth_);
-  get_yaml_node("altimeter_update_rate", filename, altimeter_update_rate_);
-  get_yaml_node("altimeter_noise_stdev", filename, altimeter_noise);
-  altimeter_noise_stdev_ = altimeter_noise * !use_altimeter_truth_;
-  altimeter_noise_ = 0;
-
-  // Depth
-  double depth_noise;
-  get_yaml_node("use_depth_truth", filename, use_depth_truth_);
-  get_yaml_node("init_depth", filename, init_depth_);
-  get_yaml_node("depth_update_rate", filename, depth_update_rate_);
-  get_yaml_node("depth_noise_stdev", filename, depth_noise);
-  get_yaml_node("feat_move_prob", filename, feat_move_prob_);
-  depth_noise_stdev_ = depth_noise * !use_depth_truth_;
-  depth_noise_ = 0;
-
-  // Visual Odometry
-  double vo_translation_noise, vo_rotation_noise;
-  T_i2bk_ = dyn_.get_global_pose();
-  get_yaml_node("use_vo_truth", filename, use_vo_truth_);
-  get_yaml_node("vo_delta_position", filename, vo_delta_position_);
-  get_yaml_node("vo_delta_attitude", filename, vo_delta_attitude_);
-  get_yaml_node("vo_translation_noise_stdev", filename, vo_translation_noise);
-  get_yaml_node("vo_rotation_noise_stdev", filename, vo_rotation_noise);
-  vo_translation_noise_stdev_ = vo_translation_noise * !use_vo_truth_;
-  vo_rotation_noise_stdev_ = vo_rotation_noise * !use_vo_truth_;
-
-  // Truth
-  double att_noise, pos_noise;
-  get_yaml_node("truth_update_rate", filename, truth_update_rate_);
-  get_yaml_node("use_attitude_truth", filename, use_attitude_truth_);
-  get_yaml_node("use_position_truth", filename, use_position_truth_);
-  get_yaml_node("attitude_noise_stdev", filename, att_noise);
-  get_yaml_node("position_noise_stdev", filename, pos_noise);
-  get_yaml_node("truth_time_offset", filename, mocap_time_offset_);
-  get_yaml_node("truth_transmission_noise", filename, mocap_transmission_noise_);
-  get_yaml_node("truth_transmission_time", filename, mocap_transmission_time_);
-  get_yaml_eigen("p_b_m", filename, p_b_m_);
-  get_yaml_eigen("q_b_m", filename, q_b_m_.arr_);
-  attitude_noise_stdev_ = att_noise * !use_attitude_truth_;
-  position_noise_stdev_ = pos_noise * !use_position_truth_;
-
-  // EKF
-  get_yaml_node("feature_update_active", filename, feature_update_active_);
-  get_yaml_node("drag_update_active", filename, drag_update_active_);
-  get_yaml_node("depth_update_active", filename, depth_update_active_);
-  get_yaml_node("altimeter_update_active", filename, altimeter_update_active_);
-  get_yaml_node("attitude_update_active", filename, attitude_update_active_);
-  get_yaml_node("position_update_active", filename, position_update_active_);
-  get_yaml_node("vo_update_active", filename, vo_update_active_);
-
-  att_R_ = att_noise * att_noise * I_3x3;
-  pos_R_ = pos_noise * pos_noise * I_3x3;
-  acc_R_ = accel_noise * accel_noise * I_3x3;
-  feat_R_ = pixel_noise * pixel_noise * I_2x2;
-  alt_R_ << altimeter_noise * altimeter_noise;
-  depth_R_ << depth_noise * depth_noise;
-  vo_R_.setIdentity();
-  vo_R_.block<3,3>(0,0) *= vo_translation_noise * vo_translation_noise;
-  vo_R_.block<3,3>(3,3) *= vo_rotation_noise * vo_rotation_noise;
-
-  // To get initial measurements
-  last_imu_update_ = 0.0;
-  last_camera_update_ = 0.0;
-  last_altimeter_update_ = 0.0;
-
-  // Compute initial control and corresponding acceleration
-  cont_.computeControl(dyn_.get_state(), t_, u_);
-  dyn_.compute_imu(u_);
-  imu_.segment<3>(0) = dyn_.get_imu_accel() + accel_bias_ + accel_noise_ - dynamics::gravity_;
-  imu_.segment<3>(3) = dyn_.get_state().segment<3>(dynamics::WX) + gyro_bias_ + gyro_noise_;
-  imu_prev_.setZero();
-  imu_prev_.segment<3>(0) = -dynamics::gravity_;
+  init_imu();
+  init_camera();
+  init_altimeter();
+  init_vo();
+  init_truth();
+  init_gps();
 
   // Start Progress Bar
   if (prog_indicator_)
     prog_.init(std::round(tmax_/dt_), 40);
 
+  // start at hover throttle
   u_(dynamics::THRUST) = dyn_.mass_ / dyn_.max_thrust_ * dynamics::G;
 }
+
 
 bool Simulator::run()
 {
@@ -217,6 +105,175 @@ bool Simulator::run()
   }
 }
 
+
+void Simulator::init_imu()
+{
+    // Load IMU parameters
+    Vector4d q_b_u;
+    get_yaml_node("imu_update_rate", param_filename_, imu_update_rate_);
+    dt_ = 0.001;
+    get_yaml_eigen("p_b_u", param_filename_, p_b_u_);
+    get_yaml_eigen("q_b_u", param_filename_, q_b_u);
+    q_b_u_ = Quatd(q_b_u);
+
+    // Accelerometer
+    double accel_noise, accel_walk, accel_init;
+    get_yaml_node("use_accel_truth", param_filename_, use_accel_truth_);
+    get_yaml_node("accel_init_stdev", param_filename_, accel_init);
+    get_yaml_node("accel_noise_stdev", param_filename_, accel_noise);
+    get_yaml_node("accel_bias_walk", param_filename_, accel_walk);
+    accel_bias_ =  !use_accel_truth_ * accel_init * Vector3d::Random(); // Uniformly random init within +-accel_walk
+    accel_noise_stdev_ = !use_accel_truth_ * accel_noise;
+    accel_walk_stdev_ = !use_accel_truth_ * accel_walk;
+    accel_noise_.setZero();
+
+    // Gyro
+    double gyro_noise, gyro_walk, gyro_init;
+    get_yaml_node("use_gyro_truth", param_filename_, use_gyro_truth_);
+    get_yaml_node("gyro_noise_stdev", param_filename_, gyro_noise);
+    get_yaml_node("gyro_init_stdev", param_filename_, gyro_init);
+    get_yaml_node("gyro_bias_walk", param_filename_, gyro_walk);
+    gyro_bias_ = gyro_init * Vector3d::Random()  * !use_gyro_truth_; // Uniformly random init within +-gyro_walk
+    gyro_noise_stdev_ = gyro_noise * !use_gyro_truth_;
+    gyro_walk_stdev_ = gyro_walk * !use_gyro_truth_;
+    gyro_noise_.setZero();
+
+    acc_R_ = accel_noise * accel_noise * I_3x3;
+    last_imu_update_ = 0.0;
+
+    // Compute initial control and corresponding acceleration
+    cont_.computeControl(dyn_.get_state(), t_, u_);
+    dyn_.compute_imu(u_);
+    imu_.segment<3>(0) = dyn_.get_imu_accel() + accel_bias_ + accel_noise_ - dynamics::gravity_;
+    imu_.segment<3>(3) = dyn_.get_state().segment<3>(dynamics::WX) + gyro_bias_ + gyro_noise_;
+    imu_prev_.setZero();
+    imu_prev_.segment<3>(0) = -dynamics::gravity_;
+}
+
+
+void Simulator::init_camera()
+{
+    // Camera
+    double pixel_noise;
+    Vector2d focal_len;
+    get_yaml_node("camera_time_delay", param_filename_, camera_time_delay_);
+    get_yaml_node("use_camera_truth", param_filename_, use_camera_truth_);
+    get_yaml_node("camera_update_rate", param_filename_, camera_update_rate_);
+    get_yaml_eigen("cam_center", param_filename_, cam_center_);
+    get_yaml_eigen("image_size", param_filename_, image_size_);
+    get_yaml_eigen("q_b_c", param_filename_, q_b_c_.arr_);
+    get_yaml_eigen("p_b_c", param_filename_, p_b_c_);
+    get_yaml_eigen("focal_len", param_filename_, focal_len);
+    get_yaml_node("pixel_noise_stdev", param_filename_, pixel_noise);
+    get_yaml_node("loop_closure", param_filename_, loop_closure_);
+    pixel_noise_stdev_ = !use_camera_truth_ * pixel_noise;
+    pixel_noise_.setZero();
+    cam_F_ << focal_len(0,0), 0, 0, 0, focal_len(1,0), 0; // Copy focal length into 2x3 matrix for future use
+
+    // Depth
+    double depth_noise;
+    get_yaml_node("use_depth_truth", param_filename_, use_depth_truth_);
+    get_yaml_node("init_depth", param_filename_, init_depth_);
+    get_yaml_node("depth_update_rate", param_filename_, depth_update_rate_);
+    get_yaml_node("depth_noise_stdev", param_filename_, depth_noise);
+    get_yaml_node("feat_move_prob", param_filename_, feat_move_prob_);
+    depth_noise_stdev_ = depth_noise * !use_depth_truth_;
+    depth_noise_ = 0;
+
+    next_feature_id_ = 0;
+    last_camera_update_ = 0.0;
+    feat_R_ = pixel_noise * pixel_noise * I_2x2;
+    depth_R_ << depth_noise * depth_noise;
+}
+
+
+void Simulator::init_altimeter()
+{
+    // Altimeter
+    double altimeter_noise;
+    get_yaml_node("use_altimeter_truth", param_filename_, use_altimeter_truth_);
+    get_yaml_node("altimeter_update_rate", param_filename_, altimeter_update_rate_);
+    get_yaml_node("altimeter_noise_stdev", param_filename_, altimeter_noise);
+    altimeter_noise_stdev_ = altimeter_noise * !use_altimeter_truth_;
+    altimeter_noise_ = 0;
+    alt_R_ << altimeter_noise * altimeter_noise;
+    last_altimeter_update_ = 0.0;
+}
+
+
+void Simulator::init_vo()
+{
+    // Visual Odometry
+    double vo_translation_noise, vo_rotation_noise;
+    T_i2bk_ = dyn_.get_global_pose();
+    get_yaml_node("use_vo_truth", param_filename_, use_vo_truth_);
+    get_yaml_node("vo_delta_position", param_filename_, vo_delta_position_);
+    get_yaml_node("vo_delta_attitude", param_filename_, vo_delta_attitude_);
+    get_yaml_node("vo_translation_noise_stdev", param_filename_, vo_translation_noise);
+    get_yaml_node("vo_rotation_noise_stdev", param_filename_, vo_rotation_noise);
+    vo_translation_noise_stdev_ = vo_translation_noise * !use_vo_truth_;
+    vo_rotation_noise_stdev_ = vo_rotation_noise * !use_vo_truth_;
+
+    vo_R_.setIdentity();
+    vo_R_.block<3,3>(0,0) *= vo_translation_noise * vo_translation_noise;
+    vo_R_.block<3,3>(3,3) *= vo_rotation_noise * vo_rotation_noise;
+}
+
+
+void Simulator::init_truth()
+{
+    // Truth
+    double att_noise, pos_noise;
+    get_yaml_node("truth_update_rate", param_filename_, truth_update_rate_);
+    get_yaml_node("use_attitude_truth", param_filename_, use_attitude_truth_);
+    get_yaml_node("use_position_truth", param_filename_, use_position_truth_);
+    get_yaml_node("attitude_noise_stdev", param_filename_, att_noise);
+    get_yaml_node("position_noise_stdev", param_filename_, pos_noise);
+    get_yaml_node("truth_time_offset", param_filename_, mocap_time_offset_);
+    get_yaml_node("truth_transmission_noise", param_filename_, mocap_transmission_noise_);
+    get_yaml_node("truth_transmission_time", param_filename_, mocap_transmission_time_);
+    get_yaml_eigen("p_b_m", param_filename_, p_b_m_);
+    get_yaml_eigen("q_b_m", param_filename_, q_b_m_.arr_);
+    attitude_noise_stdev_ = att_noise * !use_attitude_truth_;
+    position_noise_stdev_ = pos_noise * !use_position_truth_;
+
+    att_R_ = att_noise * att_noise * I_3x3;
+    pos_R_ = pos_noise * pos_noise * I_3x3;
+
+    last_truth_update_ = 0.0;
+    next_truth_measurement_ = 0.0;
+}
+
+
+void Simulator::init_gps()
+{
+    // GPS
+    Vector3d refLla;
+    double gps_pos_noise_h, gps_pos_noise_v, gps_vel_noise;
+    get_yaml_eigen("ref_LLA", param_filename_, refLla);
+    x_e2n_ = WSG84::ecef2ned(refLla);
+    get_yaml_node("gps_update_rate", param_filename_, gps_update_rate_);
+    get_yaml_node("use_gps_truth", param_filename_, use_gps_truth_);
+    get_yaml_node("gps_horizontal_position_stdev", param_filename_, gps_pos_noise_h);
+    get_yaml_node("gps_vertical_position_stdev", param_filename_, gps_pos_noise_v);
+    get_yaml_node("gps_velocity_stdev", param_filename_, gps_vel_noise);
+    gps_horizontal_position_stdev_ = gps_pos_noise_h * !use_gps_truth_;
+    gps_vertical_position_stdev_ = gps_pos_noise_v * !use_gps_truth_;
+    gps_velocity_stdev_ = gps_vel_noise * !use_gps_truth_;
+
+    gps_R_.setIdentity();
+    gps_R_.block<2,2>(0,0) *= gps_pos_noise_h;
+    gps_R_(2,2) *= gps_pos_noise_v;
+    gps_R_.block<3,3>(0,0) *= gps_vel_noise;
+    auto gps_pos_block = gps_R_.block<3,3>(0,0);
+    auto gps_vel_block = gps_R_.block<3,3>(3,3);
+    gps_pos_block = x_e2n_.q().R().transpose() * gps_pos_block * x_e2n_.q().R();
+    gps_vel_block = x_e2n_.q().R().transpose() * gps_vel_block * x_e2n_.q().R();
+
+    last_gps_update_ = 0.0;
+}
+
+
 void Simulator::log_state()
 {
   if (log_.is_open())
@@ -225,6 +282,7 @@ void Simulator::log_state()
     log_.write((char*)dyn_.get_state().data(), sizeof(double)*dyn_.get_state().rows());
   }
 }
+
 
 void Simulator::update_camera_pose()
 {
@@ -268,10 +326,9 @@ void Simulator::get_imu_meas(std::vector<measurement_t, Eigen::aligned_allocator
       acc_meas.type = ACC;
       acc_meas.z = imu_.segment<3>(0);
       acc_meas.R = acc_R_;
-      acc_meas.active = drag_update_active_;
       meas_list.push_back(acc_meas);
       if (acc_cb_)
-          acc_cb_(imu_.segment<3>(0), acc_R_, drag_update_active_);
+          acc_cb_(imu_.segment<3>(0), acc_R_);
     }
 }
 
@@ -296,7 +353,6 @@ void Simulator::get_feature_meas(std::vector<measurement_t, Eigen::aligned_alloc
           meas.R = feat_R_;
           meas.feature_id = (*it).id;
           meas.depth = get_depth((*it));
-          meas.active = feature_update_active_;
           camera_measurements_buffer_.push_back(meas);
           DBG("update feature - ID = %d\n", it->id);
           it++;
@@ -339,8 +395,7 @@ void Simulator::get_feature_meas(std::vector<measurement_t, Eigen::aligned_alloc
         meas.z = get_pixel(new_feature) + pixel_noise_;
         meas.R = feat_R_;
         meas.feature_id = new_feature.id;
-        meas.depth = get_depth(new_feature, init_depth_);
-        meas.active = true; // always true for new features
+        meas.depth = get_depth(new_feature);
         camera_measurements_buffer_.push_back(meas);
       }
     }
@@ -352,7 +407,7 @@ void Simulator::get_feature_meas(std::vector<measurement_t, Eigen::aligned_alloc
       {
         meas_list.push_back(*it);
         if (feature_cb_)
-            feature_cb_(it->z, it->R, it->active, it->feature_id, it->depth);
+            feature_cb_(it->z, it->R, it->feature_id, it->depth);
       }
       camera_measurements_buffer_.clear();
     }
@@ -374,10 +429,9 @@ void Simulator::get_alt_meas(std::vector<measurement_t, Eigen::aligned_allocator
       meas.type = ALT;
       meas.z = get_altitude() + noise;
       meas.R = alt_R_;
-      meas.active = altimeter_update_active_;
       meas_list.push_back(meas);
       if (alt_cb_)
-          alt_cb_(get_altitude() + noise, alt_R_, altimeter_update_active_);
+          alt_cb_(get_altitude() + noise, alt_R_);
     }
 }
 
@@ -391,14 +445,12 @@ void Simulator::get_mocap_meas(std::vector<measurement_t, Eigen::aligned_allocat
       att_meas.type = ATT;
       att_meas.z = get_attitude();
       att_meas.R = att_R_;
-      att_meas.active = attitude_update_active_;
 
       measurement_t pos_meas;
       pos_meas.t = t_ - mocap_time_offset_;
       pos_meas.type = POS;
       pos_meas.z = get_position();
       pos_meas.R = pos_R_;
-      pos_meas.active = position_update_active_;
 
       double pub_time = std::max(mocap_transmission_time_ + normal_(generator_) * mocap_transmission_noise_, 0.0) + t_;
 
@@ -412,9 +464,9 @@ void Simulator::get_mocap_meas(std::vector<measurement_t, Eigen::aligned_allocat
       meas_list.push_back(mocap_measurement_buffer_[0].second);
       measurement_t* m = &(mocap_measurement_buffer_[0].second);
       if (pos_cb_ && m->type == POS)
-          pos_cb_(m->z, m->R, m->active);
+          pos_cb_(m->z, m->R);
       else if (att_cb_ && m->type == ATT)
-          att_cb_(Quatd(m->z), m->R, m->active);
+          att_cb_(Quatd(m->z), m->R);
 
       mocap_measurement_buffer_.erase(mocap_measurement_buffer_.begin());
     }
@@ -439,10 +491,9 @@ void Simulator::get_vo_meas(std::vector<measurement_t, Eigen::aligned_allocator<
     vo_meas.type = VO;
     vo_meas.z = T_c2ck.arr_;
     vo_meas.R = vo_R_;
-    vo_meas.active = vo_update_active_;
     meas_list.push_back(vo_meas);
     if (vo_cb_)
-        vo_cb_(T_c2ck, vo_R_, vo_update_active_);
+        vo_cb_(T_c2ck, vo_R_);
 
     // Set new keyframe to current pose
     T_i2bk_ = dyn_.get_global_pose();
@@ -460,12 +511,14 @@ void Simulator::update_measurements()
   get_vo_meas(meas_);
 }
 
+
 Vector3d Simulator::get_vel() const
 {
     Vector3d vel;
     vel = dyn_.get_state().segment<3>(dynamics::VX);
     return vel;
 }
+
 
 Xformd Simulator::get_pose() const
 {
@@ -474,6 +527,7 @@ Xformd Simulator::get_pose() const
   x.q_ = dyn_.get_state().segment<4>(dynamics::QW);
   return x;
 }
+
 
 void Simulator::get_truth(xVector &x, const std::vector<int>& tracked_features) const
 {
@@ -638,14 +692,9 @@ Vector2d Simulator::get_pixel(const feature_t &feature)
   return feature.pixel + pixel_noise;
 }
 
-double Simulator::get_depth(const feature_t &feature, bool override)
+double Simulator::get_depth(const feature_t &feature)
 {
-  if (depth_update_active_ || override)
-  {
-    return feature.depth + depth_noise_stdev_ * normal_(generator_);
-  }
-  else
-    return NAN;
+  return feature.depth + depth_noise_stdev_ * normal_(generator_);
 }
 
 Matrix<double, 1, 1> Simulator::get_altitude()
@@ -680,5 +729,6 @@ Matrix6d Simulator::get_mocap_noise_covariance() const
   else
       return cov.asDiagonal();
 }
+
 
 

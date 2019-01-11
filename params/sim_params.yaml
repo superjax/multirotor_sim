@@ -134,6 +134,7 @@ position_update_active: false
 depth_update_active: false
 altimeter_update_active: false
 vo_update_active: false
+gps_update_active: false
 
 ## IMU
 imu_update_rate: 250
@@ -185,3 +186,13 @@ truth_delay: 0
 truth_time_offset: 0
 truth_transmission_noise: 0
 truth_transmission_time: 0
+
+
+## GPS
+ref_LLA: [0.702443501891, -1.9486196478, 1387.998309] # (rad, rad, m)
+gps_update_rate: 5
+use_gps_truth: false
+gps_horizontal_position_stdev: 1.0
+gps_vertical_position_stdev: 3.0
+gps_velocity_stdev: 0.1
+

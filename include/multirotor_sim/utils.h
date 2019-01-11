@@ -10,8 +10,11 @@
 #include <experimental/filesystem>
 #include <boost/algorithm/string.hpp>
 
-#include "Eigen/Core"
-#include "yaml-cpp/yaml.h"
+#include <Eigen/Core>
+#include <yaml-cpp/yaml.h>
+#include <geometry/xform.h>
+
+using namespace Eigen;
 
 inline bool file_exists (const std::string& name) {
   struct stat buffer;   
@@ -354,3 +357,81 @@ inline bool isNan(const Eigen::Ref<const Eigen::MatrixXd>& A)
 {
   return (A.array() != A.array()).any();
 }
+
+// WGS-84 geodetic constants
+struct WSG84
+{
+    static constexpr double a = 6378137.0;         // WGS-84 Earth semimajor axis (m)
+    static constexpr double b = 6356752.314245;     // Derived Earth semiminor axis (m)
+    static constexpr double f = (a - b) / a;           // Ellipsoid Flatness
+    static constexpr double f_inv = 1.0 / f;       // Inverse flattening
+    static constexpr double a_sq = a * a;
+    static constexpr double b_sq = b * b;
+    static constexpr double e_sq = f * (2 - f); // Square of Eccentricity
+
+    static Vector3d ecef2lla(const Vector3d& ecef)
+    {
+        Vector3d lla;
+        ecef2lla(ecef, lla);
+        return lla;
+    }
+
+    static void ecef2lla(const Vector3d& ecef, Vector3d& lla)
+    {
+        static const double eps = e_sq / (1.0 - e_sq);
+        double s = ecef.template segment<2>(0).norm();
+        double beta = std::atan2((ecef.z() * a), (s * b));
+        double sin_q = std::sin(beta);
+        double cos_q = std::cos(beta);
+        double sin_q_3 = sin_q * sin_q * sin_q;
+        double cos_q_3 = cos_q * cos_q * cos_q;
+        double mu = std::atan2((ecef.z() + eps * b * sin_q_3), (s - e_sq * a * cos_q_3));
+        double lambda = std::atan2(ecef.y(), ecef.x());
+        double v = a / std::sqrt(1.0 - e_sq * std::sin(mu) * std::sin(mu));
+
+        lla(0) = mu;
+        lla(1) = lambda;
+        lla(2) = (s / std::cos(mu)) - v;
+    }
+
+    static Vector3d lla2ecef(const Vector3d& lla)
+    {
+        Vector3d ecef;
+        lla2ecef(lla, ecef);
+        return ecef;
+    }
+
+    static void lla2ecef(const Vector3d& lla, Vector3d& ecef)
+    {
+        double lambda = lla(0);
+        double phi = lla(1);
+        double s = sin(lambda);
+        double N = a / std::sqrt(1 - e_sq * s * s);
+
+        double sl = std::sin(lambda);
+        double cl = std::cos(lambda);
+        double cp = std::cos(phi);
+        double sp = std::sin(phi);
+
+        ecef.x() = (lla.z() + N) * cl * cp;
+        ecef.y() = (lla.z() + N) * cl * sp;
+        ecef.z() = (lla.z() + (1 - e_sq) * N) * sl;
+    }
+
+    static void ecef2ned(const Vector3d& ecef, xform::Xformd& X_e2n)
+    {
+        Vector3d lla;
+        ecef2lla(ecef, lla);
+        X_e2n.q_ = quat::Quatd::from_euler(0, lla(1), lla(0)).inverse();
+        X_e2n.t_ = ecef;
+    }
+
+    static xform::Xformd ecef2ned(const Vector3d& ecef)
+    {
+        xform::Xformd X_e2n;
+        ecef2ned(ecef, X_e2n);
+        return X_e2n;
+    }
+};
+
+
