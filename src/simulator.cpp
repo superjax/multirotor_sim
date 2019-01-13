@@ -257,7 +257,7 @@ void Simulator::init_gps()
     Vector3d refLla;
     double gps_pos_noise_h, gps_pos_noise_v, gps_vel_noise;
     get_yaml_eigen("ref_LLA", param_filename_, refLla);
-    x_e2n_ = WSG84::ecef2ned(WSG84::lla2ecef(refLla));
+    x_e2n_ = WSG84::x_ecef2ned(WSG84::lla2ecef(refLla));
     get_yaml_node("gps_update_rate", param_filename_, gps_update_rate_);
     get_yaml_node("use_gps_truth", param_filename_, use_gps_truth_);
     get_yaml_node("gps_horizontal_position_stdev", param_filename_, gps_pos_noise_h);
@@ -503,6 +503,37 @@ void Simulator::get_vo_meas(std::vector<measurement_t, Eigen::aligned_allocator<
     // Set new keyframe to current pose
     T_i2bk_ = dyn_.get_global_pose();
   }
+}
+
+void Simulator::get_gnss_meas(std::vector<measurement_t, Eigen::aligned_allocator<measurement_t>> &meas_list)
+{
+    /// TODO: Simulate GPS sensor delay
+    if (fabs(t_ - last_gps_update_ - 1.0/gps_update_rate_) < 0.0005)
+    {
+        last_gps_update_ = t_;
+        /// TODO: Simulate the random walk associated with GPS position
+        Vector3d p_NED = dyn_.get_global_pose().t();
+        p_NED.segment<2>(0) += gps_horizontal_position_stdev_ * randomNormal<double, 2, 1>(normal_, rng_);
+        p_NED(2) += gps_vertical_position_stdev_ * normal_(rng_);
+        Vector3d p_ECEF = WSG84::ned2ecef(x_e2n_, p_NED);
+
+        Vector3d v_NED = dyn_.get_global_pose().q().rota(dyn_.get_state().v);
+        Vector3d v_ECEF = x_e2n_.q().rota(v_NED);
+        v_ECEF += gps_velocity_stdev_ * randomNormal<double, 3, 1>(normal_, rng_);
+
+        Vector6d z;
+        z << p_ECEF, v_ECEF;
+
+        measurement_t gps_meas;
+        gps_meas.t = t_;
+        gps_meas.type = GNSS;
+        gps_meas.z = z;
+        gps_meas.R = gps_R_;
+        meas_list.push_back(gps_meas);
+
+        if (gnss_cb_)
+            gnss_cb_(z, gps_R_);
+    }
 }
 
 

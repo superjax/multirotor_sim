@@ -45,6 +45,7 @@ if (${GTEST_FOUND})
     include_directories(include ${GTEST_INCLUDE_DIRS} ${EIGEN3_INCLUDE_DIRS})
     add_executable(multirotor_sim_test
         src/test/test_gps.cpp
+        src/test/test_raw_gps.cpp
         src/test/test_state.cpp)
     target_link_libraries(multirotor_sim_test ${GTEST_LIBRARIES} gtest_main gtest pthread multirotor_sim)
 endif()

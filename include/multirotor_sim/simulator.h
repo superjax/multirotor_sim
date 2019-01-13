@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include <random>
 #include <algorithm>
@@ -45,12 +45,9 @@ public:
       ATT,
       POS,
       VEL,
-      QZETA,
       FEAT,
-      PIXEL_VEL,
-      DEPTH,
-      INV_DEPTH,
       VO,
+      GNSS,
       TOTAL_MEAS
     } measurement_type_t;
 
@@ -86,6 +83,7 @@ public:
   void get_alt_meas(std::vector<measurement_t, Eigen::aligned_allocator<measurement_t> > &meas);
   void get_mocap_meas(std::vector<measurement_t, Eigen::aligned_allocator<measurement_t> > &meas);
   void get_vo_meas(std::vector<measurement_t, Eigen::aligned_allocator<measurement_t> > &meas);
+  void get_gnss_meas(std::vector<measurement_t, Eigen::aligned_allocator<measurement_t> > &meas);
 
   inline void register_acc_cb(std::function<void(const Vector3d&, const Matrix3d&)>& cb) { acc_cb_ = cb; }
   inline void register_alt_cb(std::function<void(const Vector1d&, const Matrix1d&)>& cb) { alt_cb_ = cb; }
@@ -93,6 +91,7 @@ public:
   inline void register_pos_cb(std::function<void(const Vector3d&, const Matrix3d&)>& cb) { pos_cb_ = cb; }
   inline void register_vo_cb(std::function<void(const Xformd&, const Matrix6d&)>& cb) { vo_cb_ = cb; }
   inline void register_feature_cb(std::function<void(const Vector2d&, const Matrix2d&, int, double)>& cb) { feature_cb_ = cb; }
+  inline void register_feature_cb(std::function<void(const Vector6d&, const Matrix6d&)>& cb) { gnss_cb_ = cb; }
 
   const Vector6d& get_true_imu() const { return dyn_.imu_;}
   Xformd get_pose() const;
@@ -347,9 +346,6 @@ public:
   std::function<void(const Quatd&, const Matrix3d&)> att_cb_ = nullptr;
   std::function<void(const Vector3d&, const Matrix3d&)> pos_cb_ = nullptr;
   std::function<void(const Xformd&, const Matrix6d&)> vo_cb_ = nullptr;
-
-  std::function<void(const Quatd&, const Matrix2d&, int, double)> qzeta_cb_ = nullptr;
   std::function<void(const Vector2d&, const Matrix2d&, int, double)> feature_cb_ = nullptr;
-  std::function<void(const Vector1d&, const Matrix1d&, int)> depth_cb_ = nullptr;
-  std::function<void(const Vector1d&, const Matrix1d&, int)> inv_depth_cb_ = nullptr;
+  std::function<void(const Vector6d&, const Matrix6d&)> gnss_cb_ = nullptr;
 };

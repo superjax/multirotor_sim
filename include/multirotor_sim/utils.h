@@ -381,7 +381,6 @@ struct WSG84
         static const double e2 = f * (2.0 - f);
 
         double r2 = ecef.x()*ecef.x() + ecef.y()*ecef.y();
-        // double z,zk,v=RE_WGS84,sinp;
         double z=ecef.z();
         double v;
         double zk;
@@ -397,20 +396,6 @@ struct WSG84
         lla.x() = r2 > 1e-12 ? std::atan(z / std::sqrt(r2)) : (ecef.z() > 0.0 ? M_PI/2.0 : -M_PI/2.0);
         lla.y() = r2 > 1e-12 ? std::atan2(ecef.y(), ecef.x()) : 0.0;
         lla.z() = std::sqrt(r2+z*z) - v;
-//        static const double eps = e_sq / (1.0 - e_sq);
-//        double s = ecef.template segment<2>(0).norm();
-//        double beta = std::atan2((ecef.z() * a), (s * b));
-//        double sin_q = std::sin(beta);
-//        double cos_q = std::cos(beta);
-//        double sin_q_3 = sin_q * sin_q * sin_q;
-//        double cos_q_3 = cos_q * cos_q * cos_q;
-//        double mu = std::atan2((ecef.z() + eps * b * sin_q_3), (s - e_sq * a * cos_q_3));
-//        double lambda = std::atan2(ecef.y(), ecef.x());
-//        double v = a / std::sqrt(1.0 - e_sq * std::sin(mu) * std::sin(mu));
-
-//        lla(0) = mu;
-//        lla(1) = lambda;
-//        lla(2) = (s / std::cos(mu)) - v;
     }
 
     static Vector3d lla2ecef(const Vector3d& lla)
@@ -434,24 +419,75 @@ struct WSG84
         ecef[2]=(v*(1.0-e2)+lla[2])*sinp;
     }
 
-    static void ecef2ned(const Vector3d& ecef, xform::Xformd& X_e2n)
+    static void x_ecef2ned(const Vector3d& ecef, xform::Xformd& X_e2n)
+    {
+        X_e2n.q() = q_e2n(ecef2lla(ecef));
+        X_e2n.t() = ecef;
+    }
+
+    static xform::Xformd x_ecef2ned(const Vector3d& ecef)
+    {
+        xform::Xformd X_e2n;
+        x_ecef2ned(ecef, X_e2n);
+        return X_e2n;
+    }
+
+    static Vector3d ned2ecef(const xform::Xformd x_e2n, const Vector3d& ned)
+    {
+        return x_e2n.transforma(ned);
+    }
+
+    static void ned2ecef(const xform::Xformd x_e2n, const Vector3d& ned, Vector3d& ecef)
+    {
+        ecef = x_e2n.transforma(ned);
+    }
+
+    static Vector3d ecef2ned(const xform::Xformd x_e2n, const Vector3d& ecef)
+    {
+        return x_e2n.transformp(ecef);
+    }
+
+    static void ecef2ned(const xform::Xformd x_e2n, const Vector3d& ecef, Vector3d& ned)
+    {
+        ned = x_e2n.transformp(ecef);
+    }
+
+    static void lla2ned(const Vector3d& lla0, const Vector3d& lla, Vector3d& ned)
+    {
+        xform::Xformd x_e2n;
+        x_e2n.q() = q_e2n(lla0);
+        x_e2n.t() = lla2ecef(lla0);
+        ecef2ned(x_e2n, lla2ecef(lla), ned);
+    }
+
+    static Vector3d lla2ned(const Vector3d& lla0, const Vector3d& lla)
+    {
+        Vector3d ned;
+        lla2ned(lla0, lla, ned);
+        return ned;
+    }
+
+    static void ned2lla(const Vector3d& lla0, const Vector3d& ned, Vector3d&lla)
+    {
+        xform::Xformd x_e2n;
+        x_e2n.q() = q_e2n(lla0);
+        x_e2n.t() = lla2ecef(lla0);
+        ecef2lla(ned2ecef(x_e2n, ned), lla);
+    }
+
+    static Vector3d ned2lla(const Vector3d& lla0, const Vector3d& ned)
     {
         Vector3d lla;
-        ecef2lla(ecef, lla);
+        ned2lla(lla0, ned, lla);
+        return lla;
+    }
+
+    static quat::Quatd q_e2n(const Vector3d& lla)
+    {
         Quatd q1, q2;
         q1 = quat::Quatd::from_axis_angle(e_z, lla(1));
         q2 = quat::Quatd::from_axis_angle(e_y, -M_PI/2.0 - lla(0));
-        X_e2n.q_ = q1 * q2;
-//        X_e2n.q_ = quat::Quatd::from_euler(0, -(M_PI/2.0) - lla(0), lla(1));
-        X_e2n.t_ = ecef;
-
-    }
-
-    static xform::Xformd ecef2ned(const Vector3d& ecef)
-    {
-        xform::Xformd X_e2n;
-        ecef2ned(ecef, X_e2n);
-        return X_e2n;
+        return q1 * q2;
     }
 };
 
