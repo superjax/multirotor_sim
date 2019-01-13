@@ -358,16 +358,15 @@ inline bool isNan(const Eigen::Ref<const Eigen::MatrixXd>& A)
   return (A.array() != A.array()).any();
 }
 
-// WGS-84 geodetic constants
 struct WSG84
 {
-    static constexpr double a = 6378137.0;         // WGS-84 Earth semimajor axis (m)
-    static constexpr double b = 6356752.314245;     // Derived Earth semiminor axis (m)
-    static constexpr double f = (a - b) / a;           // Ellipsoid Flatness
-    static constexpr double f_inv = 1.0 / f;       // Inverse flattening
-    static constexpr double a_sq = a * a;
-    static constexpr double b_sq = b * b;
-    static constexpr double e_sq = f * (2 - f); // Square of Eccentricity
+    static constexpr double A = 6378137.0;       // WGS-84 Earth semimajor axis (m)
+    static constexpr double B = 6356752.314245;  // Derived Earth semiminor axis (m)
+    static constexpr double F = (A - B) / A;     // Ellipsoid Flatness
+    static constexpr double F_INV = 1.0 / F;     // Inverse flattening
+    static constexpr double A2 = A * A;
+    static constexpr double B2 = B * B;
+    static constexpr double E2 = F * (2 - F);    // Square of Eccentricity
 
     static Vector3d ecef2lla(const Vector3d& ecef)
     {
@@ -378,7 +377,7 @@ struct WSG84
 
     static void ecef2lla(const Vector3d& ecef, Vector3d& lla)
     {
-        static const double e2 = f * (2.0 - f);
+        static const double e2 = F * (2.0 - F);
 
         double r2 = ecef.x()*ecef.x() + ecef.y()*ecef.y();
         double z=ecef.z();
@@ -388,7 +387,7 @@ struct WSG84
         {
             zk = z;
             double sinp = z / std::sqrt(r2 + z*z);
-            v = a / std::sqrt(1.0 - e2*sinp*sinp);
+            v = A / std::sqrt(1.0 - e2*sinp*sinp);
             z = ecef.z() + v*e2*sinp;
         }
         while (std::abs(z - zk) >= 1e-4);
@@ -411,8 +410,8 @@ struct WSG84
         double cosp=cos(lla[0]);
         double sinl=sin(lla[1]);
         double cosl=cos(lla[1]);
-        double e2=f*(2.0-f);
-        double v=a/sqrt(1.0-e2*sinp*sinp);
+        double e2=F*(2.0-F);
+        double v=A/sqrt(1.0-e2*sinp*sinp);
 
         ecef[0]=(v+lla[2])*cosp*cosl;
         ecef[1]=(v+lla[2])*cosp*sinl;
