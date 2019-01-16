@@ -81,7 +81,7 @@ void eph2pos(const GTime& t, const Ephemeris* eph, Vector3d& pos)
     dts-=2.0*sqrt(mu*eph->A)*eph->e*sinE/SQR(CLIGHT);
 }
 
-TEST (Ephemeris, RTKLIB)
+TEST (Ephemeris, CheckSatPositionAndVelocity)
 {
     GTime time;
     Ephemeris eph;
@@ -128,4 +128,19 @@ TEST (Ephemeris, RTKLIB)
     EXPECT_MAT_NEAR(oracle_vel, new_vel, 1e-2);
     EXPECT_MAT_NEAR(new_pos, truth_pos, 1e-5);
     EXPECT_MAT_NEAR(new_vel, truth_vel, 1e-5);
+}
+
+TEST (Ephemeris, ClockError)
+{
+
+}
+
+TEST (Ephemeris, AzimuthElevation)
+{
+
+}
+
+TEST (Ephemeris, IonoshereCalculation)
+{
+
 }

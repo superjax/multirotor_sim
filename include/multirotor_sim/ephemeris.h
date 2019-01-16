@@ -49,5 +49,8 @@ public:
     double ndot; // ndot for CNAV
 
     Ephemeris();
-    void computePositionVelocityClock(const GTime &g, Vector3d& pos, Vector3d& vel, Vector2d &clock);
+    void computePositionVelocityClock(const GTime &g, Vector3d& pos, Vector3d& vel, Vector2d &clock) const;
+    void computePseudorange(const GTime& rec_time, const Vector3d& receiver_pos, const Vector3d &receiver_vel, double& pseudorange, double &range_rate) const;
+    void los2azimuthElevation(const Vector3d& receiver_pos_ecef, const Vector3d& los_ecef, Vector2d& az_el) const;
+    double ionosphericDelay(const GTime &t, const Vector3d& lla, const Vector2d& az_el) const;
 };
