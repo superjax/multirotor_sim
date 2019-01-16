@@ -65,17 +65,17 @@ double Ephemeris::ionosphericDelay(const GTime& gtime, const Vector3d& lla, cons
         };
 
     // Earth-Centered Angle (Elevation in Semicircles)
-    double psi = 0.0137 / (az_el(1) + 0.11) - 0.022;
+    double psi = 0.0137 / (az_el(1)/M_PI + 0.11) - 0.022;
 
     // latitude of the ionosphere pierce point (IPP)
-    double phi_I = lla(0) + psi * std::cos(az_el(0));
+    double phi_I = lla(0)/M_PI + psi * std::cos(az_el(0));
     phi_I = phi_I > 0.416 ? 0.416 : phi_I < -0.416 ? -0.416 : phi_I;
 
     // longitude of IPP
-    double lambda_I = lla(1) + (psi * std::sin(az_el(0)));
+    double lambda_I = lla(1)/M_PI + (psi * std::sin(az_el(0))/cos(phi_I*M_PI));
 
     // geomagnetic latitude of the IPP
-    double phi_m = phi_I + 0.064 * std::cos(lambda_I - 1.617);
+    double phi_m = phi_I + 0.064 * std::cos((lambda_I - 1.617) * M_PI);
 
     // local time at hte IPP
     double t= 43200*lambda_I + gtime.sec;
@@ -90,24 +90,21 @@ double Ephemeris::ionosphericDelay(const GTime& gtime, const Vector3d& lla, cons
     Per = Per < 72000 ? 72000 : Per;
 
     // Phase of Ionospheric Delay
-    double X_I = 2 * M_PI * (t - 504000) / Per;
+    double X_I = 2.0 * M_PI * (t - 50400.0) / Per;
 
     // Slant Factor
     double F = 1.0 + 16.0 * pow((0.53 - az_el(1)/M_PI), 3.0);
 
-    // Compute Ionospheric Time Delay
-    double I_L1;
-    if (X_I <= 1.57)
+
+    // Compute Ionospheric Time Delay (meters)
+    if (std::abs(X_I) <= 1.57)
     {
         double X2 = X_I*X_I;
         double X4 = X2*X2;
-        I_L1 = F * 5e-9 + Amp * (1.0 + - X2/2.0 + X4/24.0);
+        return C_LIGHT * F * (5e-9 + Amp * (1.0 - X2/2.0 + X4/24.0));
     }
     else
-        I_L1 = F * 5e-9;
-
-    // Return range-equivalent time delay
-    return C_LIGHT * I_L1;
+        return C_LIGHT * F * 5e-9;
 }
 
 

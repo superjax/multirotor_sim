@@ -81,3 +81,4 @@ do{  \
 } while(0)
 
 void eph2pos(const GTime& t, const Ephemeris* eph, Eigen::Vector3d& pos, double *dts);
+double ionmodel(const GTime& t, const double *pos, const double *azel);
