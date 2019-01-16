@@ -51,7 +51,7 @@ void Ephemeris::los2azimuthElevation(const Vector3d& receiver_pos_ecef, const Ve
     Vector3d los_ned = x_e2n.q().rotp(los_ecef.normalized());
     quat::Quatd q_los = quat::Quatd::from_two_unit_vectors(e_x, los_ned);
     az_el(0) = q_los.yaw();
-    az_el(0) = q_los.pitch();
+    az_el(1) = q_los.pitch();
 }
 
 double Ephemeris::ionosphericDelay(const GTime& gtime, const Vector3d& lla, const Vector2d& az_el) const
@@ -183,6 +183,8 @@ void Ephemeris::computePositionVelocityClock(const GTime& time, Vector3d &pos, V
 
     tk = (time - toc).toSec();
     double dts = f0 + f1*tk + f2*tk*tk;
+
+    // Correct for relativistic effects on the satellite clock
     dts -= 2.0*std::sqrt(GM_EARTH * A) * e * sek/(C_LIGHT * C_LIGHT);
 
     clock(0) = time.sec - dts; // corrected satellite ToW

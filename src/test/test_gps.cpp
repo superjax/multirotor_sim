@@ -5,8 +5,6 @@
 #include "multirotor_sim/wsg84.h"
 #include "multirotor_sim/test_common.h"
 
-static const double RAD2DEG = 180.0 / M_PI;
-static const double DEG2RAD = M_PI / 180.0;
 
 
 TEST (GPS, lla2ecef)

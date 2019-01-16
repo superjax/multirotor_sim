@@ -1,6 +1,17 @@
 #pragma once
 #include <gtest/gtest.h>
 
+#include <Eigen/Core>
+
+#include "multirotor_sim/ephemeris.h"
+#include "multirotor_sim/gtime.h"
+#include "multirotor_sim/datetime.h"
+#include "multirotor_sim/test_common.h"
+
+static const double RAD2DEG = 180.0 / M_PI;
+static const double DEG2RAD = M_PI / 180.0;
+
+
 #define ASSERT_MAT_NEAR(mat1, mat2, tol)\
 do{  \
     ASSERT_EQ((mat1).rows(), (mat2).rows()); \
@@ -68,3 +79,5 @@ do{  \
         }\
     } \
 } while(0)
+
+void eph2pos(const GTime& t, const Ephemeris* eph, Eigen::Vector3d& pos, double *dts);
