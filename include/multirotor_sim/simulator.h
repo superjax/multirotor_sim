@@ -12,6 +12,7 @@
 #include "geometry/quat.h"
 
 #include "multirotor_sim/utils.h"
+#include "multirotor_sim/wsg84.h"
 #include "multirotor_sim/environment.h"
 #include "multirotor_sim/state.h"
 #include "multirotor_sim/dynamics.h"

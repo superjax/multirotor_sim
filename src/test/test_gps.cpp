@@ -2,6 +2,7 @@
 
 #include "multirotor_sim/simulator.h"
 #include "multirotor_sim/utils.h"
+#include "multirotor_sim/wsg84.h"
 #include "multirotor_sim/test_common.h"
 
 static const double RAD2DEG = 180.0 / M_PI;
@@ -107,7 +108,6 @@ TEST (GPS, lla2ned)
 
     EXPECT_MAT_NEAR(lla1_hat, lla1, 1e-6);
     EXPECT_MAT_NEAR(ned1_hat, ned1, 1e-6);
-
 }
 
 TEST (GPS, initECEF)
