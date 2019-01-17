@@ -113,5 +113,4 @@ TEST_F (ReferenceControllerTest, Waypoints)
   EXPECT_NEAR(waypoint_time[1], 57.14, 1e-8);
 
   file.close();
-
 }
