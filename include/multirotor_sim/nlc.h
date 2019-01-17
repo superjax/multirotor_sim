@@ -70,10 +70,11 @@ public:
         vc *= max_.vel/vmag;
 
       // store velocity command
-      vc = xc.v;
+      xc.v = vc;
 
       // get yaw rate direction and allow it to saturate
       xc.w(2) = xc.q.yaw() - xhat.q.yaw();
+
     }
     else
     {
@@ -97,7 +98,7 @@ public:
     Matrix3d R_v1_to_b = frame_helper::R_v_to_b(xhat.q.roll(), xhat.q.pitch(), 0);
     Vector3d vhat = R_v1_to_b.transpose()*xhat.v;
     dhat_ = dhat_ - K_d_*(xhat.v-vhat)*dt; // update disturbance estimate
-    Vector3d k_tilde = sh * (e3 - (1.0 / g) * (K_v_ * (xhat.v - vhat) - dhat_));
+    Vector3d k_tilde = sh * (e3 - (1.0 / g) * (K_v_ * (xc.v - vhat) - dhat_));
 
     // pack up throttle command
     throttle = e3.transpose() * R_v1_to_b * k_tilde;
@@ -114,17 +115,18 @@ public:
       tilt_angle = 0;
 
     // Shortest rotation to desired tilt
+    Quatd qc;
     if (tilt_angle < 1e-6)
-      xc.q = Quatd::Identity();
+      qc = Quatd::Identity();
     else
     {
       Vector3d k_cross_kd = e3.cross(kd);
-      xc.q = Quatd::exp(tilt_angle * k_cross_kd / k_cross_kd.norm());
+      qc = Quatd::exp(tilt_angle * k_cross_kd / k_cross_kd.norm());
     }
 
     // Pack up roll/pitch commands after saturating roll and pitch angles
-    double phi = sat(xc.q.roll(), max_.roll, -max_.roll);
-    double theta = sat(xc.q.pitch(), max_.pitch, -max_.pitch);
-    xc.q = Quatd::from_euler(phi, theta, 0);
+    double phi = sat(qc.roll(), max_.roll, -max_.roll);
+    double theta = sat(qc.pitch(), max_.pitch, -max_.pitch);
+    xc.q = Quatd::from_euler(phi, theta, xc.q.yaw());
   }
 };

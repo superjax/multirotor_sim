@@ -1,6 +1,7 @@
 tmax: 300.0 # Simulation total time, time step is determined by IMU rate
+dt: 0.005
 log_filename: ""
-random_seed: -1 # -1 initializes seed with time
+seed: -1 # -1 initializes seed with time
 
 # Path type:
 #   0 : waypoints

@@ -111,7 +111,8 @@ TEST (State, Plus)
 
     x2 = x1 + dx;
 
-    EXPECT_MAT_EQ(x2.X.elements(), (x1.X + dx.X).elements());
+    EXPECT_MAT_EQ(x2.p, x1.p + dx.p);
+    EXPECT_MAT_EQ(x2.q.elements(), (x1.q + dx.q).elements());
     EXPECT_MAT_EQ(x2.v, x1.v + dx.v);
     EXPECT_MAT_EQ(x2.w, x1.w + dx.w);
 }
@@ -126,7 +127,8 @@ TEST (State, Minus)
 
     ErrorState dx = x1 - x2;
 
-    EXPECT_MAT_EQ(dx.X, x1.X - x2.X);
+    EXPECT_MAT_EQ(dx.p, x1.p - x2.p);
+    EXPECT_MAT_EQ(dx.q, x1.q - x2.q);
     EXPECT_MAT_EQ(dx.v, x1.v - x2.v);
     EXPECT_MAT_EQ(dx.w, x1.w - x2.w);
 }

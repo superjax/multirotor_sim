@@ -98,7 +98,6 @@ public:
   // Memory for sharing information between functions
   bool initialized_;
   State xhat_ = {}; // estimate
-  Vector3d xhat_euler_ = {};
   State xc_ = {}; // command
   Vector3d xc_euler_ = {};
   double Tc_ = 0; // commanded throttle

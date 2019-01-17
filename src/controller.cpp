@@ -22,7 +22,7 @@ void ReferenceController::computeControl(const double& t, const State &x, const 
 
   // Copy the current state
   xhat_ = x;
-  xhat_euler_ = x.q.euler();
+
 
   // Time data
   t_c_ = t;
@@ -53,7 +53,7 @@ void ReferenceController::computeControl(const double& t, const State &x, const 
   // Hover throttle observer
   Matrix3d R_v1_to_b = frame_helper::R_v_to_b(xhat_.q.roll(), xhat_.q.pitch(), 0);
   Vector3d vhat_dot = multirotor_sim::G * (I_3x3 - sh_inv_hat_ * s_prev_ * R_v1_to_b.transpose()) * e3 -
-                      xhat_.w.cross(vhat_) + sh_kv_ * (xhat_.v - vhat_);
+      xhat_.w.cross(vhat_) + sh_kv_ * (xhat_.v - vhat_);
   double sh_inv_hat_dot = -sh_ks_ * multirotor_sim::G * s_prev_ * (xhat_.v - vhat_).transpose() * R_v1_to_b.transpose() * e3;
   vhat_ += vhat_dot * dt;
   sh_inv_hat_ += sh_inv_hat_dot * dt;
@@ -67,7 +67,7 @@ void ReferenceController::load(const std::string filename)
   {
     // Random number generation
     int seed;
-    get_yaml_node("random_seed", filename, seed);
+    get_yaml_node("seed", filename, seed);
     if (seed < 0)
       seed = std::chrono::system_clock::now().time_since_epoch().count();
     rng_ = std::default_random_engine(seed);
@@ -163,74 +163,76 @@ void ReferenceController::load(const std::string filename)
       throw std::runtime_error(err.str());
     }
     
-    Vector3d Kp_diag, Kd_diag, Kv_diag;
-    get_yaml_eigen("Kp", filename, Kp_diag);
-    get_yaml_eigen("Kd", filename, Kd_diag);
-    get_yaml_eigen("Kv", filename, Kv_diag);
-    K_p_ = Kp_diag.asDiagonal();
-    K_d_ = Kd_diag.asDiagonal();
-    K_v_ = Kv_diag.asDiagonal();
-    
-    get_yaml_node("throttle_eq", filename, sh_);
-    sh_inv_hat_ = 1.0 / sh_;
-    get_yaml_node("mass", filename, mass_);
-    get_yaml_node("max_thrust", filename, max_thrust_);
-    get_yaml_node("waypoint_threshold", filename, waypoint_threshold_);
-    get_yaml_node("waypoint_velocity_threshold", filename, waypoint_velocity_threshold_);
-    get_yaml_node("drag_constant", filename, drag_constant_);
-    
-    get_yaml_node("sh_kv", filename, sh_kv_);
-    get_yaml_node("sh_ks", filename, sh_ks_);
-    get_yaml_node("roll_kp", filename, roll_.kp_);
-    get_yaml_node("roll_ki", filename, roll_.ki_);
-    get_yaml_node("roll_kd", filename, roll_.kd_);
-    get_yaml_node("pitch_kp", filename, pitch_.kp_);
-    get_yaml_node("pitch_ki", filename, pitch_.ki_);
-    get_yaml_node("pitch_kd", filename, pitch_.kd_);
-    get_yaml_node("yaw_rate_kp", filename, yaw_rate_.kp_);
-    get_yaml_node("yaw_rate_ki", filename, yaw_rate_.ki_);
-    get_yaml_node("yaw_rate_kd", filename, yaw_rate_.kd_);
-    get_yaml_node("max_tau_x", filename, roll_.max_);
-    get_yaml_node("max_tau_y", filename, pitch_.max_);
-    get_yaml_node("max_tau_z", filename, yaw_rate_.max_);
-    get_yaml_node("max_roll", filename, max_.roll);
-    get_yaml_node("max_pitch", filename, max_.pitch);
-    get_yaml_node("max_yaw_rate", filename, max_.yaw_rate);
-    get_yaml_node("max_throttle", filename, max_.throttle);
-    get_yaml_node("max_vel", filename, max_.vel);
+    // Initialize controller
+    get_yaml_node("control_type", filename, control_type_);
+    if (control_type_ == 0)
+    {
+      Vector3d Kp_diag, Kd_diag, Kv_diag;
+      get_yaml_eigen("Kp", filename, Kp_diag);
+      get_yaml_eigen("Kd", filename, Kd_diag);
+      get_yaml_eigen("Kv", filename, Kv_diag);
+      K_p_ = Kp_diag.asDiagonal();
+      K_d_ = Kd_diag.asDiagonal();
+      K_v_ = Kv_diag.asDiagonal();
+
+      get_yaml_node("throttle_eq", filename, sh_);
+      sh_inv_hat_ = 1.0 / sh_;
+      get_yaml_node("mass", filename, mass_);
+      get_yaml_node("max_thrust", filename, max_thrust_);
+      get_yaml_node("waypoint_threshold", filename, waypoint_threshold_);
+      get_yaml_node("waypoint_velocity_threshold", filename, waypoint_velocity_threshold_);
+      get_yaml_node("drag_constant", filename, drag_constant_);
+
+      get_yaml_node("sh_kv", filename, sh_kv_);
+      get_yaml_node("sh_ks", filename, sh_ks_);
+      get_yaml_node("roll_kp", filename, roll_.kp_);
+      get_yaml_node("roll_ki", filename, roll_.ki_);
+      get_yaml_node("roll_kd", filename, roll_.kd_);
+      get_yaml_node("pitch_kp", filename, pitch_.kp_);
+      get_yaml_node("pitch_ki", filename, pitch_.ki_);
+      get_yaml_node("pitch_kd", filename, pitch_.kd_);
+      get_yaml_node("yaw_rate_kp", filename, yaw_rate_.kp_);
+      get_yaml_node("yaw_rate_ki", filename, yaw_rate_.ki_);
+      get_yaml_node("yaw_rate_kd", filename, yaw_rate_.kd_);
+      get_yaml_node("max_tau_x", filename, roll_.max_);
+      get_yaml_node("max_tau_y", filename, pitch_.max_);
+      get_yaml_node("max_tau_z", filename, yaw_rate_.max_);
+      get_yaml_node("max_roll", filename, max_.roll);
+      get_yaml_node("max_pitch", filename, max_.pitch);
+      get_yaml_node("max_yaw_rate", filename, max_.yaw_rate);
+      get_yaml_node("max_throttle", filename, max_.throttle);
+      get_yaml_node("max_vel", filename, max_.vel);
+      nlc_.init(K_p_, K_v_, K_d_, path_type_, max_, traj_heading_walk_, traj_heading_straight_gain_, rng_, udist_);
+    }
+    else if (control_type_ == 1)
+    {
+      // Load LQR parameters
+      Eigen::Matrix<double,6,1> lqr_Q_diag;
+      Eigen::Vector4d lqr_R_diag;
+      get_yaml_node("lqr_max_pos_error", filename, lqr_p_err_max_);
+      get_yaml_node("lqr_max_vel_error", filename, lqr_v_err_max_);
+      get_yaml_node("lqr_max_yaw_error", filename, lqr_yaw_err_max_);
+      get_yaml_eigen("lqr_Q", filename, lqr_Q_diag);
+      get_yaml_eigen("lqr_R", filename, lqr_R_diag);
+      lqr_Q_ = lqr_Q_diag.asDiagonal();
+      lqr_R_ = lqr_R_diag.asDiagonal();
+      lqr_.init(path_type_, max_, lqr_p_err_max_, lqr_v_err_max_, lqr_yaw_err_max_, lqr_Q_, lqr_R_);
+    }
+    else
+      throw std::runtime_error("Undefined control type in controller.cpp");
   }
   else
     printf("Unable to find file %s\n", (current_working_dir() + filename).c_str());
-
-  // Load LQR parameters
-  Eigen::Matrix<double,6,1> lqr_Q_diag;
-  Eigen::Vector4d lqr_R_diag;
-  get_yaml_node("lqr_max_pos_error", filename, lqr_p_err_max_);
-  get_yaml_node("lqr_max_vel_error", filename, lqr_v_err_max_);
-  get_yaml_node("lqr_max_yaw_error", filename, lqr_yaw_err_max_);
-  get_yaml_eigen("lqr_Q", filename, lqr_Q_diag);
-  get_yaml_eigen("lqr_R", filename, lqr_R_diag);
-  lqr_Q_ = lqr_Q_diag.asDiagonal();
-  lqr_R_ = lqr_R_diag.asDiagonal();
-
-  // Initialize controller
-  get_yaml_node("control_type", filename, control_type_);
-  if (control_type_ == 0)
-    nlc_.init(K_p_, K_v_, K_d_, path_type_, max_, traj_heading_walk_, traj_heading_straight_gain_, rng_, udist_);
-  else if (control_type_ == 1)
-    lqr_.init(path_type_, max_, lqr_p_err_max_, lqr_v_err_max_, lqr_yaw_err_max_, lqr_Q_, lqr_R_);
-  else
-    throw std::runtime_error("Undefined control type in controller.cpp");
 }
 
 const State& ReferenceController::getCommandedState(const double &t)
 {
-    // Refresh the waypoint
-    if (path_type_ < 2)
-      updateWaypointManager();
-    if (path_type_ == 2)
-      updateTrajectoryManager();
-    return xc_;
+  // Refresh the waypoint
+  if (path_type_ < 2)
+    updateWaypointManager();
+  if (path_type_ == 2)
+    updateTrajectoryManager();
+  return xc_;
 }
 
 void ReferenceController::updateWaypointManager()
@@ -245,7 +247,7 @@ void ReferenceController::updateWaypointManager()
     xc_.q = quat::Quatd::from_euler(xc_.q.roll(), xc_.q.pitch(), new_waypoint(PSI));
     current_waypoint_id_ = 0;
   }
-    
+
   // Find the distance to the desired waypoint
   Vector4d current_waypoint = waypoints_.block<4,1>(0, current_waypoint_id_);
   Vector4d error;
@@ -261,9 +263,9 @@ void ReferenceController::updateWaypointManager()
     error(PSI) += 2.0 * M_PI;
   
   if (error.norm() < waypoint_threshold_ && xhat_.v.norm() < waypoint_velocity_threshold_)
-  {    
+  {
     // increment waypoint
-    current_waypoint_id_ = (current_waypoint_id_ + 1) % waypoints_.cols();   
+    current_waypoint_id_ = (current_waypoint_id_ + 1) % waypoints_.cols();
     
     // Update The commanded State
     Map<Vector4d> new_waypoint(waypoints_.block<4,1>(0, current_waypoint_id_).data());
@@ -271,7 +273,7 @@ void ReferenceController::updateWaypointManager()
     xc_.p(1) = new_waypoint(PY);
     xc_.p(2) = new_waypoint(PZ);
     xc_.q = quat::Quatd::from_euler(xc_.q.roll(), xc_.q.pitch(), new_waypoint(PSI));
-  }  
+  }
 }
 
 void ReferenceController::updateTrajectoryManager()

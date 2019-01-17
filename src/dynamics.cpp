@@ -28,7 +28,7 @@ void Dynamics::load(std::string filename)
     vw_.setZero();
 
   int seed;
-  get_yaml_node("random_seed", filename, seed);
+  get_yaml_node("seed", filename, seed);
   if (seed < 0)
     seed = std::chrono::system_clock::now().time_since_epoch().count();
   rng_ = std::default_random_engine(seed);

@@ -64,6 +64,7 @@ void Simulator::load(string filename)
   param_filename_ = filename;
   t_ = 0;
   get_yaml_node("tmax", filename, tmax_);
+  get_yaml_node("dt", filename, dt_);
   get_yaml_node("seed", filename, seed_);
   if (seed_ > 1)
   {
@@ -102,7 +103,8 @@ void Simulator::load(string filename)
 
   // Load sub-class parameters
   cont_.load(filename);
-  env_.load(filename);
+  if (features_enabled_)
+    env_.load(filename);
   dyn_.load(filename);
 
   // Start Progress Bar
@@ -144,7 +146,6 @@ void Simulator::init_imu()
     // Load IMU parameters
     Vector4d q_b_u;
     get_yaml_node("imu_update_rate", param_filename_, imu_update_rate_);
-    dt_ = 0.001;
     get_yaml_eigen("p_b_u", param_filename_, p_b_u_);
     get_yaml_eigen("q_b_u", param_filename_, q_b_u);
     q_b_u_ = Quatd(q_b_u);

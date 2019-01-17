@@ -53,6 +53,9 @@ if (${GTEST_FOUND})
         src/test/test_ephemeris.cpp
         src/test/test_raw_gps.cpp
         src/test/test_state.cpp
-        src/test/reference_algorithms.cpp)
+        src/test/test_dynamics.cpp
+        src/test/test_reference_controller.cpp
+        src/test/reference_algorithms.cpp
+        )
     target_link_libraries(multirotor_sim_test ${GTEST_LIBRARIES} gtest_main gtest pthread multirotor_sim)
 endif()
