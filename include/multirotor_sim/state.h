@@ -97,7 +97,6 @@ struct State
     State operator+(const ErrorState& dx) const
     {
         State xp;
-//        xp.X = X + dx.X;
         xp.p = p + dx.p;
         xp.q = q + dx.q;
         xp.v = v + dx.v;
@@ -107,7 +106,6 @@ struct State
 
     State& operator+=(const ErrorState& dx)
     {
-//        X = X + dx.X;
         p = p + dx.p;
         q = q + dx.q;
         v = v + dx.v;
@@ -118,7 +116,6 @@ struct State
     ErrorState operator-(const State& x) const
     {
         ErrorState dx;
-//        dx.X = X - x.X;
         dx.p = p - x.p;
         dx.q = q - x.q;
         dx.v = v - x.v;

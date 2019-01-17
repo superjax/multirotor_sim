@@ -270,11 +270,9 @@ void computeRange(range_t *rho, const Ephemeris& eph, ionoutc_t *ionoutc, GTime 
     los =  pos - xyz;
     range = los.norm();
     rho->d = range;
-    printf("%15.6f\n", range);
 
     // Pseudorange.
     rho->range = range - SPEED_OF_LIGHT*clk[0];
-    printf("%15.6f\n", rho->range);
 
     // Relative velocity of SV and receiver.
     rate = vel.dot(los)/range;
@@ -286,17 +284,14 @@ void computeRange(range_t *rho, const Ephemeris& eph, ionoutc_t *ionoutc, GTime 
     rho->g = g;
 
     // Azimuth and elevation angles.
-
     Vector2d az_el;
     eph.los2azimuthElevation(xyz, los, az_el);
     rho->azel[0] = az_el[0];
     rho->azel[1] = az_el[1];
     lla = WSG84::ecef2lla(xyz);
-    std::cout << lla.transpose() << std::endl;
 
     // Add ionospheric delay
     rho->iono_delay = ionosphericDelay(ionoutc, g, lla.data(), rho->azel);
-    printf("%15.6f\n", rho->iono_delay);
     rho->range += rho->iono_delay;
 
     return;

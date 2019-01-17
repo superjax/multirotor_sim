@@ -28,25 +28,20 @@ void Ephemeris::computePseudorange(const GTime& rec_time, const Vector3d& receiv
     // Re-calculate the line-of-sight vector with the adjusted position
     los_to_sat = sat_pos - receiver_pos;
     z(0) = los_to_sat.norm();
-    printf("%15.6f\n", z(0));
 
     // compute relative velocity between receiver and satellite, adjusted by the clock drift rate
     z(1) = ((sat_vel - receiver_vel).transpose() * los_to_sat / z(0))(0) - C_LIGHT * sat_clk(1);
 
     // adjust range by the satellite clock offset
     z(0) -= C_LIGHT * sat_clk(0);
-    printf("%15.6f\n", z(0));
 
     // Compute Azimuth and Elevation to satellite
     Vector2d az_el;
     los2azimuthElevation(receiver_pos, los_to_sat, az_el);
     Vector3d lla = WSG84::ecef2lla(receiver_pos);
 
-    std::cout << lla.transpose() << std::endl;
-
     // Compute and incorporate ionospheric delay
     double ion_delay = ionosphericDelay(rec_time, lla, az_el);
-    printf("%15.6f\n", ion_delay);
     z(0) += ion_delay;
 
     return;
