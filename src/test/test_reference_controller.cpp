@@ -18,7 +18,6 @@ protected:
     std::string filename = "tmp.params.yaml";
     ofstream tmp_file(filename);
     YAML::Node node;
-    node["tmax"] = 600.0;
     node["tmax"] = 60.0;
     node["seed"] = 1;
     node["dt"] = 0.01;
