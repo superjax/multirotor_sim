@@ -122,19 +122,14 @@ use_vo_truth: false
 
 RK4: true
 
-
 # Sensor Configuration
-
-## Active Measurements
-init_depth: false
-feature_update_active: true
-drag_update_active: true
-attitude_update_active: false
-position_update_active: false
-depth_update_active: false
-altimeter_update_active: false
-vo_update_active: false
-gps_update_active: false
+imu_enabled: true
+alt_enabled: true
+att_enabled: true
+pos_enabled: true
+vo_enabled: true
+features_enabled: true
+gps_enabled: true
 
 ## IMU
 imu_update_rate: 250

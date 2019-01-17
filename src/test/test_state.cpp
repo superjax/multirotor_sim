@@ -2,6 +2,7 @@
 
 #include "multirotor_sim/state.h"
 #include "multirotor_sim/test_common.h"
+using namespace multirotor_sim;
 
 TEST (ErrorState, Construct)
 {

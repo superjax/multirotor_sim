@@ -8,24 +8,26 @@
 #include "geometry/support.h"
 #include "lin_alg_tools/care.h"
 
-#include "utils.h"
-#include "dynamics.h"
-#include "pid.h"
-#include "nlc.h"
-#include "lqr.h"
+#include "multirotor_sim/controller_base.h"
+#include "multirotor_sim/trajectory_base.h"
+#include "multirotor_sim/utils.h"
+#include "multirotor_sim/dynamics.h"
+#include "multirotor_sim/pid.h"
+#include "multirotor_sim/nlc.h"
+#include "multirotor_sim/lqr.h"
 
 using namespace quat;
 using namespace Eigen;
 
-namespace controller
+namespace multirotor_sim
 {
 
-class Controller
+class ReferenceController : public ControllerBase, public TrajectoryBase
 {
 
 public:
 
-  Controller();
+  ReferenceController();
   
   // Waypoint Enumerations
   enum
@@ -95,18 +97,22 @@ public:
 
   // Memory for sharing information between functions
   bool initialized_;
-  state_t xhat_ = {}; // estimate
-  state_t xc_ = {}; // command
+  State xhat_ = {}; // estimate
+  Vector3d xhat_euler_ = {};
+  State xc_ = {}; // command
+  Vector3d xc_euler_ = {};
+  double Tc_ = 0; // commanded throttle
+  double t_c_ = 0; // time of command
   max_t max_ = {};
   double prev_time_;
 
   // Functions
-  void load(const std::string filename);
+  void load(const std::string filename) override;
   void updateWaypointManager();
   void updateTrajectoryManager();
-  void computeControl(const State &x, const double t, Vector4d& u);
+  void computeControl(const double& t, const State &x, const State& x_c, Vector4d& u) override;
   
-  inline state_t getCommandedState() const { return xc_; } 
+  const State& getCommandedState(const double& t) override;
   const Eigen::MatrixXd get_waypoints() const { return waypoints_; }
 };
 

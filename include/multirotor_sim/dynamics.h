@@ -13,7 +13,7 @@
 using namespace quat;
 using namespace xform;
 
-namespace dynamics
+namespace multirotor_sim
 {
 
 // Input indices

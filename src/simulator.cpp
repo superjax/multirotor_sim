@@ -2,9 +2,17 @@
 #include <Eigen/StdVector>
 #include <chrono>
 
+#include "multirotor_sim/estimator_base.h"
+
 using namespace std;
 
-Simulator::Simulator() :
+namespace  multirotor_sim
+{
+
+
+Simulator::Simulator(ControllerBase &_cont, TrajectoryBase& _traj) :
+  cont_(_cont),
+  traj_(_traj),
   seed_(std::chrono::system_clock::now().time_since_epoch().count()),
   env_(seed_),
   rng_(seed_),
@@ -13,7 +21,9 @@ Simulator::Simulator() :
   srand(seed_);
 }
 
-Simulator::Simulator(bool prog_indicator) :
+Simulator::Simulator(ControllerBase &_cont, TrajectoryBase& _traj, bool prog_indicator) :
+  cont_(_cont),
+  traj_(_traj),
   seed_(std::chrono::system_clock::now().time_since_epoch().count()),
   env_(seed_),
   rng_(seed_),
@@ -26,7 +36,9 @@ Simulator::Simulator(bool prog_indicator) :
 }
 
 
-Simulator::Simulator(bool prog_indicator, uint64_t seed):
+Simulator::Simulator(ControllerBase &_cont, TrajectoryBase& _traj, bool prog_indicator, uint64_t seed):
+    cont_(_cont),
+    traj_(_traj),
     seed_(seed),
     env_(seed_),
     rng_(seed_),
@@ -66,24 +78,39 @@ void Simulator::load(string filename)
     log_.open(log_filename_);
   }
 
+  // Initialize Desired sensors
+  get_yaml_node("imu_enabled", filename, imu_enabled_);
+  get_yaml_node("alt_enabled", filename, alt_enabled_);
+  get_yaml_node("att_enabled", filename, att_enabled_);
+  get_yaml_node("pos_enabled", filename, pos_enabled_);
+  get_yaml_node("vo_enabled", filename, vo_enabled_);
+  get_yaml_node("features_enabled", filename, features_enabled_);
+  get_yaml_node("gnss_enabled", filename, gnss_enabled_);
+
+  if (imu_enabled_)
+    init_imu();
+  if (features_enabled_)
+    init_camera();
+  if (alt_enabled_)
+    init_altimeter();
+  if (vo_enabled_)
+    init_vo();
+  if (pos_enabled_ || att_enabled_)
+    init_truth();
+  if (gnss_enabled_)
+    init_gps();
+
   // Load sub-class parameters
   cont_.load(filename);
   env_.load(filename);
   dyn_.load(filename);
-
-  init_imu();
-  init_camera();
-  init_altimeter();
-  init_vo();
-  init_truth();
-  init_gps();
 
   // Start Progress Bar
   if (prog_indicator_)
     prog_.init(std::round(tmax_/dt_), 40);
 
   // start at hover throttle
-  u_(dynamics::THRUST) = dyn_.mass_ / dyn_.max_thrust_ * dynamics::G;
+  u_(multirotor_sim::THRUST) = dyn_.mass_ / dyn_.max_thrust_ * multirotor_sim::G;
 }
 
 
@@ -94,7 +121,7 @@ bool Simulator::run()
     // Propagate forward in time and get new control input and true acceleration
     dyn_.run(dt_, u_);
     t_ += dt_;
-    cont_.computeControl(dyn_.get_state(), t_, u_);
+    cont_.computeControl(t_, dyn_.get_state(), traj_.getCommandedState(t_), u_);
     dyn_.compute_imu(u_); // True acceleration is based on current control input
     if (prog_indicator_)
         prog_.print(t_/dt_);
@@ -144,16 +171,17 @@ void Simulator::init_imu()
     gyro_walk_stdev_ = gyro_walk * !use_gyro_truth_;
     gyro_noise_.setZero();
 
-    acc_R_ = accel_noise * accel_noise * I_3x3;
+    imu_R_.topLeftCorner<3,3>() = accel_noise * accel_noise * I_3x3;
+    imu_R_.bottomRightCorner<3,3>() = gyro_noise * gyro_noise * I_3x3;
     last_imu_update_ = 0.0;
 
     // Compute initial control and corresponding acceleration
-    cont_.computeControl(dyn_.get_state(), t_, u_);
+    cont_.computeControl(t_, dyn_.get_state(), traj_.getCommandedState(t_), u_);
     dyn_.compute_imu(u_);
-    imu_.segment<3>(0) = dyn_.get_imu_accel() + accel_bias_ + accel_noise_ - dynamics::gravity_;
+    imu_.segment<3>(0) = dyn_.get_imu_accel() + accel_bias_ + accel_noise_ - multirotor_sim::gravity_;
     imu_.segment<3>(3) = dyn_.get_state().w + gyro_bias_ + gyro_noise_;
     imu_prev_.setZero();
-    imu_prev_.segment<3>(0) = -dynamics::gravity_;
+    imu_prev_.segment<3>(0) = -multirotor_sim::gravity_;
 }
 
 
@@ -279,6 +307,11 @@ void Simulator::init_gps()
     last_gps_update_ = 0.0;
 }
 
+void Simulator::register_estimator(EstimatorBase *est)
+{
+    est_.push_back(est);
+}
+
 
 void Simulator::log_state()
 {
@@ -297,7 +330,7 @@ void Simulator::update_camera_pose()
 }
 
 
-void Simulator::get_imu_meas(std::vector<measurement_t, Eigen::aligned_allocator<measurement_t>>& meas_list)
+void Simulator::update_imu_meas()
 {
     if (fabs(t_ - last_imu_update_ - 1.0/imu_update_rate_) < 0.0005)
     {
@@ -325,20 +358,13 @@ void Simulator::get_imu_meas(std::vector<measurement_t, Eigen::aligned_allocator
       imu_.segment<3>(0) = dyn_.get_imu_accel() + accel_bias_ + accel_noise_;
       imu_.segment<3>(3) = dyn_.get_imu_gyro() + gyro_bias_ + gyro_noise_;
 
-      // Collect x/y acceleration measurements for drag update
-      measurement_t acc_meas;
-      acc_meas.t = t_;
-      acc_meas.type = ACC;
-      acc_meas.z = imu_.segment<3>(0);
-      acc_meas.R = acc_R_;
-      meas_list.push_back(acc_meas);
-      if (acc_cb_)
-          acc_cb_(imu_.segment<3>(0), acc_R_);
+      for (std::vector<EstimatorBase*>::iterator it = est_.begin(); it != est_.end(); it++)
+          (*it)->imuCallback(t_, imu_, imu_R_);
     }
 }
 
 
-void Simulator::get_feature_meas(std::vector<measurement_t, Eigen::aligned_allocator<measurement_t>>& meas_list)
+void Simulator::update_feature_meas()
 {
     // If it's time to capture new measurements, then do it
     if (fabs(t_ - last_camera_update_ - 1.0/camera_update_rate_) < 0.0005)
@@ -408,18 +434,17 @@ void Simulator::get_feature_meas(std::vector<measurement_t, Eigen::aligned_alloc
     // Push out the measurement if it is time to send it
     if ((t_ > last_camera_update_ + camera_time_delay_) && (camera_measurements_buffer_.size() > 0));
     {
-      for (auto it = camera_measurements_buffer_.begin(); it != camera_measurements_buffer_.end(); it++)
+      for (auto zit = camera_measurements_buffer_.begin(); zit != camera_measurements_buffer_.end(); zit++)
       {
-        meas_list.push_back(*it);
-        if (feature_cb_)
-            feature_cb_(it->z, it->R, it->feature_id, it->depth);
+          for (std::vector<EstimatorBase*>::iterator eit = est_.begin(); eit != est_.end(); eit++)
+              (*eit)->featCallback(t_, zit->z, zit->R, zit->feature_id, zit->depth);
       }
       camera_measurements_buffer_.clear();
     }
 }
 
 
-void Simulator::get_alt_meas(std::vector<measurement_t, Eigen::aligned_allocator<measurement_t>>& meas_list)
+void Simulator::update_alt_meas()
 {
     if (fabs(t_ - last_altimeter_update_ - 1.0/altimeter_update_rate_) < 0.0005)
     {
@@ -429,19 +454,13 @@ void Simulator::get_alt_meas(std::vector<measurement_t, Eigen::aligned_allocator
       Matrix<double, 1, 1> noise(altimeter_noise_);
 
       last_altimeter_update_ = t_;
-      measurement_t meas;
-      meas.t = t_;
-      meas.type = ALT;
-      meas.z = get_altitude() + noise;
-      meas.R = alt_R_;
-      meas_list.push_back(meas);
-      if (alt_cb_)
-          alt_cb_(get_altitude() + noise, alt_R_);
+      for (std::vector<EstimatorBase*>::iterator it = est_.begin(); it != est_.end(); it++)
+          (*it)->altCallback(t_, get_altitude() + noise, alt_R_);
     }
 }
 
 
-void Simulator::get_mocap_meas(std::vector<measurement_t, Eigen::aligned_allocator<measurement_t>>& meas_list)
+void Simulator::update_mocap_meas()
 {
     if (fabs(t_ - last_truth_update_ - 1.0/truth_update_rate_) < 0.0005)
     {
@@ -466,19 +485,23 @@ void Simulator::get_mocap_meas(std::vector<measurement_t, Eigen::aligned_allocat
 
     while (mocap_measurement_buffer_.size() > 0 && mocap_measurement_buffer_[0].first >= t_)
     {
-      meas_list.push_back(mocap_measurement_buffer_[0].second);
       measurement_t* m = &(mocap_measurement_buffer_[0].second);
-      if (pos_cb_ && m->type == POS)
-          pos_cb_(m->z, m->R);
-      else if (att_cb_ && m->type == ATT)
-          att_cb_(Quatd(m->z), m->R);
-
+      if (pos_enabled_ && m->type == POS)
+      {
+          for (std::vector<EstimatorBase*>::iterator it = est_.begin(); it != est_.end(); it++)
+              (*it)->posCallback(t_, m->z, m->R);
+      }
+      else if (att_enabled_ && m->type == ATT)
+      {
+          for (std::vector<EstimatorBase*>::iterator it = est_.begin(); it != est_.end(); it++)
+              (*it)->attCallback(t_, Quatd(m->z), m->R);
+      }
       mocap_measurement_buffer_.erase(mocap_measurement_buffer_.begin());
     }
 }
 
 
-void Simulator::get_vo_meas(std::vector<measurement_t, Eigen::aligned_allocator<measurement_t>>& meas_list)
+void Simulator::update_vo_meas()
 {
   Xformd T_i2b = dyn_.get_global_pose();
   Vector6d delta = T_i2b - T_i2bk_;
@@ -490,22 +513,15 @@ void Simulator::get_vo_meas(std::vector<measurement_t, Eigen::aligned_allocator<
                                           (T_i2b.t() + T_i2b.q().inverse().rotp(p_b_c_))));
     T_c2ck.q_ = q_b_c_.inverse() * T_i2b.q().inverse() * T_i2bk_.q().inverse() * q_b_c_;
 
-    // Populate measurement output
-    measurement_t vo_meas;
-    vo_meas.t = t_;
-    vo_meas.type = VO;
-    vo_meas.z = T_c2ck.arr_;
-    vo_meas.R = vo_R_;
-    meas_list.push_back(vo_meas);
-    if (vo_cb_)
-        vo_cb_(T_c2ck, vo_R_);
+    for (std::vector<EstimatorBase*>::iterator it = est_.begin(); it != est_.end(); it++)
+        (*it)->voCallback(t_, T_c2ck, vo_R_);
 
     // Set new keyframe to current pose
     T_i2bk_ = dyn_.get_global_pose();
   }
 }
 
-void Simulator::get_gnss_meas(std::vector<measurement_t, Eigen::aligned_allocator<measurement_t>> &meas_list)
+void Simulator::update_gnss_meas()
 {
     /// TODO: Simulate GPS sensor delay
     if (fabs(t_ - last_gps_update_ - 1.0/gps_update_rate_) < 0.0005)
@@ -524,27 +540,26 @@ void Simulator::get_gnss_meas(std::vector<measurement_t, Eigen::aligned_allocato
         Vector6d z;
         z << p_ECEF, v_ECEF;
 
-        measurement_t gps_meas;
-        gps_meas.t = t_;
-        gps_meas.type = GNSS;
-        gps_meas.z = z;
-        gps_meas.R = gps_R_;
-        meas_list.push_back(gps_meas);
-
-        if (gnss_cb_)
-            gnss_cb_(z, gps_R_);
+        for (std::vector<EstimatorBase*>::iterator it = est_.begin(); it != est_.end(); it++)
+            (*it)->gnssCallback(t_, z, gps_R_);
     }
 }
 
 
 void Simulator::update_measurements()
 {
-  meas_.clear();
-  get_imu_meas(meas_);
-  get_feature_meas(meas_);
-  get_alt_meas(meas_);
-  get_mocap_meas(meas_);
-  get_vo_meas(meas_);
+  if (imu_enabled_)
+    update_imu_meas();
+  if (features_enabled_)
+    update_feature_meas();
+  if (alt_enabled_)
+    update_alt_meas();
+  if (pos_enabled_ || att_enabled_)
+    update_mocap_meas();
+  if (vo_enabled_)
+    update_vo_meas();
+  if (gnss_enabled_)
+    update_gnss_meas();
 }
 
 
@@ -760,5 +775,5 @@ Matrix6d Simulator::get_mocap_noise_covariance() const
       return cov.asDiagonal();
 }
 
-
+}
 

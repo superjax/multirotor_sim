@@ -7,6 +7,10 @@ using namespace Eigen;
 using namespace xform;
 using namespace quat;
 
+namespace multirotor_sim
+{
+
+
 struct ErrorState
 {
     enum
@@ -148,3 +152,4 @@ struct IMU
         gyro(arr.data()+3)
     {}
 };
+}

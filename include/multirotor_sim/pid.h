@@ -11,31 +11,7 @@ struct max_struct
   T vel;
 };
 
-template<typename T>
-struct state_struct
-{
-  T t;
-  T pn;
-  T pe;
-  T pd;
-
-  T phi;
-  T theta;
-  T psi;
-
-  T u;
-  T v;
-  T w;
-
-  T p;
-  T q;
-  T r;
-
-  T throttle;
-};
-
 typedef max_struct<double> max_t;
-typedef state_struct<double> state_t;
 
 template<typename T>
 class PID

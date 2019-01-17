@@ -3,8 +3,11 @@
 
 #include <Eigen/Dense>
 #include "pid.h"
+#include "multirotor_sim/state.h"
 
 using namespace Eigen;
+
+using namespace multirotor_sim;
 
 template<typename T>
 class NLC
@@ -12,6 +15,7 @@ class NLC
 public:
   typedef Matrix<T,3,3> Mat3;
   typedef Matrix<T,3,1> Vec3;
+  typedef Matrix<T,4,1> Vec4;
   Mat3 K_p_; // position
   Mat3 K_v_; // velocity
   Mat3 K_d_; // disturbance acceleration
@@ -46,7 +50,7 @@ public:
     udist_ = udist;
   }
 
-  void computeControl(const state_t& xhat, state_t& xc, const T& dt, const T& sh)
+  void computeControl(const State& xhat, State& xc, const T& dt, const T& sh, double& throttle)
   {
     // Function constants
     static Matrix<T,3,1> e3((T)0, (T)0, (T)1); // general unit vector in z-direction
@@ -57,9 +61,8 @@ public:
     if (path_type_ < 3)
     {
       // Compute vehicle-1 velocity command
-      Vector3d phat(xhat.pn, xhat.pe, xhat.pd); // position estimate
-      Vector3d pc(xc.pn, xc.pe, xc.pd); // position command
-      Vector3d vc = frame_helper::R_v_to_v1(xhat.psi) * K_p_ * (pc-phat); // velocity command
+//      Vector3d x.p(xhat.p.x, xhat.pe, xhat.pd); // position estimate
+      Vector3d vc = frame_helper::R_v_to_v1(xhat.q.yaw()) * K_p_ * (xc.p-xhat.p); // velocity command
 
       // enforce max commanded velocity
       vmag = vc.norm();
@@ -67,45 +70,41 @@ public:
         vc *= max_.vel/vmag;
 
       // store velocity command
-      xc.u = vc(0);
-      xc.v = vc(1);
-      xc.w = vc(2);
+      vc = xc.v;
 
       // get yaw rate direction and allow it to saturate
-      xc.r = xc.psi - xhat.psi;
+      xc.w(2) = xc.q.yaw() - xhat.q.yaw();
     }
     else
     {
       // Constant forward velocity and constant altitude
-      xc.u += traj_heading_walk_ * udist_(rng_) * dt - ((xc.u - vmag) * traj_heading_straight_gain_);
-      xc.v += traj_heading_walk_ * udist_(rng_) * dt - (xc.v * traj_heading_straight_gain_);
-      xc.w = K_p_(2,2) * (xc.pd - xhat.pd);
+      xc.v(0) += traj_heading_walk_ * udist_(rng_) * dt - ((xc.v(0) - vmag) * traj_heading_straight_gain_);
+      xc.v(1) += traj_heading_walk_ * udist_(rng_) * dt - (xc.v(1) * traj_heading_straight_gain_);
+      xc.v(2) = K_p_(2,2) * (xc.p(2) - xhat.p(2));
 
       // Wandering yaw rate
-      xc.r += traj_heading_walk_ * udist_(rng_) * dt - (xc.r * traj_heading_straight_gain_);
+      xc.w(2) += traj_heading_walk_ * udist_(rng_) * dt - (xc.w(2) * traj_heading_straight_gain_);
     }
 
     // Saturate and prevent wrong direction in yaw rate
-    if (xc.r > M_PI)
-      xc.r -= 2*M_PI;
-    if (xc.r < -M_PI)
-      xc.r += 2*M_PI;
-    xc.r = sat(xc.r, max_.yaw_rate, -max_.yaw_rate);
+    if (xc.w(2) > M_PI)
+      xc.w(2) -= 2*M_PI;
+    if (xc.w(2) < -M_PI)
+      xc.w(2) += 2*M_PI;
+    xc.w(2) = sat(xc.w(2), max_.yaw_rate, -max_.yaw_rate);
 
     // Compute vehicle-1 thrust vector and update disturbance term
-    Vector3d vb(xhat.u,xhat.v,xhat.w);
-    Vector3d vc(xc.u, xc.v, xc.w);
-    Matrix3d R_v1_to_b = frame_helper::R_v_to_b(xhat.phi, xhat.theta, 0);
-    Vector3d vhat = R_v1_to_b.transpose()*vb;
-    dhat_ = dhat_ - K_d_*(vc-vhat)*dt; // update disturbance estimate
-    Vector3d k_tilde = sh * (e3 - (1.0 / g) * (K_v_ * (vc - vhat) - dhat_));
+    Matrix3d R_v1_to_b = frame_helper::R_v_to_b(xhat.q.roll(), xhat.q.pitch(), 0);
+    Vector3d vhat = R_v1_to_b.transpose()*xhat.v;
+    dhat_ = dhat_ - K_d_*(xhat.v-vhat)*dt; // update disturbance estimate
+    Vector3d k_tilde = sh * (e3 - (1.0 / g) * (K_v_ * (xhat.v - vhat) - dhat_));
 
     // pack up throttle command
-    xc.throttle = e3.transpose() * R_v1_to_b * k_tilde;
-    xc.throttle = sat(xc.throttle, max_.throttle, 0.001);
+    throttle = e3.transpose() * R_v1_to_b * k_tilde;
+    throttle = sat(throttle, max_.throttle, 0.001);
 
     // Compute the desired tilt angle
-    Vector3d kd = (1.0 / xc.throttle) * k_tilde; // desired body z direction
+    Vector3d kd = (1.0 / throttle) * k_tilde; // desired body z direction
     kd = kd / kd.norm(); // need direction only
     double kTkd = e3.transpose() * kd;
     double tilt_angle;
@@ -115,17 +114,17 @@ public:
       tilt_angle = 0;
 
     // Shortest rotation to desired tilt
-    Quatd q_c;
     if (tilt_angle < 1e-6)
-      q_c = Quatd::Identity();
+      xc.q = Quatd::Identity();
     else
     {
       Vector3d k_cross_kd = e3.cross(kd);
-      q_c = Quatd::exp(tilt_angle * k_cross_kd / k_cross_kd.norm());
+      xc.q = Quatd::exp(tilt_angle * k_cross_kd / k_cross_kd.norm());
     }
 
-    // Pack up roll/pitch commands
-    xc.phi = sat(q_c.roll(), max_.roll, -max_.roll);
-    xc.theta = sat(q_c.pitch(), max_.pitch, -max_.pitch);
+    // Pack up roll/pitch commands after saturating roll and pitch angles
+    double phi = sat(xc.q.roll(), max_.roll, -max_.roll);
+    double theta = sat(xc.q.pitch(), max_.pitch, -max_.pitch);
+    xc.q = Quatd::from_euler(phi, theta, 0);
   }
 };

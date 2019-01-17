@@ -1,14 +1,13 @@
 #include <stdio.h>
 
-#include "controller.h"
-#include "simulator.h"
+#include "multirotor_sim/controller.h"
+#include "multirotor_sim/simulator.h"
 
 
-
-namespace controller 
+namespace multirotor_sim
 {
 
-Controller::Controller() :
+ReferenceController::ReferenceController() :
   prev_time_(0),
   initialized_(false)
 {
@@ -16,28 +15,17 @@ Controller::Controller() :
   s_prev_ = 0;
 }
 
-void Controller::computeControl(const State &x, const double t, Vector4d& u)
+void ReferenceController::computeControl(const double& t, const State &x, const State& x_c, Vector4d& u)
 {
   // Function constants
   static const Vector3d e3(0,0,1); // general unit vector in z-direction
 
   // Copy the current state
-  Vector3d euler = x.q.euler();
-  xhat_.pn = x.p.x();
-  xhat_.pe = x.p.y();
-  xhat_.pd = x.p.z();
-  xhat_.u = x.v.x();
-  xhat_.v = x.v.y();
-  xhat_.w = x.v.z();
-  xhat_.phi = euler(0);
-  xhat_.theta = euler(1);
-  xhat_.psi = euler(2);
-  xhat_.p = x.w.x();
-  xhat_.q = x.w.y();
-  xhat_.r = x.w.z();
-  
+  xhat_ = x;
+  xhat_euler_ = x.q.euler();
+
   // Time data
-  xc_.t = t;
+  t_c_ = t;
   double dt = t - prev_time_;
   prev_time_ = t;
   if (dt < 0.0001)
@@ -45,41 +33,35 @@ void Controller::computeControl(const State &x, const double t, Vector4d& u)
     u.setZero();
     return;
   }
-  
-  // Refresh the waypoint
-  if (path_type_ < 2)
-    updateWaypointManager();
-  if (path_type_ == 2)
-    updateTrajectoryManager();
+  xc_ = x_c;
   
   // Compute control
+  double throttle;
   if (control_type_ == 0)
-    nlc_.computeControl(xhat_, xc_, dt, sh_);
+    nlc_.computeControl(xhat_, xc_, dt, sh_, throttle);
   else if (control_type_ == 1)
-    lqr_.computeControl(xhat_, xc_, sh_);
+    lqr_.computeControl(xhat_, xc_, sh_, throttle);
   else
     throw std::runtime_error("Undefined control type in controller.cpp");
 
   // Calculate the Final Output Torques using PID
-  u(dynamics::THRUST) = xc_.throttle;
-  u(dynamics::TAUX) = roll_.run(dt, xhat_.phi, xc_.phi, false, xhat_.p);
-  u(dynamics::TAUY) = pitch_.run(dt, xhat_.theta, xc_.theta, false, xhat_.q);
-  u(dynamics::TAUZ) = yaw_rate_.run(dt, xhat_.r, xc_.r, false);
+  u(multirotor_sim::THRUST) = throttle;
+  u(multirotor_sim::TAUX) = roll_.run(dt, xhat_.q.roll(), xc_.q.roll(), false, xhat_.w(0));
+  u(multirotor_sim::TAUY) = pitch_.run(dt, xhat_.q.pitch(), xc_.q.pitch(), false, xhat_.w(1));
+  u(multirotor_sim::TAUZ) = yaw_rate_.run(dt, xhat_.w(2), xc_.w(2), false);
 
   // Hover throttle observer
-  Vector3d vb(xhat_.u, xhat_.v, xhat_.w);
-  Matrix3d R_v1_to_b = frame_helper::R_v_to_b(xhat_.phi, xhat_.theta, 0);
-  Vector3d omega(xhat_.p, xhat_.q, xhat_.r);
-  Vector3d vhat_dot = dynamics::G * (I_3x3 - sh_inv_hat_ * s_prev_ * R_v1_to_b.transpose()) * e3 -
-                      omega.cross(vhat_) + sh_kv_ * (vb - vhat_);
-  double sh_inv_hat_dot = -sh_ks_ * dynamics::G * s_prev_ * (vb - vhat_).transpose() * R_v1_to_b.transpose() * e3;
+  Matrix3d R_v1_to_b = frame_helper::R_v_to_b(xhat_.q.roll(), xhat_.q.pitch(), 0);
+  Vector3d vhat_dot = multirotor_sim::G * (I_3x3 - sh_inv_hat_ * s_prev_ * R_v1_to_b.transpose()) * e3 -
+                      xhat_.w.cross(vhat_) + sh_kv_ * (xhat_.v - vhat_);
+  double sh_inv_hat_dot = -sh_ks_ * multirotor_sim::G * s_prev_ * (xhat_.v - vhat_).transpose() * R_v1_to_b.transpose() * e3;
   vhat_ += vhat_dot * dt;
   sh_inv_hat_ += sh_inv_hat_dot * dt;
   sh_ = 1.0 / sh_inv_hat_;
-  s_prev_ = xc_.throttle;
+  s_prev_ = throttle;
 }
 
-void Controller::load(const std::string filename)
+void ReferenceController::load(const std::string filename)
 {
   if(file_exists(filename))
   {
@@ -167,11 +149,11 @@ void Controller::load(const std::string filename)
     else if (path_type_ == 3)
     {
       // Load constant velocity magnitude and yaw rate walk parameters
-      get_yaml_node("traj_altitude", filename, xc_.pd);
+      get_yaml_node("traj_altitude", filename, xc_.p(2));
       get_yaml_node("velocity_magnitude", filename, vmag_);
       get_yaml_node("traj_heading_walk", filename, traj_heading_walk_);
       get_yaml_node("traj_heading_straight_gain", filename, traj_heading_straight_gain_);
-      xc_.psi = 0;
+      xc_.q = quat::Quatd::Identity();
     }
     else
     {
@@ -241,26 +223,36 @@ void Controller::load(const std::string filename)
     throw std::runtime_error("Undefined control type in controller.cpp");
 }
 
-void Controller::updateWaypointManager()
+const State& ReferenceController::getCommandedState(const double &t)
+{
+    // Refresh the waypoint
+    if (path_type_ < 2)
+      updateWaypointManager();
+    if (path_type_ == 2)
+      updateTrajectoryManager();
+    return xc_;
+}
+
+void ReferenceController::updateWaypointManager()
 {
   if (!initialized_)
   {
     initialized_ = true;
     Map<Vector4d> new_waypoint(waypoints_.block<4,1>(0, 0).data());
-    xc_.pn = new_waypoint(PX);
-    xc_.pe = new_waypoint(PY);
-    xc_.pd = new_waypoint(PZ);
-    xc_.psi = new_waypoint(PSI);
+    xc_.p(0) = new_waypoint(PX);
+    xc_.p(1) = new_waypoint(PY);
+    xc_.p(2) = new_waypoint(PZ);
+    xc_.q = quat::Quatd::from_euler(xc_.q.roll(), xc_.q.pitch(), new_waypoint(PSI));
     current_waypoint_id_ = 0;
   }
     
   // Find the distance to the desired waypoint
   Vector4d current_waypoint = waypoints_.block<4,1>(0, current_waypoint_id_);
   Vector4d error;
-  error(PX) = current_waypoint(PX) - xhat_.pn;
-  error(PY) = current_waypoint(PY) - xhat_.pe;
-  error(PZ) = current_waypoint(PZ) - xhat_.pd;
-  error(PSI) = current_waypoint(PSI) - xhat_.psi;
+  error(PX) = current_waypoint(PX) - xhat_.p(0);
+  error(PY) = current_waypoint(PY) - xhat_.p(1);
+  error(PZ) = current_waypoint(PZ) - xhat_.p(2);
+  error(PSI) = current_waypoint(PSI) - xhat_.q.yaw();
   
   // Angle wrapping on heading
   if (error(PSI) > M_PI)
@@ -268,28 +260,27 @@ void Controller::updateWaypointManager()
   else if (error(PSI) < -M_PI)
     error(PSI) += 2.0 * M_PI;
   
-  Vector3d current_velocity(xhat_.u, xhat_.v, xhat_.w);
-  
-  if (error.norm() < waypoint_threshold_ && current_velocity.norm() < waypoint_velocity_threshold_)
+  if (error.norm() < waypoint_threshold_ && xhat_.v.norm() < waypoint_velocity_threshold_)
   {    
     // increment waypoint
     current_waypoint_id_ = (current_waypoint_id_ + 1) % waypoints_.cols();   
     
     // Update The commanded State
     Map<Vector4d> new_waypoint(waypoints_.block<4,1>(0, current_waypoint_id_).data());
-    xc_.pn = new_waypoint(PX);
-    xc_.pe = new_waypoint(PY);
-    xc_.pd = new_waypoint(PZ);
-    xc_.psi = new_waypoint(PSI);
+    xc_.p(0) = new_waypoint(PX);
+    xc_.p(1) = new_waypoint(PY);
+    xc_.p(2) = new_waypoint(PZ);
+    xc_.q = quat::Quatd::from_euler(xc_.q.roll(), xc_.q.pitch(), new_waypoint(PSI));
   }  
 }
 
-void Controller::updateTrajectoryManager()
+void ReferenceController::updateTrajectoryManager()
 {
-  xc_.pn = traj_nom_north_ + traj_delta_north_ / 2.0 * cos(traj_north_freq_ * xc_.t);
-  xc_.pe = traj_nom_east_ + traj_delta_east_ / 2.0 * sin(traj_east_freq_ * xc_.t);
-  xc_.pd = -(traj_nom_alt_ + traj_delta_alt_ / 2.0 * sin(traj_alt_freq_ * xc_.t));
-  xc_.psi = traj_nom_yaw_ + traj_delta_yaw_ / 2.0 * sin(traj_yaw_freq_ * xc_.t);
+  xc_.p(0) = traj_nom_north_ + traj_delta_north_ / 2.0 * cos(traj_north_freq_ * t_c_);
+  xc_.p(1) = traj_nom_east_ + traj_delta_east_ / 2.0 * sin(traj_east_freq_ * t_c_);
+  xc_.p(2) = -(traj_nom_alt_ + traj_delta_alt_ / 2.0 * sin(traj_alt_freq_ * t_c_));
+  double psi = traj_nom_yaw_ + traj_delta_yaw_ / 2.0 * sin(traj_yaw_freq_ * t_c_);
+  xc_.q = quat::Quatd::from_euler(xc_.q.roll(), xc_.q.pitch(), psi);
 }
 
 }

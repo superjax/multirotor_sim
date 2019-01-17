@@ -1,11 +1,12 @@
 #include <gtest/gtest.h>
 
 #include "multirotor_sim/simulator.h"
+#include "multirotor_sim/controller.h"
 #include "multirotor_sim/utils.h"
 #include "multirotor_sim/wsg84.h"
 #include "multirotor_sim/test_common.h"
 
-
+using namespace multirotor_sim;
 
 TEST (GPS, lla2ecef)
 {
@@ -108,89 +109,89 @@ TEST (GPS, lla2ned)
     EXPECT_MAT_NEAR(ned1_hat, ned1, 1e-6);
 }
 
-TEST (GPS, initECEF)
+class GpsTestEstimator : public EstimatorBase
 {
+public:
+    void load(const std::string filename) override {}
+    void imuCallback(const double& t, const Vector6d& z, const Matrix6d& R) override {}
+    void altCallback(const double& t, const Vector1d& z, const Matrix1d& R) override {}
+    void posCallback(const double& t, const Vector3d& z, const Matrix3d& R) override {}
+    void attCallback(const double& t, const Quatd& z, const Matrix3d& R) override {}
+    void voCallback(const double& t, const Xformd& z, const Matrix6d& R) override {}
+    void featCallback(const double& t, const Vector2d& z, const Matrix2d& R, int id, double depth) override {}
+    void gnssCallback(const double& t, const Vector6d& z, const Matrix6d& R) override
+    {
+        call_count++;
+        z_last = z;
+    }
+
+    int call_count = 0;
+    Vector6d z_last;
+};
+
+class GpsTest : public ::testing::Test {
+protected:
+    GpsTest() :
+        sim(cont, cont)
+    {}
+    void SetUp() override
+    {
+        std::string filename = "tmp.params.yaml";
+        ofstream tmp_file(filename);
+        YAML::Node node;
+        node["ref_LLA"] = std::vector<double>{40.247082 * DEG2RAD, -111.647776 * DEG2RAD, 1387.998309};
+        node["gps_update_rate"] = 5;
+        node["gps_enabled"] = true;
+        node["use_gps_truth"] = false;
+        node["gps_horizontal_position_stdev"] = 1.0;
+        node["gps_vertical_position_stdev"] = 3.0;
+        node["gps_velocity_stdev"] = 0.1;
+        tmp_file << node;
+        tmp_file.close();
+
+        sim.param_filename_ = filename;
+        sim.init_gps();
+        sim.register_estimator(&est);
+    }
+
+    ReferenceController cont;
     Simulator sim;
-    std::string filename = "tmp.params.yaml";
-    ofstream tmp_file(filename);
-    YAML::Node node;
-    node["ref_LLA"] = std::vector<double>{40.247082 * DEG2RAD, -111.647776 * DEG2RAD, 1387.998309};
-    node["gps_update_rate"] = 5;
-    node["use_gps_truth"] = false;
-    node["gps_horizontal_position_stdev"] = 1.0;
-    node["gps_vertical_position_stdev"] = 3.0;
-    node["gps_velocity_stdev"] = 0.1;
-    tmp_file << node;
-    tmp_file.close();
+    GpsTestEstimator est;
+};
 
-    sim.param_filename_ = filename;
-    sim.init_gps();
-
+TEST_F (GpsTest, initECEF)
+{
     Vector3d to_center_of_earth = sim.x_e2n_.t().normalized();
     EXPECT_MAT_NEAR(-sim.x_e2n_.q().rotp(to_center_of_earth), e_z, 4e-3);
 }
 
 
-TEST (GPS, MeasurementUpdateRate)
+TEST_F (GpsTest, MeasurementUpdateRate)
 {
-    Simulator sim;
-    std::string filename = "tmp.params.yaml";
-    ofstream tmp_file(filename);
-    YAML::Node node;
-    node["ref_LLA"] = std::vector<double>{40.247082 * DEG2RAD, -111.647776 * DEG2RAD, 1387.998309};
-    node["gps_update_rate"] = 5;
-    node["use_gps_truth"] = false;
-    node["gps_horizontal_position_stdev"] = 1.0;
-    node["gps_vertical_position_stdev"] = 3.0;
-    node["gps_velocity_stdev"] = 0.1;
-    tmp_file << node;
-    tmp_file.close();
-
-    sim.param_filename_ = filename;
-    sim.init_gps();
-
-    std::vector<Simulator::measurement_t, Eigen::aligned_allocator<Simulator::measurement_t>> meas_list;
-    sim.get_gnss_meas(meas_list);
-    ASSERT_EQ(meas_list.size(), 0);
+    sim.update_gnss_meas();
+    ASSERT_EQ(est.call_count, 0);
 
     State x;
     x.p << 1000, 0, 0;
     sim.dyn_.set_state(x);
     sim.t_ = 0.2;
 
-    sim.get_gnss_meas(meas_list);
-    ASSERT_EQ(meas_list.size(), 1);
+    sim.update_gnss_meas();
+    ASSERT_EQ(est.call_count, 1);
 
-    meas_list.clear();
-    sim.get_gnss_meas(meas_list);
-    ASSERT_EQ(meas_list.size(), 0);
+    sim.update_gnss_meas();
+    ASSERT_EQ(est.call_count, 1);
 }
 
-TEST (GPS, MeasurementPosition)
+TEST_F (GpsTest, MeasurementPosition)
 {
-    Simulator sim(false, 1);
-    std::string filename = "tmp.params.yaml";
-    ofstream tmp_file(filename);
-    YAML::Node node;
-    std::vector<Simulator::measurement_t, Eigen::aligned_allocator<Simulator::measurement_t>> meas_list;
-    node["ref_LLA"] = std::vector<double>{40.247082 * DEG2RAD, -111.647776 * DEG2RAD, 1387.998309};
-    node["gps_update_rate"] = 5;
-    node["use_gps_truth"] = false;
-    node["gps_horizontal_position_stdev"] = 1.0;
-    node["gps_vertical_position_stdev"] = 3.0;
-    node["gps_velocity_stdev"] = 0.1;
-    tmp_file << node;
-    tmp_file.close();
-
-    sim.param_filename_ = filename;
-    sim.init_gps();
 
     State x;
     x.p << 1000, 0, 0;
     sim.dyn_.set_state(x);
     sim.t_ = 0.2;
 
-    sim.get_gnss_meas(meas_list);
+    sim.update_gnss_meas();
 
     Vector3d lla0 = (Vector3d() << 40.247082 * DEG2RAD, -111.647776 * DEG2RAD, 1387.998309).finished();
     Vector3d ecef0 = WSG84::lla2ecef(lla0);
@@ -199,41 +200,24 @@ TEST (GPS, MeasurementPosition)
     Vector3d ecef1 = WSG84::ned2ecef(x_e2n, ned1);
 
     EXPECT_NEAR((ecef1 - ecef0).norm(), 1000, 1e-6);
-    ASSERT_MAT_NEAR(meas_list[0].z.segment<3>(0), ecef1, 10.0);
-    ASSERT_MAT_NEAR(meas_list[0].z.segment<3>(3), Vector3d::Constant(0.0), 1.0);
+    ASSERT_MAT_NEAR(est.z_last.segment<3>(0), ecef1, 10.0);
+    ASSERT_MAT_NEAR(est.z_last.segment<3>(3), Vector3d::Constant(0.0), 1.0);
 }
 
-TEST (GPS, MeasurementVelocity)
+TEST_F (GpsTest, MeasurementVelocity)
 {
-    Simulator sim(false, 1);
-    std::string filename = "tmp.params.yaml";
-    ofstream tmp_file(filename);
-    YAML::Node node;
-    std::vector<Simulator::measurement_t, Eigen::aligned_allocator<Simulator::measurement_t>> meas_list;
-    node["ref_LLA"] = std::vector<double>{40.247082 * DEG2RAD, -111.647776 * DEG2RAD, 1387.998309};
-    node["gps_update_rate"] = 5;
-    node["use_gps_truth"] = false;
-    node["gps_horizontal_position_stdev"] = 1.0;
-    node["gps_vertical_position_stdev"] = 3.0;
-    node["gps_velocity_stdev"] = 0.1;
-    tmp_file << node;
-    tmp_file.close();
-
-    sim.param_filename_ = filename;
-    sim.init_gps();
-
     State x;
     x.v << 0, 0, -10;
     sim.dyn_.set_state(x);
     sim.t_ = 0.2;
 
-    sim.get_gnss_meas(meas_list);
+    sim.update_gnss_meas();
 
     Vector3d lla0 = (Vector3d() << 40.247082 * DEG2RAD, -111.647776 * DEG2RAD, 1387.998309).finished();
     Vector3d ecef0 = WSG84::lla2ecef(lla0);
 
     Vector3d vel_dir_ECEF = ecef0.normalized() * 10;
 
-    ASSERT_MAT_NEAR(meas_list[0].z.segment<3>(3), vel_dir_ECEF, 1.0);
+    ASSERT_MAT_NEAR(est.z_last.segment<3>(3), vel_dir_ECEF, 1.0);
 }
 

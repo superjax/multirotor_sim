@@ -16,7 +16,9 @@
 #include "multirotor_sim/environment.h"
 #include "multirotor_sim/state.h"
 #include "multirotor_sim/dynamics.h"
-#include "multirotor_sim/controller.h"
+#include "multirotor_sim/controller_base.h"
+#include "multirotor_sim/trajectory_base.h"
+#include "multirotor_sim/estimator_base.h"
 
 
 #ifndef NUM_FEATURES  // allows you to override the number of features in the build
@@ -37,6 +39,8 @@
 
 using namespace quat;
 
+namespace multirotor_sim
+{
 class Simulator
 {
 public:
@@ -62,10 +66,10 @@ public:
     double depth;
   } measurement_t;
   
-  Simulator();
+  Simulator(ControllerBase& _cont, TrajectoryBase& _traj);
   ~Simulator();
-  Simulator(bool prog_indicator);
-  Simulator(bool prog_indicator, uint64_t seed);
+  Simulator(ControllerBase& _cont, TrajectoryBase& _traj, bool prog_indicator);
+  Simulator(ControllerBase& _cont, TrajectoryBase& _traj, bool prog_indicator, uint64_t seed);
   
   void load(std::string filename);
   void init_imu();
@@ -76,23 +80,16 @@ public:
   void init_gps();  
 
   bool run();
-  const std::vector<measurement_t, Eigen::aligned_allocator<measurement_t> > get_measurements() const { return meas_; }
 
   void update_measurements();
-  void get_imu_meas(std::vector<measurement_t, Eigen::aligned_allocator<measurement_t> > &meas);
-  void get_feature_meas(std::vector<measurement_t, Eigen::aligned_allocator<measurement_t> > &meas);
-  void get_alt_meas(std::vector<measurement_t, Eigen::aligned_allocator<measurement_t> > &meas);
-  void get_mocap_meas(std::vector<measurement_t, Eigen::aligned_allocator<measurement_t> > &meas);
-  void get_vo_meas(std::vector<measurement_t, Eigen::aligned_allocator<measurement_t> > &meas);
-  void get_gnss_meas(std::vector<measurement_t, Eigen::aligned_allocator<measurement_t> > &meas);
+  void update_imu_meas();
+  void update_feature_meas();
+  void update_alt_meas();
+  void update_mocap_meas();
+  void update_vo_meas();
+  void update_gnss_meas();
 
-  inline void register_acc_cb(std::function<void(const Vector3d&, const Matrix3d&)>& cb) { acc_cb_ = cb; }
-  inline void register_alt_cb(std::function<void(const Vector1d&, const Matrix1d&)>& cb) { alt_cb_ = cb; }
-  inline void register_att_cb(std::function<void(const Quatd&, const Matrix3d&)>& cb) { att_cb_ = cb; }
-  inline void register_pos_cb(std::function<void(const Vector3d&, const Matrix3d&)>& cb) { pos_cb_ = cb; }
-  inline void register_vo_cb(std::function<void(const Xformd&, const Matrix6d&)>& cb) { vo_cb_ = cb; }
-  inline void register_feature_cb(std::function<void(const Vector2d&, const Matrix2d&, int, double)>& cb) { feature_cb_ = cb; }
-  inline void register_feature_cb(std::function<void(const Vector6d&, const Matrix6d&)>& cb) { gnss_cb_ = cb; }
+  void register_estimator(EstimatorBase* est);
 
   const Vector6d& get_true_imu() const { return dyn_.imu_;}
   Xformd get_pose() const;
@@ -105,8 +102,10 @@ public:
   void log_state();
   
   Environment env_;
-  dynamics::Dynamics dyn_;
-  controller::Controller cont_;
+  Dynamics dyn_;
+  ControllerBase& cont_;
+  TrajectoryBase& traj_;
+  std::vector<EstimatorBase*> est_;
   double t_, dt_, tmax_;
 
   typedef struct
@@ -237,7 +236,7 @@ public:
   Vector4d u_;
 
   // measurement vector
-  std::vector<measurement_t, Eigen::aligned_allocator<measurement_t> > meas_;
+//  std::vector<measurement_t, Eigen::aligned_allocator<measurement_t> > meas_;
   
   // Random number Generation
   uint64_t seed_;
@@ -251,9 +250,10 @@ public:
   Quatd q_b_u_;
   Vector3d p_b_u_;
 
+  bool imu_enabled_;
   double imu_update_rate_;
   double last_imu_update_;
-  Matrix3d acc_R_;
+  Matrix6d imu_R_;
   bool use_accel_truth_;
   Vector3d accel_bias_; // Memory for random walk
   double accel_noise_stdev_; // Standard deviation of accelerometer noise
@@ -267,6 +267,7 @@ public:
   Vector3d gyro_noise_;
   
   // Camera (Features)
+  bool features_enabled_;
   Quatd q_b_c_;
   Vector3d p_b_c_;
   Matrix2d feat_R_;
@@ -289,6 +290,7 @@ public:
   Vector2d image_size_; // Camera intrinsics
 
   // Altimeter
+  bool alt_enabled_;
   Matrix<double, 1, 1> alt_R_;
   bool use_altimeter_truth_;
   double altimeter_update_rate_; // determines how often to generate an altitude measurement
@@ -297,6 +299,7 @@ public:
   double altimeter_noise_;
 
   // Depth
+  bool depth_enabled_;
   bool use_depth_truth_;
   bool init_depth_;
   Matrix1d depth_R_;
@@ -306,6 +309,7 @@ public:
   double depth_noise_;
 
   // Visual Odometry
+  bool vo_enabled_;
   xform::Xformd T_i2bk_; // Inertial to body keyframe pose
   Matrix<double, 6, 6> vo_R_;
   bool use_vo_truth_;
@@ -315,6 +319,8 @@ public:
   double vo_rotation_noise_stdev_;
 
   // Truth
+  bool pos_enabled_;
+  bool att_enabled_;
   Quatd q_b_m_;
   Vector3d p_b_m_;
   Matrix3d att_R_;
@@ -332,6 +338,7 @@ public:
   deque<std::pair<double, measurement_t>, aligned_allocator<std::pair<double, measurement_t>>> mocap_measurement_buffer_; // container to hold measurements while waiting for delay
 
   // GPS
+  bool gnss_enabled_;
   Xformd x_e2n_; // transform from the ECEF frame to the Inertial (NED) frame
   Matrix6d gps_R_;
   bool use_gps_truth_;
@@ -341,12 +348,5 @@ public:
   double gps_velocity_stdev_;
   double last_gps_update_;
   Vector3d gps_position_noise_;
-
-  std::function<void(const Vector3d&, const Matrix3d&)> acc_cb_ = nullptr;
-  std::function<void(const Vector1d&, const Matrix1d&)> alt_cb_ = nullptr;
-  std::function<void(const Quatd&, const Matrix3d&)> att_cb_ = nullptr;
-  std::function<void(const Vector3d&, const Matrix3d&)> pos_cb_ = nullptr;
-  std::function<void(const Xformd&, const Matrix6d&)> vo_cb_ = nullptr;
-  std::function<void(const Vector2d&, const Matrix2d&, int, double)> feature_cb_ = nullptr;
-  std::function<void(const Vector6d&, const Matrix6d&)> gnss_cb_ = nullptr;
 };
+}

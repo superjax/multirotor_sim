@@ -1,13 +1,17 @@
 // LQR Control of a multirotor
 #pragma once
 
-#include "pid.h"
+#include "multirotor_sim/pid.h"
 #include "lin_alg_tools/care.h"
 #include "geometry/quat.h"
-#include "utils.h"
+
+#include "multirotor_sim/state.h"
+#include "multirotor_sim/utils.h"
 
 using namespace Eigen;
 
+namespace multirotor_sim
+{
 
 template<typename T>
 Matrix<T,3,1> saturateVector(const T& max, Matrix<T,3,1>& vec)
@@ -71,24 +75,21 @@ public:
     R_inv_ = R_.inverse();
   }
 
-  void computeControl(const state_t& xhat, state_t& xc, const T& sh)
+  void computeControl(const State& xhat, State& xc, const T& sh, double& throttle)
   {
     // Function constants
     static Matrix<T,3,1> e3((T)0, (T)0, (T)1); // general unit vector in z-direction
     static T g(9.80665); // gravity, m/s^2
 
     // Unpack states
-    Matrix<T,3,1> p(xhat.pn, xhat.pe, xhat.pd);
-    quat::Quat<T> q = quat::Quat<T>::from_euler(xhat.phi, xhat.theta, xhat.psi);
-    Matrix<T,3,1> v = q.rota(Matrix<T,3,1>(xhat.u, xhat.v, xhat.w));
+    Matrix<T,3,1> vI = xhat.q.rota(xhat.v);
 
     // Reference states/inputs
-    Matrix<T,3,1> p_ref(xc.pn, xc.pe, xc.pd);
-    Matrix<T,3,1> p_err = p_ref - p;
+    Matrix<T,3,1> p_err = xc.p - xhat.p;
     Matrix<T,3,1> v_ref = saturateVector<T>((T)max_.vel, p_err);
     T s_ref = sh;
-    quat::Quat<T> q_ref; // identity
-    Matrix<T,3,1> v_err = v_ref - v;
+    quat::Quat<T> q_ref = quat::Quat<T>::Identity();
+    Matrix<T,3,1> v_err = v_ref - vI;
 
     // Create error state
     Matrix<T,6,1> x_tilde;
@@ -96,8 +97,8 @@ public:
     x_tilde.template segment<3>(3) = saturateVector<T>(v_err_max_, v_err);
 
     // Jacobians
-    B_.template block<3,1>(3,0) = -g * sh * q.rota(e3);
-    B_.template block<3,3>(3,1) = g * s_prev_ / sh * q.inverse().R() * quat::Quat<T>::skew(e3);
+    B_.template block<3,1>(3,0) = -g * sh * xhat.q.rota(e3);
+    B_.template block<3,3>(3,1) = g * s_prev_ / sh * xhat.q.inverse().R() * quat::Quat<T>::skew(e3);
 
     // Compute control
     care_solver.solve(P_, A_, B_, Q_, R_);
@@ -109,17 +110,19 @@ public:
     Matrix<T,3,1> q_tilde = u_tilde.template segment<3>(1);
 
     // Commands
-    xc.throttle = sat(s_ref - s_tilde, max_.throttle, 0.001);
+    throttle = sat(s_ref - s_tilde, max_.throttle, 0.001);
     quat::Quat<T> qc = q_ref * quat::Quat<T>::exp(-q_tilde);
 
     // Get yaw rate in direction that reduces yaw error
-    xc.r = sat(wrapAngle(xc.psi - q.yaw(), M_PI), max_.yaw_rate, -max_.yaw_rate);
+    xc.w(2) = sat(wrapAngle(xc.q.yaw() - xhat.q.yaw(), M_PI), max_.yaw_rate, -max_.yaw_rate);
 
     // Pack up roll, pitch, and yaw rate commands
-    xc.phi = sat(qc.roll(), max_.roll, -max_.roll);
-    xc.theta = sat(qc.pitch(), max_.pitch, -max_.pitch);
+    T phi = sat(qc.roll(), max_.roll, -max_.roll);
+    T theta = sat(qc.pitch(), max_.pitch, -max_.pitch);
+    xc.q = quat::Quat<T>::from_euler(phi, theta, 0);
 
     // Save throttle command for next iteration
-    s_prev_ = xc.throttle;
+    s_prev_ = throttle;
   }
 };
+}

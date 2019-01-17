@@ -1,7 +1,7 @@
 #include "dynamics.h"
 #include "simulator.h"
 
-namespace dynamics
+namespace multirotor_sim
 {
 Dynamics::Dynamics() {}
 
