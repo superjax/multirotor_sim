@@ -8,7 +8,7 @@ using namespace Eigen;
 
 Ephemeris::Ephemeris() {}
 
-void Ephemeris::computePseudorange(const GTime& rec_time, const Vector3d& receiver_pos, const Vector3d& receiver_vel, double& pseudorange, double& range_rate) const
+void Ephemeris::computePseudorange(const GTime& rec_time, const Vector3d& receiver_pos, const Vector3d& receiver_vel, Vector2d& z) const
 {
     Vector3d sat_pos, sat_vel;
     Vector2d sat_clk;
@@ -27,20 +27,27 @@ void Ephemeris::computePseudorange(const GTime& rec_time, const Vector3d& receiv
 
     // Re-calculate the line-of-sight vector with the adjusted position
     los_to_sat = sat_pos - receiver_pos;
-    double range = los_to_sat.norm();
+    z(0) = los_to_sat.norm();
+    printf("%15.6f\n", z(0));
 
     // compute relative velocity between receiver and satellite, adjusted by the clock drift rate
-    range_rate = ((sat_vel - receiver_vel).transpose() * los_to_sat / range)(0) - C_LIGHT * sat_clk(1);
+    z(1) = ((sat_vel - receiver_vel).transpose() * los_to_sat / z(0))(0) - C_LIGHT * sat_clk(1);
 
     // adjust range by the satellite clock offset
-    range -= C_LIGHT * sat_clk(0);
+    z(0) -= C_LIGHT * sat_clk(0);
+    printf("%15.6f\n", z(0));
 
     // Compute Azimuth and Elevation to satellite
     Vector2d az_el;
     los2azimuthElevation(receiver_pos, los_to_sat, az_el);
+    Vector3d lla = WSG84::ecef2lla(receiver_pos);
+
+    std::cout << lla.transpose() << std::endl;
 
     // Compute and incorporate ionospheric delay
-    range += ionosphericDelay(rec_time, WSG84::ecef2lla(receiver_pos), az_el);
+    double ion_delay = ionosphericDelay(rec_time, lla, az_el);
+    printf("%15.6f\n", ion_delay);
+    z(0) += ion_delay;
 
     return;
 }
@@ -108,8 +115,13 @@ double Ephemeris::ionosphericDelay(const GTime& gtime, const Vector3d& lla, cons
 }
 
 
-void Ephemeris::computePositionVelocityClock(const GTime& time, Vector3d &pos, Vector3d &vel, Vector2d& clock) const
+void Ephemeris::computePositionVelocityClock(const GTime& time, const Ref<Vector3d> &_pos, const Ref<Vector3d> &_vel, const Ref<Vector2d>& _clock) const
 {
+    // const-cast hackery to get around Ref
+    Ref<Vector3d> pos = const_cast<Ref<Vector3d>&>(_pos);
+    Ref<Vector3d> vel = const_cast<Ref<Vector3d>&>(_vel);
+    Ref<Vector2d> clock = const_cast<Ref<Vector2d>&>(_clock);
+
     // https://www.ngs.noaa.gov/gps-toolbox/bc_velo/bc_velo.c
     double n0 = std::sqrt(GM_EARTH/(A*A*A));
     double tk = (time - toe).toSec();
@@ -184,6 +196,6 @@ void Ephemeris::computePositionVelocityClock(const GTime& time, Vector3d &pos, V
     // Correct for relativistic effects on the satellite clock
     dts -= 2.0*std::sqrt(GM_EARTH * A) * e * sek/(C_LIGHT * C_LIGHT);
 
-    clock(0) = time.sec - dts; // corrected satellite ToW
+    clock(0) = dts; // satellite clock bias
     clock(1) = f1 + f2*tk; // satellite drift rate
 }
