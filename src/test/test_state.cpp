@@ -151,7 +151,7 @@ TEST (State, BoxplusRules)
 
     // Rules from Hertzberg et al. (11a-11d)
     EXPECT_MAT_EQ((x1 + zeros).arr, x1.arr);
-    EXPECT_MAT_EQ((x1 + (x2 - x1)).arr, x2.arr);
+    EXPECT_MAT_NEAR(((x1 + (x2 - x1)) - x2).arr, zeros.arr, 1e-14);
     EXPECT_MAT_EQ(((x1 + dx1) - x1).arr, dx1.arr);
 //    EXPECT_LE(((x1 + dx1) - (x1 + dx2)).arr.norm(), (dx1.arr - dx2.arr).norm());
 }
