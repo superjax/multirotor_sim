@@ -94,7 +94,7 @@ protected:
 
 TEST_F (ReferenceControllerTest, Waypoints)
 {
-  int prev_waypoint_id = cont.current_waypoint_id_;
+  int prev_waypoint_id = -1;
   std::vector<double> waypoint_time;
   ofstream file("ReferenceController.NonlinearController_Waypoints.log");
   while(sim.run())
@@ -108,8 +108,9 @@ TEST_F (ReferenceControllerTest, Waypoints)
       waypoint_time.push_back(sim.t_);
     }
   }
-  EXPECT_NEAR(waypoint_time[0], 28.12, 1e-8);
-  EXPECT_NEAR(waypoint_time[1], 57.14, 1e-8);
+  EXPECT_NEAR(waypoint_time[0], 0.01, 1e-8);
+  EXPECT_NEAR(waypoint_time[1], 28.12, 1e-8);
+  EXPECT_NEAR(waypoint_time[2], 57.14, 1e-8);
 
   file.close();
 }
