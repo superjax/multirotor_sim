@@ -35,5 +35,5 @@ script:
   - cd build
   - cmake .. -DCMAKE_BUILD_TYPE=Release
   - make
-  - ./geometry_test
+  - ./multirotor_sim_test
 
