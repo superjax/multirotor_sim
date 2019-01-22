@@ -1,6 +1,6 @@
 #include <Eigen/Core>
 
-#include "multirotor_sim/ephemeris.h"
+#include "multirotor_sim/satellite.h"
 #include "multirotor_sim/gtime.h"
 #include "multirotor_sim/datetime.h"
 #include "multirotor_sim/test_common.h"
@@ -122,7 +122,7 @@ double ionmodel(const GTime &t,const double *pos, const double *azel)
     phi+=0.064*cos((lam-1.617)*M_PI);
 
     /* local time (s) */
-    tt=43200.0*lam+t.sec;
+    tt=43200.0*lam+t.tow_sec;
     tt-=floor(tt/86400.0)*86400.0; /* 0<=tt<86400 */
 
     /* slant factor */
@@ -213,7 +213,7 @@ double ionosphericDelay(const ionoutc_t *ionoutc, GTime g, double *llh, double *
             PER = 72000.0;
 
         // Local time (sec)
-        t = SECONDS_IN_DAY/2.0*lam_i + g.sec;
+        t = SECONDS_IN_DAY/2.0*lam_i + g.tow_sec;
         while(t>=SECONDS_IN_DAY)
             t -= SECONDS_IN_DAY;
         while(t<0)

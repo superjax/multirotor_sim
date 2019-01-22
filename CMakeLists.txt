@@ -40,7 +40,8 @@ add_library(multirotor_sim STATIC
     src/environment.cpp
     src/gtime.cpp
     src/datetime.cpp
-    src/ephemeris.cpp
+    src/satellite.cpp
+    src/gnss.cpp
 )
 target_link_libraries(multirotor_sim ${YAML_CPP_LIBRARIES} stdc++fs geometry nanoflann_eigen lin_alg_tools)
 

@@ -37,6 +37,6 @@ GTime DateTime::toGTime() const
 
     // Convert time to GPS weeks and seconds.
     g.week = d / 7;
-    g.sec = static_cast<double>((d % 7)*SECONDS_IN_DAY + hour*SECONDS_IN_HOUR + minute*SECONDS_IN_MINUTE + second + LEAP_SECONDS);
+    g.tow_sec = static_cast<double>((d % 7)*SECONDS_IN_DAY + hour*SECONDS_IN_HOUR + minute*SECONDS_IN_MINUTE + second + LEAP_SECONDS);
     return g;
 }

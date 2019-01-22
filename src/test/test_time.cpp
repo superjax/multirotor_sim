@@ -16,19 +16,19 @@ TEST (Time, FromDateTimeKnown)
 
     GTime gtime_known;
     gtime_known.week = 2036;
-    gtime_known.sec = 32248.0;
+    gtime_known.tow_sec = 32248.0;
 
     GTime gtime_new = dtime;
 
     ASSERT_EQ(gtime_new.week, gtime_known.week);
-    ASSERT_FLOAT_EQ(gtime_new.sec, gtime_known.sec);
+    ASSERT_FLOAT_EQ(gtime_new.tow_sec, gtime_known.tow_sec);
 }
 
 TEST (Time, FromGTimeKnown)
 {
     GTime gtime;
     gtime.week = 2036;
-    gtime.sec = 32248.0;
+    gtime.tow_sec = 32248.0;
 
     DateTime dtime;
     dtime.year = 2019;

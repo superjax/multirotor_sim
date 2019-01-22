@@ -1,14 +1,23 @@
 #include <stdio.h>
 #include <Eigen/Core>
 
-#include "multirotor_sim/ephemeris.h"
+#include "multirotor_sim/satellite.h"
 #include "multirotor_sim/wsg84.h"
 
 using namespace Eigen;
 
-Satellite::Satellite() {}
+Satellite::Satellite()
+{
+  carrier_phase_ = 0;
+}
 
-void Satellite::computePseudorange(const GTime& rec_time, const Vector3d& receiver_pos, const Vector3d& receiver_vel, Vector2d& z) const
+void Satellite::update(const GTime &g, const Vector3d &rec_pos, const Vector3d &rec_vel)
+{
+  double dt = (g - t_last_udpate_).toSec();
+  t_last_udpate_ = g;
+}
+
+void Satellite::computeMeasurement(const GTime& rec_time, const Vector3d& receiver_pos, const Vector3d& receiver_vel, Vector3d& z) const
 {
     Vector3d sat_pos, sat_vel;
     Vector2d sat_clk;
@@ -80,7 +89,7 @@ double Satellite::ionosphericDelay(const GTime& gtime, const Vector3d& lla, cons
     double phi_m = phi_I + 0.064 * std::cos((lambda_I - 1.617) * M_PI);
 
     // local time at hte IPP
-    double t= 43200*lambda_I + gtime.sec;
+    double t= 43200*lambda_I + gtime.tow_sec;
     t -= std::floor(t/86400.0) * 86400.0;
 
     // Amplitude of Ionospheric Delay

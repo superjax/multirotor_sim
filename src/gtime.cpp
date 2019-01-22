@@ -7,7 +7,7 @@ GTime::GTime()
 
 GTime::GTime(int week, double sec) :
     week{week},
-    sec{sec}
+    tow_sec{sec}
 {}
 
 GTime::GTime(const DateTime &t)
@@ -24,7 +24,7 @@ GTime& GTime::operator= (const DateTime& t)
 GTime GTime::operator -(const GTime& gt2) const
 {
     int dweek = week - gt2.week;
-    double dsec = sec - gt2.sec;
+    double dsec = tow_sec - gt2.tow_sec;
 
     return GTime{dweek, dsec};
 }
@@ -32,7 +32,7 @@ GTime GTime::operator -(const GTime& gt2) const
 GTime GTime::operator +(const GTime& gt2) const
 {
     int nweek = week + gt2.week;
-    double nsec = sec + gt2.sec;
+    double nsec = tow_sec + gt2.tow_sec;
 
     if (nsec >= DateTime::SECONDS_IN_WEEK)
     {
@@ -44,7 +44,7 @@ GTime GTime::operator +(const GTime& gt2) const
 
 DateTime GTime::toDate() const
 {
-    double s_leap = sec - DateTime::LEAP_SECONDS;
+    double s_leap = tow_sec - DateTime::LEAP_SECONDS;
     int c = (int)(7*week + std::floor(s_leap/86400.0)+2444245.0) + 1537;
     int d = (int)((c-122.1)/365.25);
     int e = 365*d + d/4;
@@ -63,7 +63,7 @@ DateTime GTime::toDate() const
 
 double GTime::toSec() const
 {
-    return sec + DateTime::SECONDS_IN_WEEK * week;
+    return tow_sec + DateTime::SECONDS_IN_WEEK * week;
 }
 
 GTime GTime::operator+(const double& dsec)
@@ -75,10 +75,10 @@ GTime GTime::operator+(const double& dsec)
 
 GTime& GTime::operator +=(const double& dsec)
 {
-    sec += dsec;
-    if (sec > DateTime::SECONDS_IN_WEEK)
+    tow_sec += dsec;
+    if (tow_sec > DateTime::SECONDS_IN_WEEK)
     {
-        sec -= DateTime::SECONDS_IN_WEEK;
+        tow_sec -= DateTime::SECONDS_IN_WEEK;
         week += 1;
     }
     return *this;

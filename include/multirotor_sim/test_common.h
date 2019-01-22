@@ -3,7 +3,7 @@
 
 #include <Eigen/Core>
 
-#include "multirotor_sim/ephemeris.h"
+#include "multirotor_sim/satellite.h"
 #include "multirotor_sim/gtime.h"
 #include "multirotor_sim/datetime.h"
 #include "multirotor_sim/test_common.h"
