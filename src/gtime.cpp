@@ -5,7 +5,7 @@
 GTime::GTime()
 {}
 
-GTime::GTime(int week, double sec) :
+GTime::GTime(int64_t week, double sec) :
     week{week},
     tow_sec{sec}
 {}
@@ -23,7 +23,7 @@ GTime& GTime::operator= (const DateTime& t)
 
 GTime GTime::operator -(const GTime& gt2) const
 {
-    int dweek = week - gt2.week;
+    int64_t dweek = week - gt2.week;
     double dsec = tow_sec - gt2.tow_sec;
 
     return GTime{dweek, dsec};

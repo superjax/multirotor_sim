@@ -30,9 +30,12 @@ protected:
       eph.i0 =  0.961685061380;
       eph.OMG0 =  1.64046615454;
       eph.OMGd = -0.856928551657e-08;
+      sat.eph_.push_back(eph);
+
   }
+  eph_t eph;
   GTime time;
-  Satellite eph;
+  Satellite sat;
 };
 
 TEST_F (TestSatellite, CheckSatPositionVelocityClock)
@@ -55,7 +58,7 @@ TEST_F (TestSatellite, CheckSatPositionVelocityClock)
     oracle_clk_rate = (oracle_clock2 - oracle_clock) / dt;
 
     Vector2d clock;
-    eph.computePositionVelocityClock(time, new_pos, new_vel, clock);
+    sat.computePositionVelocityClock(time, new_pos, new_vel, clock);
 
     EXPECT_MAT_NEAR(oracle_pos, new_pos, 1e-5);
     EXPECT_MAT_NEAR(oracle_vel, new_vel, 1e-3);
@@ -70,7 +73,7 @@ TEST_F (TestSatellite, AzimuthElevationStraightUp)
 {
     Vector2d az_el, clock;
     Vector3d sat_pos, sat_vel;
-    eph.computePositionVelocityClock(time, sat_pos, sat_vel, clock);
+    sat.computePositionVelocityClock(time, sat_pos, sat_vel, clock);
     Vector3d sat_lla = WSG84::ecef2lla(sat_pos);
     Vector3d surface_lla = sat_lla;
     surface_lla(2) = 0;
@@ -78,7 +81,7 @@ TEST_F (TestSatellite, AzimuthElevationStraightUp)
 
     Vector3d los_ecef = sat_pos - surface_ecef;
 
-    eph.los2azimuthElevation(surface_ecef, los_ecef, az_el);
+    sat.los2azimuthElevation(surface_ecef, los_ecef, az_el);
 
     ASSERT_NEAR(az_el(1), M_PI/2.0, 1e-7);
 }
@@ -87,7 +90,7 @@ TEST_F (TestSatellite, AzimuthElevationProvo)
 {
     Vector2d az_el, clock;
     Vector3d sat_pos, sat_vel;
-    eph.computePositionVelocityClock(time, sat_pos, sat_vel, clock);
+    sat.computePositionVelocityClock(time, sat_pos, sat_vel, clock);
     Vector3d sat_lla = WSG84::ecef2lla(sat_pos);
 
     Vector3d provo_lla{40.246184 * DEG2RAD , -111.647769 * DEG2RAD, 1387.997511};
@@ -95,7 +98,7 @@ TEST_F (TestSatellite, AzimuthElevationProvo)
 
     Vector3d los_ecef = sat_pos - provo_ecef;
 
-    eph.los2azimuthElevation(provo_ecef, los_ecef, az_el);
+    sat.los2azimuthElevation(provo_ecef, los_ecef, az_el);
 
     ASSERT_NEAR(az_el(0), -1.09260980, 1e-8);
     ASSERT_NEAR(az_el(1), 1.18916781, 1e-8);
@@ -105,14 +108,14 @@ TEST_F (TestSatellite, IonoshereCalculation)
 {
     Vector2d az_el, clock;
     Vector3d sat_pos, sat_vel;
-    eph.computePositionVelocityClock(time, sat_pos, sat_vel, clock);
+    sat.computePositionVelocityClock(time, sat_pos, sat_vel, clock);
     Vector3d provo_lla{40.246184 * DEG2RAD , -111.647769 * DEG2RAD, 1387.997511};
     Vector3d provo_ecef = WSG84::lla2ecef(provo_lla);
     Vector3d los_ecef = sat_pos - provo_ecef;
-    eph.los2azimuthElevation(provo_ecef, los_ecef, az_el);
+    sat.los2azimuthElevation(provo_ecef, los_ecef, az_el);
 
     double oracle_ion_delay = ionmodel(time, provo_lla.data(), az_el.data());
-    double new_ion_delay = eph.ionosphericDelay(time, provo_lla, az_el);
+    double new_ion_delay = sat.ionosphericDelay(time, provo_lla, az_el);
 
     ionoutc_t ion = {true, true,
                      0.1118E-07,-0.7451E-08,-0.5961E-07, 0.1192E-06,
@@ -131,13 +134,13 @@ TEST_F (TestSatellite, PsuedorangeSim)
 
     Vector3d z;
 
-    eph.computeMeasurement(time, provo_ecef, rec_vel, z);
+    sat.computeMeasurement(time, provo_ecef, rec_vel, z);
 
     ionoutc_t ion = {true, true,
                      0.1118E-07,-0.7451E-08,-0.5961E-07, 0.1192E-06,
                      0.1167E+06,-0.2294E+06,-0.1311E+06, 0.1049E+07};
     range_t rho;
-    computeRange(&rho, eph, &ion, time, provo_ecef);
+    computeRange(&rho, sat, &ion, time, provo_ecef);
 
     EXPECT_NEAR(rho.range, z(0), 1e-5);
     EXPECT_NEAR(rho.rate, z(1), 1e-5);

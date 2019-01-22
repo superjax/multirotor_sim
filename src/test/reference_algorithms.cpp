@@ -10,7 +10,7 @@ using namespace Eigen;
 
 #define SQR(x) (x*x)
 
-void eph2pos(const GTime& t, const Satellite* eph, Vector3d& pos, double* dts)
+void eph2pos(const GTime& t, const eph_t* eph, Vector3d& pos, double* dts)
 {
     // From RTKLIB eph2pos() in ephemeris.c
     static const int MAX_ITER_KEPLER = 30;
@@ -52,6 +52,7 @@ void eph2pos(const GTime& t, const Satellite* eph, Vector3d& pos, double* dts)
 //    trace(4,"kepler: sat=%2d e=%8.5f n=%2d del=%10.3e\n",eph->sat,eph->e,n,E-Ek);
 
     u=atan2(sqrt(1.0-eph->e*eph->e)*sinE,cosE-eph->e)+eph->omg;
+
     r=eph->A*(1.0-eph->e*cosE);
     i=eph->i0+eph->idot*tk;
     sin2u=sin(2.0*u); cos2u=cos(2.0*u);
@@ -79,6 +80,7 @@ void eph2pos(const GTime& t, const Satellite* eph, Vector3d& pos, double* dts)
         pos[1]=x*sinO+y*cosi*cosO;
         pos[2]=y*sin(i);
 //    }
+
     tk= (t - eph->toc).toSec();
     *dts=eph->f0+eph->f1*tk+eph->f2*tk*tk;
 
@@ -234,7 +236,7 @@ double ionosphericDelay(const ionoutc_t *ionoutc, GTime g, double *llh, double *
 
     return (iono_delay);
 }
-void computeRange(range_t *rho, const Satellite& eph, ionoutc_t *ionoutc, GTime g, Vector3d& xyz)
+void computeRange(range_t *rho, Satellite& eph, ionoutc_t *ionoutc, GTime g, Vector3d& xyz)
 {
 
     Vector3d pos,vel,los;

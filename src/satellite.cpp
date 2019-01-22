@@ -17,7 +17,7 @@ void Satellite::update(const GTime &g, const Vector3d &rec_pos, const Vector3d &
   t_last_udpate_ = g;
 }
 
-void Satellite::computeMeasurement(const GTime& rec_time, const Vector3d& receiver_pos, const Vector3d& receiver_vel, Vector3d& z) const
+void Satellite::computeMeasurement(const GTime& rec_time, const Vector3d& receiver_pos, const Vector3d& receiver_vel, Vector3d& z)
 {
     Vector3d sat_pos, sat_vel;
     Vector2d sat_clk;
@@ -56,7 +56,7 @@ void Satellite::computeMeasurement(const GTime& rec_time, const Vector3d& receiv
     return;
 }
 
-void Satellite::los2azimuthElevation(const Vector3d& receiver_pos_ecef, const Vector3d& los_ecef, Vector2d& az_el) const
+void Satellite::los2azimuthElevation(const Vector3d& receiver_pos_ecef, const Vector3d& los_ecef, Vector2d& az_el)
 {
     xform::Xformd x_e2n = WSG84::x_ecef2ned(receiver_pos_ecef);
     Vector3d los_ned = x_e2n.q().rotp(los_ecef.normalized());
@@ -65,7 +65,7 @@ void Satellite::los2azimuthElevation(const Vector3d& receiver_pos_ecef, const Ve
     az_el(1) = q_los.pitch();
 }
 
-double Satellite::ionosphericDelay(const GTime& gtime, const Vector3d& lla, const Vector2d& az_el) const
+double Satellite::ionosphericDelay(const GTime& gtime, const Vector3d& lla, const Vector2d& az_el)
 {
     // Klobuchar Algorithm:
     // https://gssc.esa.int/navipedia/index.php/Klobuchar_Ionospheric_Model
@@ -119,18 +119,36 @@ double Satellite::ionosphericDelay(const GTime& gtime, const Vector3d& lla, cons
 }
 
 
-void Satellite::computePositionVelocityClock(const GTime& time, const Ref<Vector3d> &_pos, const Ref<Vector3d> &_vel, const Ref<Vector2d>& _clock) const
+bool Satellite::computePositionVelocityClock(const GTime& time, const Ref<Vector3d> &_pos, const Ref<Vector3d> &_vel, const Ref<Vector2d>& _clock)
 {
     // const-cast hackery to get around Ref
     Ref<Vector3d> pos = const_cast<Ref<Vector3d>&>(_pos);
     Ref<Vector3d> vel = const_cast<Ref<Vector3d>&>(_vel);
     Ref<Vector2d> clock = const_cast<Ref<Vector2d>&>(_clock);
 
+    // find the closest ephemeris
+    /// TODO make this more efficient
+    double min_dt = INFINITY;
+    for (int i = 0; i < eph_.size(); i++)
+    {
+      double dt = (time - eph_[i].toe).toSec();
+      if (std::abs(dt) < std::abs(min_dt))
+      {
+        min_dt = dt;
+        closest_eph_idx_ = i;
+      }
+    }
+    if (min_dt > MAXDTOE)
+      return false;
+
+    se = &eph_[closest_eph_idx_];
+
+
     // https://www.ngs.noaa.gov/gps-toolbox/bc_velo/bc_velo.c
-    double n0 = std::sqrt(GM_EARTH/(A*A*A));
-    double tk = (time - toe).toSec();
-    double n = n0 + deln;
-    double mk = M0 + n*tk;
+    double n0 = std::sqrt(GM_EARTH/(se->A*se->A*se->A));
+    double tk = min_dt;
+    double n = n0 + se->deln;
+    double mk = se->M0 + n*tk;
     double mkdot = n;
     double ek = mk;
     double ek_prev = 0.0;
@@ -139,33 +157,35 @@ void Satellite::computePositionVelocityClock(const GTime& time, const Ref<Vector
     while (ek - ek_prev > 1e-8 && i < 7)
     {
         ek_prev = ek;
-        ek = mk + e*std::sin(ek);
+        ek = mk + se->e*std::sin(ek);
         i++;
     }
     double sek = std::sin(ek);
     double cek = std::cos(ek);
 
-    double ekdot = mkdot/(1.0 - e * cek);
 
-    double tak = std::atan2(std::sqrt(1.0-e*e) * sek, cek - e);
-    double takdot = sek*ekdot*(1.0+e*std::cos(tak)) / (std::sin(tak)*(1.0-e*cek));
+    double ekdot = mkdot/(1.0 - se->e * cek);
 
-    double phik = tak + omg;
+    double tak = std::atan2(std::sqrt(1.0-se->e*se->e) * sek, cek - se->e);
+    double takdot = sek*ekdot*(1.0+se->e*std::cos(tak)) / (std::sin(tak)*(1.0-se->e*cek));
+
+
+    double phik = tak + se->omg;
     double sphik2 = std::sin(2.0 * phik);
     double cphik2 = std::cos(2.0 * phik);
-    double corr_u = cus * sphik2 + cuc * cphik2;
-    double corr_r = crs * sphik2 + crc * cphik2;
-    double corr_i = cis * sphik2 + cic * cphik2;
+    double corr_u = se->cus * sphik2 + se->cuc * cphik2;
+    double corr_r = se->crs * sphik2 + se->crc * cphik2;
+    double corr_i = se->cis * sphik2 + se->cic * cphik2;
     double uk = phik + corr_u;
-    double rk = A*(1.0 - e*cek) + corr_r;
-    double ik = i0 + idot*tk + corr_i;
+    double rk = se->A*(1.0 - se->e*cek) + corr_r;
+    double ik = se->i0 + se->idot*tk + corr_i;
 
     double s2uk = std::sin(2.0*uk);
     double c2uk = std::cos(2.0*uk);
 
-    double ukdot = takdot + 2.0 * (cus * c2uk - cuc*s2uk) * takdot;
-    double rkdot = A * e * sek * n / (1.0 - e * cek) + 2.0 * (crs * c2uk - crc * s2uk) * takdot;
-    double ikdot = idot + (cis * c2uk - cic * s2uk) * 2.0 * takdot;
+    double ukdot = takdot + 2.0 * (se->cus * c2uk - se->cuc*s2uk) * takdot;
+    double rkdot = se->A * se->e * sek * n / (1.0 - se->e * cek) + 2.0 * (se->crs * c2uk - se->crc * s2uk) * takdot;
+    double ikdot = se->idot + (se->cis * c2uk - se->cic * s2uk) * 2.0 * takdot;
 
     double cuk = std::cos(uk);
     double suk = std::sin(uk);
@@ -176,8 +196,8 @@ void Satellite::computePositionVelocityClock(const GTime& time, const Ref<Vector
     double xpkdot = rkdot * cuk - ypk * ukdot;
     double ypkdot = rkdot * suk + xpk * ukdot;
 
-    double omegak = OMG0 + (OMGd - OMEGA_EARTH) * tk - OMEGA_EARTH * toes;
-    double omegakdot = OMGd - OMEGA_EARTH;
+    double omegak = se->OMG0 + (se->OMGd - OMEGA_EARTH) * tk - OMEGA_EARTH * se->toes;
+    double omegakdot = se->OMGd - OMEGA_EARTH;
 
     double cwk = std::cos(omegak);
     double swk = std::sin(omegak);
@@ -194,12 +214,18 @@ void Satellite::computePositionVelocityClock(const GTime& time, const Ref<Vector
             + ( xpk*omegakdot + ypkdot*cik - ypk*sik*ikdot )*cwk;
     vel.z() = ypkdot*sik + ypk*cik*ikdot;
 
-    tk = (time - toc).toSec();
-    double dts = f0 + f1*tk + f2*tk*tk;
+    tk = (time - se->toc).toSec();
+    double dts = se->f0 + se->f1*tk + se->f2*tk*tk;
 
     // Correct for relativistic effects on the satellite clock
-    dts -= 2.0*std::sqrt(GM_EARTH * A) * e * sek/(C_LIGHT * C_LIGHT);
+    dts -= 2.0*std::sqrt(GM_EARTH * se->A) * se->e * sek/(C_LIGHT * C_LIGHT);
 
     clock(0) = dts; // satellite clock bias
-    clock(1) = f1 + f2*tk; // satellite drift rate
+    clock(1) = se->f1 + se->f2*tk; // satellite drift rate
+
+    return true;
+}
+
+void Satellite::readFromRawFile(std::string filename)
+{
 }
