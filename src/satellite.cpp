@@ -19,6 +19,9 @@ void Satellite::update(const GTime &g, const Vector3d &rec_pos, const Vector3d &
 
 void Satellite::addEphemeris(const eph_t &eph)
 {
+  ASSERT((eph_.size() > 0) ? eph.toe > eph_.back().toe : true,
+         "tried to push ephemeris out of order");
+
   eph_.push_back(eph);
   if (!se)
   {

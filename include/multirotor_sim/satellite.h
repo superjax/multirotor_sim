@@ -4,6 +4,19 @@
 
 #include <Eigen/Core>
 
+#ifndef NDEBUG
+#define ASSERT(condition, ...) \
+    do { \
+        if (! (condition)) { \
+            std::cerr << "Assertion `" #condition "` failed in " << __FILE__ \
+                      << " line " << __LINE__ << ": " << printf(__VA_ARGS__) << std::endl; \
+            assert(condition); \
+        } \
+    } while (false)
+#else
+#   define ASSERT(...)
+#endif
+
 #include "multirotor_sim/datetime.h"
 #include "multirotor_sim/gtime.h"
 

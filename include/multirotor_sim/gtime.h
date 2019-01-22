@@ -19,5 +19,10 @@ public:
     GTime operator +(const double& tow_sec);
     GTime& operator +=(const double& tow_sec);
     DateTime toDate() const;
+    bool operator >(const GTime& g2) const;
+    bool operator >=(const GTime& g2) const;
+    bool operator <(const GTime& g2) const;
+    bool operator <=(const GTime& g2) const;
+    bool operator ==(const GTime& g2) const;
     double toSec() const;
 };

@@ -42,6 +42,51 @@ GTime GTime::operator +(const GTime& gt2) const
     return GTime{nweek, nsec};
 }
 
+bool GTime::operator >(const GTime& g2) const
+{
+  if (week > g2.week)
+    return true;
+  else if (week == g2.week)
+    return tow_sec > g2.tow_sec;
+  else
+    return false;
+}
+
+bool GTime::operator >=(const GTime& g2) const
+{
+  if (week > g2.week)
+    return true;
+  else if (week == g2.week)
+    return tow_sec >= g2.tow_sec;
+  else
+    return false;
+}
+
+bool GTime::operator <(const GTime& g2) const
+{
+  if (week < g2.week)
+    return true;
+  else if (week == g2.week)
+    return tow_sec < g2.tow_sec;
+  else
+    return false;
+}
+
+bool GTime::operator <=(const GTime& g2) const
+{
+  if (week < g2.week)
+    return true;
+  else if (week == g2.week)
+    return tow_sec <= g2.tow_sec;
+  else
+    return false;
+}
+
+bool GTime::operator ==(const GTime& g2) const
+{
+  return week == g2.week && tow_sec == g2.tow_sec;
+}
+
 DateTime GTime::toDate() const
 {
     double s_leap = tow_sec - DateTime::LEAP_SECONDS;
