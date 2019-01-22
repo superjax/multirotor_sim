@@ -6,12 +6,17 @@ class GTime;
 class DateTime
 {
 public:
-    static constexpr int SECONDS_IN_WEEK = 604800.0;
-    static constexpr int SECONDS_IN_HALF_WEEK = 302400.0;
-    static constexpr int SECONDS_IN_DAY = 86400.0;
-    static constexpr int SECONDS_IN_HOUR = 3600.0;
-    static constexpr int SECONDS_IN_MINUTE = 60.0;
-    static constexpr int LEAP_SECONDS = 18;
+
+    enum
+    {
+      SECONDS_IN_WEEK = 604800,
+      SECONDS_IN_HALF_WEEK = 302400,
+      SECONDS_IN_DAY = 86400,
+      SECONDS_IN_HOUR = 3600,
+      SECONDS_IN_MINUTE = 60,
+      LEAP_SECONDS = 18,
+      GPS_UTC_OFFSET_SEC = 315964800,
+    };
 
     int year;
     int month;

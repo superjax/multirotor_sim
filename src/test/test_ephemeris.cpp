@@ -3,15 +3,20 @@
 #include "multirotor_sim/satellite.h"
 #include "multirotor_sim/test_common.h"
 #include "multirotor_sim/wsg84.h"
+#include "multirotor_sim/datetime.h"
 
 class TestSatellite : public ::testing::Test
 {
 protected:
+  TestSatellite() :
+    sat(1)
+  {}
   void SetUp() override
     {
       time.week = 86400.00 / DateTime::SECONDS_IN_WEEK;
       time.tow_sec = 86400.00 - (time.week * DateTime::SECONDS_IN_WEEK);
 
+      eph.sat = 1;
       eph.A = 5153.79589081 * 5153.79589081;
       eph.toe.week = 93600.0 / DateTime::SECONDS_IN_WEEK;
       eph.toe.tow_sec = 93600.0 - (eph.toe.week * DateTime::SECONDS_IN_WEEK);
@@ -144,4 +149,116 @@ TEST_F (TestSatellite, PsuedorangeSim)
 
     EXPECT_NEAR(rho.range, z(0), 1e-5);
     EXPECT_NEAR(rho.rate, z(1), 1e-5);
+}
+
+TEST (Satellite, ReadFromFile)
+{
+  std::vector<int> sat_ids = {3, 8, 10, 11, 14, 18, 22, 31, 32, 61, 62, 64, 67, 83, 84};
+  std::vector<int> eph_counts = {4, 4, 14, 9, 14, 14, 5, 14, 14, 21, 39, 39, 24, 18, 39};
+  std::vector<Satellite> satellites;
+  for (int i = 0; i < sat_ids.size(); i++)
+  {
+    Satellite sat(sat_ids[i]);
+    sat.readFromRawFile("../sample/eph.dat");
+
+    EXPECT_GT(sat.eph_.size(), 0);
+  }
+}
+
+TEST (Satellite, ReadFromFileCheckTime)
+{
+  std::vector<int> sat_ids = {3, 8, 10, 11, 14, 18, 22, 31, 32, 61, 62, 64, 67, 83, 84};
+  std::vector<Satellite> satellites;
+
+  DateTime log_time;
+  log_time.year = 2018;
+  log_time.month = 11;
+  log_time.day = 5;
+  log_time.hour = 14 + 7; // convert to UTC from MST
+  log_time.minute = 50;
+  log_time.second = 28;
+  GTime log_start = log_time;
+
+  for (int i = 0; i < sat_ids.size(); i++)
+  {
+    Satellite sat(sat_ids[i]);
+    sat.readFromRawFile("../sample/eph.dat");
+    EXPECT_LE(std::abs((log_start - sat.eph_[0].toe).toSec()), Satellite::MAXDTOE);
+  }
+}
+
+TEST (Satellite, ReadFromFileCheckPositions)
+{
+  std::vector<int> sat_ids = {3, 8, 10, 11, 14, 18, 22, 31, 32};
+  std::vector<Satellite> satellites;
+
+  MatrixXd rtklib_positions(9,3);
+  rtklib_positions <<
+           -1.979905544756119,   0.839505069743874,   1.550338475517639,
+           -2.550826868235846,  -0.608941404478547,  -0.468480492854142,
+            0.903365875083797,  -2.301372567736093,   0.949931884053757,
+           -2.153305827938237,  -0.469592151583447,   1.412499785966901,
+           -0.716190834612790,  -1.596467415879906,   2.033341931482639,
+           -1.776768089932820,  -1.220720590953266,   1.513509991901378,
+           -1.823263124705158,   0.093328649658817,   1.951093711022132,
+           -0.647831455760295,  -2.514495751363997,   0.437098017226730,
+            0.136331156293721,  -1.525421674314513,   2.174087630568290;
+  rtklib_positions *= 1e7;
+  rtklib_positions.transposeInPlace();
+
+  GTime log_start = GTime::fromUTC(1541454646,  0.993);
+  log_start += 200;
+
+  Vector3d receiver_pos {-909.91610015, -2292.47703591,  2073.73897319};
+
+  for (int i = 0; i < sat_ids.size(); i++)
+  {
+    Satellite sat(sat_ids[i]);
+    sat.readFromRawFile("../sample/eph.dat");
+
+    Vector3d pos, vel;
+    Vector2d clock, az_el;
+    sat.computePositionVelocityClock(log_start, pos, vel, clock);
+
+    EXPECT_MAT_NEAR(rtklib_positions.col(i), pos, 4e5);
+  }
+}
+
+TEST (Satellite, ReadFromFileCheckAzEl)
+{
+  std::vector<int> sat_ids = {3, 8, 10, 11, 14, 18, 22, 31, 32};
+  std::vector<Satellite> satellites;
+
+  MatrixXd rtklib_positions(9,3);
+  rtklib_positions <<
+           -1.979905544756119,   0.839505069743874,   1.550338475517639,
+           -2.550826868235846,  -0.608941404478547,  -0.468480492854142,
+            0.903365875083797,  -2.301372567736093,   0.949931884053757,
+           -2.153305827938237,  -0.469592151583447,   1.412499785966901,
+           -0.716190834612790,  -1.596467415879906,   2.033341931482639,
+           -1.776768089932820,  -1.220720590953266,   1.513509991901378,
+           -1.823263124705158,   0.093328649658817,   1.951093711022132,
+           -0.647831455760295,  -2.514495751363997,   0.437098017226730,
+            0.136331156293721,  -1.525421674314513,   2.174087630568290;
+  rtklib_positions *= 1e7;
+  rtklib_positions.transposeInPlace();
+
+  GTime log_start = GTime::fromUTC(1541454646,  0.993);
+  log_start += 200;
+
+  Vector3d receiver_pos {-1798904.13, -4532227.1 ,  4099781.95};
+
+  for (int i = 0; i < sat_ids.size(); i++)
+  {
+    Satellite sat(sat_ids[i]);
+    sat.readFromRawFile("../sample/eph.dat");
+
+    Vector3d pos, vel;
+    Vector2d clock, az_el;
+    sat.computePositionVelocityClock(log_start, pos, vel, clock);
+    Vector3d los_ecef = pos - receiver_pos;
+    sat.los2azimuthElevation(receiver_pos, los_ecef, az_el);
+
+    EXPECT_GE(az_el(1), -.2);
+  }
 }

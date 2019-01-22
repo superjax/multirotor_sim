@@ -128,3 +128,12 @@ GTime& GTime::operator +=(const double& dsec)
     }
     return *this;
 }
+
+GTime GTime::fromUTC(int time, double sec)
+{
+  GTime out;
+  out.week = time - DateTime::GPS_UTC_OFFSET_SEC;
+  out.tow_sec = out.week % DateTime::SECONDS_IN_WEEK - DateTime::LEAP_SECONDS;
+  out.week /= DateTime::SECONDS_IN_WEEK;
+  return out;
+}

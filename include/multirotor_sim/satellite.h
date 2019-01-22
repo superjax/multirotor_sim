@@ -1,6 +1,8 @@
 #pragma once
 #include <stdint.h>
 #include <vector>
+#include <fstream>
+#include <variant>
 
 #include <Eigen/Core>
 
@@ -62,13 +64,13 @@ using namespace Eigen;
 class Satellite
 {
 public:
-    static constexpr double GM_EARTH = 3.986005e14;
-    static constexpr double OMEGA_EARTH = 7.2921151467e-5;
-    static constexpr double PI = 3.1415926535898;
-    static constexpr double C_LIGHT = 299792458.0;
-    static constexpr double MAXDTOE = 7200.0; // max time difference to GPS Toe (s)
+    static const double GM_EARTH;
+    static const double OMEGA_EARTH;
+    static const double PI;
+    static const double C_LIGHT;
+    static const double MAXDTOE;
 
-    Satellite();
+    Satellite(int id);
     void update(const GTime &g, const Vector3d& rec_pos, const Vector3d& rec_vel);
     bool computePositionVelocityClock(const GTime &g, const Ref<Vector3d> &pos, const Ref<Vector3d> &vel, const Ref<Vector2d> &clock);
     void computeMeasurement(const GTime& rec_time, const Vector3d& receiver_pos, const Vector3d &receiver_vel, Vector3d &z);
@@ -78,7 +80,7 @@ public:
     void readFromRawFile(std::string filename);
     void addEphemeris(const eph_t& eph);
 
-
+    int id_;
     GTime t_last_udpate_;
     Vector2d az_el_;
     Vector3d rec_pos_;

@@ -1,4 +1,4 @@
-#include <stdio.h>
+﻿#include <variant>
 #include <Eigen/Core>
 
 #include "multirotor_sim/satellite.h"
@@ -6,9 +6,17 @@
 
 using namespace Eigen;
 
-Satellite::Satellite()
+const double Satellite::GM_EARTH = 3.986005e14;
+const double Satellite::OMEGA_EARTH = 7.2921151467e-5;
+const double Satellite::PI = 3.1415926535898;
+const double Satellite::C_LIGHT = 299792458.0;
+const double Satellite::MAXDTOE = 7200.0; // max time difference to GPS Toe (s)
+
+Satellite::Satellite(int id)
 {
   carrier_phase_ = 0;
+  id_ = id;
+  closest_eph_idx_ = 0;
 }
 
 void Satellite::update(const GTime &g, const Vector3d &rec_pos, const Vector3d &rec_vel)
@@ -19,10 +27,20 @@ void Satellite::update(const GTime &g, const Vector3d &rec_pos, const Vector3d &
 
 void Satellite::addEphemeris(const eph_t &eph)
 {
-  ASSERT((eph_.size() > 0) ? eph.toe > eph_.back().toe : true,
+  ASSERT((eph.sat == id_),
+         "Tried to add ephemeris from a different satellite");
+  ASSERT((eph_.size() > 0) ? eph.toe >= eph_.back().toe : true,
          "tried to push ephemeris out of order");
 
-  eph_.push_back(eph);
+  if (eph_.size() > 0 && (eph.toe == eph_.back().toe))
+  {
+    eph_.back() = eph;
+  }
+  else
+  {
+    eph_.push_back(eph);
+  }
+
   if (!se)
   {
     se = &eph_[0];
@@ -266,4 +284,27 @@ bool Satellite::computePositionVelocityClock(const GTime& time, const Ref<Vector
 
 void Satellite::readFromRawFile(std::string filename)
 {
+  std::ifstream file(filename, std::ios::in | std::ios::binary);
+  const int size = sizeof(eph_t);
+  char buf[size];
+  eph_t* eph = (eph_t*)buf;
+
+  if (!file.is_open())
+  {
+    std::cout << "unable to open " << filename << std::endl;
+    return;
+  }
+
+  while (!file.eof())
+  {
+    file.read(buf, size);
+    if (!file)
+      break;
+    eph->toe.week = eph->toe.week - DateTime::GPS_UTC_OFFSET_SEC;
+    eph->toe.tow_sec = eph->toe.week % DateTime::SECONDS_IN_WEEK - DateTime::LEAP_SECONDS;
+    eph->toe.week /= DateTime::SECONDS_IN_WEEK;
+    if (eph->sat == id_)
+      addEphemeris(*eph);
+  }
+
 }

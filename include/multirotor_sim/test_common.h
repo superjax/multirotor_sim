@@ -27,8 +27,8 @@ do{  \
 do{  \
     EXPECT_EQ((mat1).rows(), (mat2).rows()); \
     EXPECT_EQ((mat1).cols(), (mat2).cols()); \
-    for (int r = 0; r < (mat1).rows(); r++) { \
-        for (int c = 0; c < (mat1).cols(); c++) {\
+    for (int r = 0; r < (mat2).rows(); r++) { \
+        for (int c = 0; c < (mat2).cols(); c++) {\
             EXPECT_NEAR((mat1)(r,c), (mat2)(r,c), tol); \
         }\
     } \
