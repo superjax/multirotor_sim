@@ -6,9 +6,9 @@
 
 using namespace Eigen;
 
-Ephemeris::Ephemeris() {}
+Satellite::Satellite() {}
 
-void Ephemeris::computePseudorange(const GTime& rec_time, const Vector3d& receiver_pos, const Vector3d& receiver_vel, Vector2d& z) const
+void Satellite::computePseudorange(const GTime& rec_time, const Vector3d& receiver_pos, const Vector3d& receiver_vel, Vector2d& z) const
 {
     Vector3d sat_pos, sat_vel;
     Vector2d sat_clk;
@@ -47,7 +47,7 @@ void Ephemeris::computePseudorange(const GTime& rec_time, const Vector3d& receiv
     return;
 }
 
-void Ephemeris::los2azimuthElevation(const Vector3d& receiver_pos_ecef, const Vector3d& los_ecef, Vector2d& az_el) const
+void Satellite::los2azimuthElevation(const Vector3d& receiver_pos_ecef, const Vector3d& los_ecef, Vector2d& az_el) const
 {
     xform::Xformd x_e2n = WSG84::x_ecef2ned(receiver_pos_ecef);
     Vector3d los_ned = x_e2n.q().rotp(los_ecef.normalized());
@@ -56,7 +56,7 @@ void Ephemeris::los2azimuthElevation(const Vector3d& receiver_pos_ecef, const Ve
     az_el(1) = q_los.pitch();
 }
 
-double Ephemeris::ionosphericDelay(const GTime& gtime, const Vector3d& lla, const Vector2d& az_el) const
+double Satellite::ionosphericDelay(const GTime& gtime, const Vector3d& lla, const Vector2d& az_el) const
 {
     // Klobuchar Algorithm:
     // https://gssc.esa.int/navipedia/index.php/Klobuchar_Ionospheric_Model
@@ -110,7 +110,7 @@ double Ephemeris::ionosphericDelay(const GTime& gtime, const Vector3d& lla, cons
 }
 
 
-void Ephemeris::computePositionVelocityClock(const GTime& time, const Ref<Vector3d> &_pos, const Ref<Vector3d> &_vel, const Ref<Vector2d>& _clock) const
+void Satellite::computePositionVelocityClock(const GTime& time, const Ref<Vector3d> &_pos, const Ref<Vector3d> &_vel, const Ref<Vector2d>& _clock) const
 {
     // const-cast hackery to get around Ref
     Ref<Vector3d> pos = const_cast<Ref<Vector3d>&>(_pos);

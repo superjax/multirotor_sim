@@ -10,7 +10,7 @@ using namespace Eigen;
 
 #define SQR(x) (x*x)
 
-void eph2pos(const GTime& t, const Ephemeris* eph, Vector3d& pos, double* dts)
+void eph2pos(const GTime& t, const Satellite* eph, Vector3d& pos, double* dts)
 {
     // From RTKLIB eph2pos() in ephemeris.c
     static const int MAX_ITER_KEPLER = 30;
@@ -234,7 +234,7 @@ double ionosphericDelay(const ionoutc_t *ionoutc, GTime g, double *llh, double *
 
     return (iono_delay);
 }
-void computeRange(range_t *rho, const Ephemeris& eph, ionoutc_t *ionoutc, GTime g, Vector3d& xyz)
+void computeRange(range_t *rho, const Satellite& eph, ionoutc_t *ionoutc, GTime g, Vector3d& xyz)
 {
 
     Vector3d pos,vel,los;
