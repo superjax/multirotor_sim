@@ -61,7 +61,10 @@ public:
     void computeMeasurement(const GTime& rec_time, const Vector3d& receiver_pos, const Vector3d &receiver_vel, Vector3d &z);
     void los2azimuthElevation(const Vector3d& receiver_pos_ecef, const Vector3d& los_ecef, Vector2d& az_el);
     double ionosphericDelay(const GTime &t, const Vector3d& lla, const Vector2d& az_el);
+    double selectEphemeris(const GTime& time);
     void readFromRawFile(std::string filename);
+    void addEphemeris(const eph_t& eph);
+
 
     GTime t_last_udpate_;
     Vector2d az_el_;
@@ -71,7 +74,7 @@ public:
     Vector3d sat_vel_;
 
     std::vector<eph_t> eph_;
-    const eph_t* se;
+    const eph_t* se = nullptr;
     int closest_eph_idx_;
 
     double carrier_phase_;

@@ -30,7 +30,7 @@ protected:
       eph.i0 =  0.961685061380;
       eph.OMG0 =  1.64046615454;
       eph.OMGd = -0.856928551657e-08;
-      sat.eph_.push_back(eph);
+      sat.addEphemeris(eph);
 
   }
   eph_t eph;

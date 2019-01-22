@@ -17,6 +17,15 @@ void Satellite::update(const GTime &g, const Vector3d &rec_pos, const Vector3d &
   t_last_udpate_ = g;
 }
 
+void Satellite::addEphemeris(const eph_t &eph)
+{
+  eph_.push_back(eph);
+  if (!se)
+  {
+    se = &eph_[0];
+  }
+}
+
 void Satellite::computeMeasurement(const GTime& rec_time, const Vector3d& receiver_pos, const Vector3d& receiver_vel, Vector3d& z)
 {
     Vector3d sat_pos, sat_vel;
@@ -118,6 +127,45 @@ double Satellite::ionosphericDelay(const GTime& gtime, const Vector3d& lla, cons
         return C_LIGHT * F * 5e-9;
 }
 
+double Satellite::selectEphemeris(const GTime &time)
+{
+  // find the closest ephemeris
+  double dt = INFINITY;
+  assert(eph_.size() > 0);
+  while (1)
+  {
+    dt = (time - se->toe).toSec();
+    if (dt < 0 && (closest_eph_idx_ > 0))
+    {
+      double prev_dt = (time - eph_[closest_eph_idx_-1].toe).toSec();
+      if (std::abs(prev_dt) < std::abs(dt))
+      {
+        dt = prev_dt;
+        closest_eph_idx_ -= 1;
+        se = &eph_[closest_eph_idx_];
+      }
+      else
+        break;
+    }
+
+    else if (dt > 0 && (closest_eph_idx_ < eph_.size()-1))
+    {
+      double next_dt = (time - eph_[closest_eph_idx_+1].toe).toSec();
+      if (std::abs(next_dt) < std::abs(dt))
+      {
+        dt = next_dt;
+        closest_eph_idx_ += 1;
+        se = &eph_[closest_eph_idx_];
+      }
+      else
+        break;
+    }
+    else
+      break;
+  }
+  return dt;
+}
+
 
 bool Satellite::computePositionVelocityClock(const GTime& time, const Ref<Vector3d> &_pos, const Ref<Vector3d> &_vel, const Ref<Vector2d>& _clock)
 {
@@ -126,27 +174,14 @@ bool Satellite::computePositionVelocityClock(const GTime& time, const Ref<Vector
     Ref<Vector3d> vel = const_cast<Ref<Vector3d>&>(_vel);
     Ref<Vector2d> clock = const_cast<Ref<Vector2d>&>(_clock);
 
-    // find the closest ephemeris
-    /// TODO make this more efficient
-    double min_dt = INFINITY;
-    for (int i = 0; i < eph_.size(); i++)
-    {
-      double dt = (time - eph_[i].toe).toSec();
-      if (std::abs(dt) < std::abs(min_dt))
-      {
-        min_dt = dt;
-        closest_eph_idx_ = i;
-      }
-    }
-    if (min_dt > MAXDTOE)
+    double dt = selectEphemeris(time);
+
+    if (dt > MAXDTOE)
       return false;
-
-    se = &eph_[closest_eph_idx_];
-
 
     // https://www.ngs.noaa.gov/gps-toolbox/bc_velo/bc_velo.c
     double n0 = std::sqrt(GM_EARTH/(se->A*se->A*se->A));
-    double tk = min_dt;
+    double tk = dt;
     double n = n0 + se->deln;
     double mk = se->M0 + n*tk;
     double mkdot = n;
