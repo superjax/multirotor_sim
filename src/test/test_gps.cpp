@@ -112,7 +112,6 @@ TEST (GPS, lla2ned)
 class GpsTestEstimator : public EstimatorBase
 {
 public:
-    void load(const std::string filename) override {}
     void imuCallback(const double& t, const Vector6d& z, const Matrix6d& R) override {}
     void altCallback(const double& t, const Vector1d& z, const Matrix1d& R) override {}
     void posCallback(const double& t, const Vector3d& z, const Matrix3d& R) override {}

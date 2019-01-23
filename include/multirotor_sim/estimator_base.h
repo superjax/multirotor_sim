@@ -10,9 +10,6 @@ namespace  multirotor_sim
 class EstimatorBase
 {
 public:
-    // filename - yaml file containing relevant parameters
-    virtual void load(const std::string filename) = 0;
-
     // t - current time (seconds)
     // z - imu measurement [acc, gyro]
     // R - imu covariance
