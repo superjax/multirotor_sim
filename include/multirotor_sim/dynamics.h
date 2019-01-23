@@ -63,7 +63,7 @@ public:
   const Eigen::Vector3d& get_wind() const { return vw_; }
   Vector3d get_imu_accel() const;
   Vector3d get_imu_gyro() const;
-  void compute_imu(const Vector4d& u);
+  void compute_imu();
   
   // States and RK4 Workspace
   State x_, x2_, x3_, x4_;

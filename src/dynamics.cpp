@@ -84,6 +84,7 @@ void Dynamics::run(const double dt, const Vector4d &u)
 
   // Copy output
   x_ += dx_;
+  compute_imu();
 
   // Update wind velocity for next iteration
   if (wind_enabled_)
@@ -104,9 +105,8 @@ Vector3d Dynamics::get_imu_gyro() const
   return imu_.segment<3>(GYRO);
 }
 
-void Dynamics::compute_imu(const Vector4d &u)
+void Dynamics::compute_imu()
 {
-  f(x_, u, dx_);
   imu_.segment<3>(ACC) = q_b_u_.rotp(dx_.v + x_.w.cross(x_.v) + x_.w.cross(x_.w.cross(p_b_u_)) + dx_.w.cross(p_b_u_) - x_.q.rotp(gravity_));
   imu_.segment<3>(GYRO) = q_b_u_.rotp(x_.w);
 }

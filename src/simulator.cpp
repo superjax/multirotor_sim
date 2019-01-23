@@ -102,7 +102,6 @@ void Simulator::load(string filename)
     init_gps();
 
   // Load sub-class parameters
-  cont_.load(filename);
   if (features_enabled_)
     env_.load(filename);
   dyn_.load(filename);
@@ -121,10 +120,9 @@ bool Simulator::run()
   if (t_ < tmax_ - dt_ / 2.0) // Subtract half time step to prevent occasional extra iteration
   {
     // Propagate forward in time and get new control input and true acceleration
-    dyn_.run(dt_, u_);
     t_ += dt_;
     cont_.computeControl(t_, dyn_.get_state(), traj_.getCommandedState(t_), u_);
-    dyn_.compute_imu(u_); // True acceleration is based on current control input
+    dyn_.run(dt_, u_);
     if (prog_indicator_)
         prog_.print(t_/dt_);
     update_measurements();
@@ -175,14 +173,6 @@ void Simulator::init_imu()
     imu_R_.topLeftCorner<3,3>() = accel_noise * accel_noise * I_3x3;
     imu_R_.bottomRightCorner<3,3>() = gyro_noise * gyro_noise * I_3x3;
     last_imu_update_ = 0.0;
-
-    // Compute initial control and corresponding acceleration
-    cont_.computeControl(t_, dyn_.get_state(), traj_.getCommandedState(t_), u_);
-    dyn_.compute_imu(u_);
-    imu_.segment<3>(0) = dyn_.get_imu_accel() + accel_bias_ + accel_noise_ - multirotor_sim::gravity_;
-    imu_.segment<3>(3) = dyn_.get_state().w + gyro_bias_ + gyro_noise_;
-    imu_prev_.setZero();
-    imu_prev_.segment<3>(0) = -multirotor_sim::gravity_;
 }
 
 
@@ -208,7 +198,6 @@ void Simulator::init_camera()
     // Depth
     double depth_noise;
     get_yaml_node("use_depth_truth", param_filename_, use_depth_truth_);
-    get_yaml_node("init_depth", param_filename_, init_depth_);
     get_yaml_node("depth_update_rate", param_filename_, depth_update_rate_);
     get_yaml_node("depth_noise_stdev", param_filename_, depth_noise);
     get_yaml_node("feat_move_prob", param_filename_, feat_move_prob_);
@@ -259,7 +248,7 @@ void Simulator::init_truth()
 {
     // Truth
     double att_noise, pos_noise;
-    get_yaml_node("truth_update_rate", param_filename_, truth_update_rate_);
+    get_yaml_node("truth_update_rate", param_filename_, mocap_update_rate_);
     get_yaml_node("use_attitude_truth", param_filename_, use_attitude_truth_);
     get_yaml_node("use_position_truth", param_filename_, use_position_truth_);
     get_yaml_node("attitude_noise_stdev", param_filename_, att_noise);
@@ -337,7 +326,6 @@ void Simulator::update_imu_meas()
     {
       double dt = t_ - last_imu_update_;
       last_imu_update_ = t_;
-      imu_prev_ = imu_;
 
       // Bias random walks and IMU noise
       if (!use_accel_truth_)
@@ -356,11 +344,12 @@ void Simulator::update_imu_meas()
       }
 
       // Populate accelerometer and gyro measurements
-      imu_.segment<3>(0) = dyn_.get_imu_accel() + accel_bias_ + accel_noise_;
-      imu_.segment<3>(3) = dyn_.get_imu_gyro() + gyro_bias_ + gyro_noise_;
+      Vector6d imu;
+      imu.segment<3>(0) = dyn_.get_imu_accel() + accel_bias_ + accel_noise_;
+      imu.segment<3>(3) = dyn_.get_imu_gyro() + gyro_bias_ + gyro_noise_;
 
       for (std::vector<EstimatorBase*>::iterator it = est_.begin(); it != est_.end(); it++)
-          (*it)->imuCallback(t_, imu_, imu_R_);
+          (*it)->imuCallback(t_, imu, imu_R_);
     }
 }
 
@@ -463,7 +452,7 @@ void Simulator::update_alt_meas()
 
 void Simulator::update_mocap_meas()
 {
-    if (fabs(t_ - last_truth_update_ - 1.0/truth_update_rate_) < 0.0005)
+    if (fabs(t_ - last_truth_update_ - 1.0/mocap_update_rate_) < 0.0005)
     {
       measurement_t att_meas;
       att_meas.t = t_ - mocap_time_offset_;

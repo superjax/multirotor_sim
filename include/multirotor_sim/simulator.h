@@ -245,8 +245,6 @@ public:
   normal_distribution<double> normal_;
 
   // IMU
-  Vector6d imu_; // Vector containing [accel;gyro]
-  Vector6d imu_prev_; // Previous version for propagation
   Quatd q_b_u_;
   Vector3d p_b_u_;
 
@@ -301,7 +299,6 @@ public:
   // Depth
   bool depth_enabled_;
   bool use_depth_truth_;
-  bool init_depth_;
   Matrix1d depth_R_;
   double depth_update_rate_; // determines how often to generate an altitude measurement
   double last_depth_update_;
@@ -318,7 +315,7 @@ public:
   double vo_translation_noise_stdev_;
   double vo_rotation_noise_stdev_;
 
-  // Truth
+  // Motion Capture
   bool pos_enabled_;
   bool att_enabled_;
   Quatd q_b_m_;
@@ -327,7 +324,7 @@ public:
   Matrix3d pos_R_;
   bool use_attitude_truth_;
   bool use_position_truth_;
-  double truth_update_rate_; // determines how often to supply truth measurements
+  double mocap_update_rate_; // determines how often to supply truth measurements
   double attitude_noise_stdev_;
   double position_noise_stdev_;
   double last_truth_update_;

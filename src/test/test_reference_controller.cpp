@@ -85,7 +85,7 @@ protected:
 
     tmp_file << node;
     tmp_file.close();
-
+    cont.load(filename);
     sim.load(filename);
   }
   ReferenceController cont;

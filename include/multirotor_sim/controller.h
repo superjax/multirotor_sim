@@ -106,7 +106,7 @@ public:
   double prev_time_;
 
   // Functions
-  void load(const std::string filename) override;
+  void load(const std::string filename);
   void updateWaypointManager();
   void updateTrajectoryManager();
   void computeControl(const double& t, const State &x, const State& x_c, Vector4d& u) override;

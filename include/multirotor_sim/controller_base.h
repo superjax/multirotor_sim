@@ -10,9 +10,6 @@ namespace  multirotor_sim
 class ControllerBase
 {
 public:
-    // filename - yaml file containing relevant parameters
-    virtual void load(const std::string filename) = 0;
-
     // t - current time (seconds)
     // x - current state
     // x_c - desired state
