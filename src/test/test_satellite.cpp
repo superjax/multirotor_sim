@@ -245,3 +245,15 @@ TEST (Satellite, ReadFromFileCheckAzEl)
     EXPECT_GE(az_el(1), -0.2);
   }
 }
+
+TEST (Satellite, CheckMagnitudeOfCarrierPhase)
+{
+  Satellite sat(3);
+  sat.readFromRawFile("../sample/eph.dat");
+  GTime log_start = GTime::fromUTC(1541454646,  0.993);
+  Vector3d rec_pos {-1798904.13, -4532227.1 ,  4099781.95};
+  Vector3d z;
+  sat.computeMeasurement(log_start, rec_pos, Vector3d::Zero(), z);
+
+  EXPECT_NEAR(z(2), 1.3e8, 1e7);
+}

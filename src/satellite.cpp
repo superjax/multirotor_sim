@@ -87,7 +87,7 @@ void Satellite::computeMeasurement(const GTime& rec_time, const Vector3d& receiv
     double ion_delay = ionosphericDelay(rec_time, lla, az_el);
     z(0) += ion_delay;
 
-    z(2) = los_to_sat.norm() * LAMBDA_L1;
+    z(2) = los_to_sat.norm() / LAMBDA_L1;
 
     return;
 }
