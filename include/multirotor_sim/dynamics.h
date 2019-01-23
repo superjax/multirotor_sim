@@ -53,8 +53,8 @@ public:
   void load(std::string filename);
   void run(const double dt, const Vector4d& u);
   
-  void f(const State& x, const Vector4d& u, ErrorState& dx);
-  void f(const State& x, const Vector4d& u, ErrorState& dx, Vector6d& imu);
+  void f(const State& x, const Vector4d& u, ErrorState& dx) const;
+  void f(const State& x, const Vector4d& u, ErrorState& dx, Vector6d& imu) const;
   
   const State& get_state() const { return x_; }
   void set_state(const State& x) { x_ = x; }

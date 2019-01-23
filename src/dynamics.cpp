@@ -42,7 +42,7 @@ void Dynamics::load(std::string filename)
   }
 }
 
-void Dynamics::f(const State &x, const Vector4d &u, ErrorState &dx)
+void Dynamics::f(const State &x, const Vector4d &u, ErrorState &dx) const
 {
   Eigen::Vector3d v_rel_ = x.v - x.q.rotp(vw_); // Vehicle air velocity
   dx.p = x.q.rota(x.v);
@@ -51,11 +51,11 @@ void Dynamics::f(const State &x, const Vector4d &u, ErrorState &dx)
   dx.w = inertia_inv_ * (u.segment<3>(TAUX) - x.w.cross(inertia_matrix_ * x.w) - angular_drag_ * x.w.cwiseProduct(x.w));
 }
 
-void Dynamics::f(const State &x, const Vector4d &u, ErrorState &dx, Vector6d& imu)
+void Dynamics::f(const State &x, const Vector4d &u, ErrorState &dx, Vector6d& imu) const
 {
     f(x, u, dx);
-    imu_.segment<3>(ACC) = q_b_u_.rotp(dx_.v + x_.w.cross(x_.v) + x_.w.cross(x_.w.cross(p_b_u_)) + dx_.w.cross(p_b_u_) - x_.q.rotp(gravity_));
-    imu_.segment<3>(GYRO) = q_b_u_.rotp(x_.w);
+    imu.segment<3>(ACC) = q_b_u_.rotp(dx.v + x.w.cross(x.v) + x.w.cross(x.w.cross(p_b_u_)) + dx.w.cross(p_b_u_) - x.q.rotp(gravity_));
+    imu.segment<3>(GYRO) = q_b_u_.rotp(x.w);
 }
 
 void Dynamics::run(const double dt, const Vector4d &u)
