@@ -2,7 +2,7 @@ from plotWindow import plotWindow
 import numpy as np
 import matplotlib.pyplot as plt
 
-data = np.reshape(np.fromfile('../../../build/Dynamics.Propagate.log', dtype=np.float64), (-1, 27)).T
+data = np.reshape(np.fromfile('../build/Dynamics.Propagate.log', dtype=np.float64), (-1, 27)).T
 t = data[0,:]
 rk4 = data[1:14,:]
 euler = data[14:,:]
