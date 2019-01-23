@@ -4,6 +4,7 @@
 
 #include "multirotor_sim/dynamics.h"
 #include "multirotor_sim/utils.h"
+#include "multirotor_sim/test_common.h"
 
 TEST (Dynamics, Propagate)
 {
@@ -35,8 +36,10 @@ TEST (Dynamics, Propagate)
   tmp_file << node;
   tmp_file.close();
 
-  multirotor_sim::Dynamics dyn;
-  dyn.load(filename);
+  multirotor_sim::Dynamics dyn_rk4, dyn_euler;
+  dyn_rk4.load(filename);
+  dyn_euler.load(filename);
+  dyn_euler.RK4_ = false;
 
 
   std::ofstream file("Dynamics.Propagate.log");
@@ -54,10 +57,15 @@ TEST (Dynamics, Propagate)
     Vector4d noise;
     random_normal_vec(noise, 0.1, dist, gen);
     u += dt * noise;
-    dyn.run(t, u);
+    dyn_rk4.run(t, u);
+    dyn_euler.run(t, u);
     file.write((char*)&t, sizeof(double));
-    file.write((char*)dyn.get_state().arr.data(), sizeof(double) * multirotor_sim::State::SIZE);
-    EXPECT_NEAR(dyn.get_state().q.arr_.norm(), 1.0, 1e-14);
+    file.write((char*)dyn_rk4.get_state().arr.data(), sizeof(double) * multirotor_sim::State::SIZE);
+    file.write((char*)dyn_euler.get_state().arr.data(), sizeof(double) * multirotor_sim::State::SIZE);
+    EXPECT_MAT_NEAR(dyn_euler.get_state().p, dyn_rk4.get_state().p, 6.0);
+    EXPECT_MAT_NEAR(dyn_euler.get_state().v, dyn_rk4.get_state().v, 2.5);
+    EXPECT_MAT_NEAR(dyn_euler.get_state().q.arr_, dyn_rk4.get_state().q.arr_, 0.3);
+    EXPECT_MAT_NEAR(dyn_euler.get_state().w, dyn_rk4.get_state().w, 1e-2);
   }
 
   file.close();

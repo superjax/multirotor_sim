@@ -49,6 +49,20 @@ struct ErrorState
         arr = obj.arr;
         return *this;
     }
+
+    ErrorState operator* (const double& s)
+    {
+        ErrorState out;
+        out.arr = s * arr;
+        return out;
+    }
+
+    ErrorState operator+ (const ErrorState& obj)
+    {
+        ErrorState out;
+        out.arr = obj.arr + arr;
+        return out;
+    }
 };
 
 struct State

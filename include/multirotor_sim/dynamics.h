@@ -54,6 +54,7 @@ public:
   void run(const double dt, const Vector4d& u);
   
   void f(const State& x, const Vector4d& u, ErrorState& dx);
+  void f(const State& x, const Vector4d& u, ErrorState& dx, Vector6d& imu);
   
   const State& get_state() const { return x_; }
   void set_state(const State& x) { x_ = x; }
@@ -63,7 +64,6 @@ public:
   const Eigen::Vector3d& get_wind() const { return vw_; }
   Vector3d get_imu_accel() const;
   Vector3d get_imu_gyro() const;
-  void compute_imu();
   
   // States and RK4 Workspace
   State x_, x2_, x3_, x4_;

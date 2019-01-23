@@ -51,40 +51,43 @@ void Dynamics::f(const State &x, const Vector4d &u, ErrorState &dx)
   dx.w = inertia_inv_ * (u.segment<3>(TAUX) - x.w.cross(inertia_matrix_ * x.w) - angular_drag_ * x.w.cwiseProduct(x.w));
 }
 
+void Dynamics::f(const State &x, const Vector4d &u, ErrorState &dx, Vector6d& imu)
+{
+    f(x, u, dx);
+    imu_.segment<3>(ACC) = q_b_u_.rotp(dx_.v + x_.w.cross(x_.v) + x_.w.cross(x_.w.cross(p_b_u_)) + dx_.w.cross(p_b_u_) - x_.q.rotp(gravity_));
+    imu_.segment<3>(GYRO) = q_b_u_.rotp(x_.w);
+}
+
 void Dynamics::run(const double dt, const Vector4d &u)
 {
   if (RK4_)
   {
     // 4th order Runge-Kutta integration
-    f(x_, u, k1_);
+    f(x_, u, k1_, imu_);
 
     x2_ = x_;
-    k1_.arr *= dt*0.5;
-    x2_ += k1_;
+    x2_ += k1_ * (dt/2.0);
     f(x2_, u, k2_);
 
     x3_ = x_;
-    k2_.arr *= dt *0.5;
-    x3_ += k2_;
+    x3_ += k2_ * (dt/2.0);
     f(x3_, u, k3_);
 
     x4_ = x_;
-    k3_.arr *= dt;
-    x4_ += k3_;
+    x4_ += k3_ * dt;
     f(x4_, u, k4_);
 
-    dx_.arr = (k1_.arr + 2 * k2_.arr + 2 * k3_.arr + k4_.arr) * dt / 6.0;
+    dx_ = (k1_ + k2_*2.0 + k3_*2.0 + k4_) * (dt / 6.0);
   }
   else
   {
     // Euler integration
-    f(x_, u, dx_);
+    f(x_, u, dx_, imu_);
     dx_.arr *= dt;
   }
 
   // Copy output
   x_ += dx_;
-  compute_imu();
 
   // Update wind velocity for next iteration
   if (wind_enabled_)
@@ -103,12 +106,6 @@ Vector3d Dynamics::get_imu_accel() const
 Vector3d Dynamics::get_imu_gyro() const
 {
   return imu_.segment<3>(GYRO);
-}
-
-void Dynamics::compute_imu()
-{
-  imu_.segment<3>(ACC) = q_b_u_.rotp(dx_.v + x_.w.cross(x_.v) + x_.w.cross(x_.w.cross(p_b_u_)) + dx_.w.cross(p_b_u_) - x_.q.rotp(gravity_));
-  imu_.segment<3>(GYRO) = q_b_u_.rotp(x_.w);
 }
 
 }
