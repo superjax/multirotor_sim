@@ -15,6 +15,7 @@ public:
     GTime(const DateTime& t);
     GTime& operator= (const DateTime& t);
     GTime operator -(const GTime& gt2) const;
+    GTime operator -(const double& sec) const;
     GTime operator +(const GTime& gt2) const;
     GTime operator +(const double& tow_sec);
     GTime& operator +=(const double& tow_sec);

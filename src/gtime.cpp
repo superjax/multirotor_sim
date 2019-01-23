@@ -26,7 +26,37 @@ GTime GTime::operator -(const GTime& gt2) const
     int64_t dweek = week - gt2.week;
     double dsec = tow_sec - gt2.tow_sec;
 
+    if (dsec < 0)
+    {
+      dweek -= 1;
+      dsec += DateTime::SECONDS_IN_WEEK;
+    }
+    else if (dsec > DateTime::SECONDS_IN_WEEK)
+    {
+      dweek += 1;
+      dsec -= DateTime::SECONDS_IN_WEEK;
+    }
+
     return GTime{dweek, dsec};
+}
+
+GTime GTime::operator -(const double& sec) const
+{
+  double dsec = tow_sec - sec;
+  int64_t dweek = week;
+
+  if (dsec < 0)
+  {
+    dweek -= 1;
+    dsec += DateTime::SECONDS_IN_WEEK;
+  }
+  else if (dsec > DateTime::SECONDS_IN_WEEK)
+  {
+    dweek += 1;
+    dsec -= DateTime::SECONDS_IN_WEEK;
+  }
+
+  return GTime{dweek, dsec};
 }
 
 GTime GTime::operator +(const GTime& gt2) const
@@ -125,6 +155,11 @@ GTime& GTime::operator +=(const double& dsec)
     {
         tow_sec -= DateTime::SECONDS_IN_WEEK;
         week += 1;
+    }
+    else if (tow_sec < 0)
+    {
+      tow_sec += DateTime::SECONDS_IN_WEEK;
+      week -= 1;
     }
     return *this;
 }

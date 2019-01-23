@@ -11,6 +11,10 @@ const double Satellite::OMEGA_EARTH = 7.2921151467e-5;
 const double Satellite::PI = 3.1415926535898;
 const double Satellite::C_LIGHT = 299792458.0;
 const double Satellite::MAXDTOE = 7200.0; // max time difference to GPS Toe (s)
+const double Satellite::FREQL1 = 1.57542e9;
+const double Satellite::LAMBDA_L1 = Satellite::C_LIGHT / Satellite::FREQL1;
+
+
 
 Satellite::Satellite(int id)
 {
@@ -82,6 +86,8 @@ void Satellite::computeMeasurement(const GTime& rec_time, const Vector3d& receiv
     // Compute and incorporate ionospheric delay
     double ion_delay = ionosphericDelay(rec_time, lla, az_el);
     z(0) += ion_delay;
+
+    z(2) = los_to_sat.norm() * LAMBDA_L1;
 
     return;
 }

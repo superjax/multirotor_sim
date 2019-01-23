@@ -69,6 +69,8 @@ public:
     static const double PI;
     static const double C_LIGHT;
     static const double MAXDTOE;
+    static const double FREQL1;
+    static const double LAMBDA_L1;
 
     Satellite(int id);
     void update(const GTime &g, const Vector3d& rec_pos, const Vector3d& rec_vel);

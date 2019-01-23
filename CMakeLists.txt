@@ -51,7 +51,7 @@ if (${GTEST_FOUND})
     add_executable(multirotor_sim_test
         src/test/test_gps.cpp
         src/test/test_time.cpp
-        src/test/test_ephemeris.cpp
+        src/test/test_satellite.cpp
         src/test/test_raw_gps.cpp
         src/test/test_state.cpp
         src/test/test_dynamics.cpp
