@@ -11,6 +11,29 @@ using namespace Eigen;
 using namespace std;
 using namespace multirotor_sim;
 
+class RawGnssTestEstimator : public EstimatorBase
+{
+public:
+    void imuCallback(const double& t, const Vector6d& z, const Matrix6d& R) override {}
+    void altCallback(const double& t, const Vector1d& z, const Matrix1d& R) override {}
+    void posCallback(const double& t, const Vector3d& z, const Matrix3d& R) override {}
+    void attCallback(const double& t, const Quatd& z, const Matrix3d& R) override {}
+    void voCallback(const double& t, const Xformd& z, const Matrix6d& R) override {}
+    void featCallback(const double& t, const Vector2d& z, const Matrix2d& R, int id, double depth) override {}
+    void gnssCallback(const double& t, const Vector6d& z, const Matrix6d& R) override {}
+    void rawGnssCallback(const GTime& t, const Vector3d& z, const Matrix3d& R, int id) override
+    {
+        time_last = t;
+        call_count++;
+        z_last = z;
+    }
+
+    GTime time_last;
+    int call_count = 0;
+    Vector3d z_last;
+};
+
+
 class RawGpsTest : public ::testing::Test {
 protected:
     RawGpsTest() :
@@ -25,22 +48,67 @@ protected:
         node["ref_LLA"] = std::vector<double>{40.247082 * DEG2RAD, -111.647776 * DEG2RAD, 1387.998309};
         node["gnss_update_rate"] = 5;
         node["use_raw_gnss_truth"] = false;
-        node["pseudorange_stdev"] = 1.0;
+        node["pseudorange_stdev"] = 3.0;
         node["pseudorange_rate_stdev"] = 0.1;
-        node["carrier_phase_stdev"] = 0.1;
+        node["carrier_phase_stdev"] = 0.01;
         node["ephemeris_filename"] = "../sample/eph.dat";
+        node["start_time_week"] = 2026;
+        node["start_time_tow_sec"] = 165029;
+        node["clock_init_stdev"] = 1e-4;
+        node["clock_walk_stdev"] = 1e-7;
         tmp_file << node;
         tmp_file.close();
 
         cont.load("../params/sim_params.yaml");
         sim.param_filename_ = filename;
         sim.init_raw_gnss();
+        sim.register_estimator(&est);
+        sim.t_ = 0.0;
     }
     ReferenceController cont;
     Simulator sim;
+    RawGnssTestEstimator est;
 };
+
 
 TEST_F (RawGpsTest, PseudorangeFromNED)
 {
     EXPECT_EQ(sim.satellites_.size(), 15);
+}
+
+TEST_F (RawGpsTest, MeasurementUpdateRate)
+{
+    sim.update_raw_gnss_meas();
+    ASSERT_EQ(est.call_count, 0);
+
+    State x;
+    x.p << 1000, 0, 0;
+    sim.dyn_.set_state(x);
+    sim.t_ = 0.3;
+
+    sim.update_raw_gnss_meas();
+    ASSERT_EQ(est.call_count, 15);
+
+    sim.update_raw_gnss_meas();
+    ASSERT_EQ(est.call_count, 15);
+}
+
+TEST_F (RawGpsTest, MeasurementIsCloseToTruth)
+{
+    State x;
+    x.p << 1000, 0, 0;
+    sim.dyn_.set_state(x);
+    sim.t_ = 0.3;
+    sim.update_raw_gnss_meas();
+
+    GTime t = sim.t_ + sim.start_time_;
+    Vector3d pos_ecef = WSG84::ned2ecef(sim.x_e2n_, x.p);
+    Vector3d vel_ned = sim.dyn_.get_state().q.rota(sim.dyn_.get_state().v);
+    Vector3d vel_ecef = sim.x_e2n_.q().rota(vel_ned);
+    Vector3d z_true;
+    sim.satellites_.back().computeMeasurement(t, pos_ecef, vel_ecef, z_true);
+
+    EXPECT_NEAR(z_true(0), est.z_last(0), 1.0);
+    EXPECT_NEAR(z_true(1), est.z_last(1), 0.2);
+    EXPECT_NEAR(z_true(2), est.z_last(2), 100);
 }

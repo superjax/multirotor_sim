@@ -17,7 +17,7 @@ public:
     GTime operator -(const GTime& gt2) const;
     GTime operator -(const double& sec) const;
     GTime operator +(const GTime& gt2) const;
-    GTime operator +(const double& tow_sec);
+    GTime operator +(const double& tow_sec) const;
     GTime& operator +=(const double& tow_sec);
     DateTime toDate() const;
     bool operator >(const GTime& g2) const;
@@ -26,5 +26,10 @@ public:
     bool operator <=(const GTime& g2) const;
     bool operator ==(const GTime& g2) const;
     double toSec() const;
-    static GTime fromUTC(int time, double sec);
+    static GTime fromUTC(int time_sec, double subsec);
 };
+
+inline GTime operator+ (const double& sec, const GTime& t)
+{
+    return t + sec;
+}

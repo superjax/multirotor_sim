@@ -118,6 +118,7 @@ public:
     void attCallback(const double& t, const Quatd& z, const Matrix3d& R) override {}
     void voCallback(const double& t, const Xformd& z, const Matrix6d& R) override {}
     void featCallback(const double& t, const Vector2d& z, const Matrix2d& R, int id, double depth) override {}
+    void rawGnssCallback(const GTime& t, const Vector3d& z, const Matrix3d& R, int id) override {}
     void gnssCallback(const double& t, const Vector6d& z, const Matrix6d& R) override
     {
         call_count++;

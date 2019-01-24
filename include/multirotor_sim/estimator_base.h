@@ -3,6 +3,7 @@
 #include <Eigen/Core>
 
 #include "multirotor_sim/state.h"
+#include "multirotor_sim/gtime.h"
 
 namespace  multirotor_sim
 {
@@ -25,6 +26,11 @@ public:
     // z - gnss measurement [p_{b/ECEF}^ECEF, v_{b/ECEF}^ECEF]
     // R - gnss covariance
     virtual void gnssCallback(const double& t, const Vector6d& z, const Matrix6d& R) = 0;
+
+    // t - Time of measurement (GPS Time)
+    // z - gnss measurement [rho(m), rhodot(m/s), l(cycles)]
+    // R - gnss covariance
+    virtual void rawGnssCallback(const GTime& t, const Vector3d& z, const Matrix3d& R, int id) = 0;
 };
 
 }

@@ -304,25 +304,34 @@ void Simulator::init_raw_gnss()
     Vector3d refLla;
     get_yaml_eigen("ref_LLA", param_filename_, refLla);
     x_e2n_ = WSG84::x_ecef2ned(WSG84::lla2ecef(refLla));
-    double pseudorange_noise, p_rate_noise, cp_noise;
+    double pseudorange_noise, p_rate_noise, cp_noise, clock_walk;
     get_yaml_node("gnss_update_rate", param_filename_, gnss_update_rate_);
     get_yaml_node("use_raw_gnss_truth", param_filename_, use_raw_gnss_truth_);
     get_yaml_node("pseudorange_stdev", param_filename_, pseudorange_noise);
     get_yaml_node("pseudorange_rate_stdev", param_filename_, p_rate_noise);
     get_yaml_node("carrier_phase_stdev", param_filename_, cp_noise);
     get_yaml_node("ephemeris_filename", param_filename_, ephemeris_filename_);
+    get_yaml_node("clock_init_stdev", param_filename_, clock_init_stdev_);
+    get_yaml_node("clock_walk_stdev", param_filename_, clock_walk);
+    get_yaml_node("start_time_week", param_filename_, start_time_.week);
+    get_yaml_node("start_time_tow_sec", param_filename_, start_time_.tow_sec);
     pseudorange_stdev_ = pseudorange_noise * !use_raw_gnss_truth_;
     pseudorange_rate_stdev_ = p_rate_noise * !use_raw_gnss_truth_;
     carrier_phase_stdev_ = cp_noise * !use_raw_gnss_truth_;
+    clock_walk_stdev_ = clock_walk * !use_gnss_truth_;
 
     for (int i = 0; i < 100; i++)
     {
         Satellite sat(i);
         sat.readFromRawFile(ephemeris_filename_);
         if (sat.eph_.size() > 0)
+        {
             satellites_.push_back(sat);
+            carrier_phase_integer_offsets_.push_back(use_raw_gnss_truth_ ? 0 : round(uniform_(rng_) * 100) - 50);
+        }
     }
-    start_time_ = satellites_[0].eph_[0].toe;
+
+    clock_bias_ = uniform_(rng_) * clock_init_stdev_;
     last_raw_gnss_update_ = 0.0;
 }
 
@@ -351,7 +360,7 @@ void Simulator::update_camera_pose()
 
 void Simulator::update_imu_meas()
 {
-    if (fabs(t_ - last_imu_update_ - 1.0/imu_update_rate_) < 0.0005)
+    if (std::abs(t_ - last_imu_update_ - 1.0/imu_update_rate_) < 0.0005)
     {
       double dt = t_ - last_imu_update_;
       last_imu_update_ = t_;
@@ -386,7 +395,7 @@ void Simulator::update_imu_meas()
 void Simulator::update_feature_meas()
 {
     // If it's time to capture new measurements, then do it
-    if (fabs(t_ - last_camera_update_ - 1.0/camera_update_rate_) < 0.0005)
+    if (std::abs(t_ - last_camera_update_ - 1.0/camera_update_rate_) < 0.0005)
     {
       last_camera_update_ = t_;
       update_camera_pose();
@@ -465,7 +474,7 @@ void Simulator::update_feature_meas()
 
 void Simulator::update_alt_meas()
 {
-    if (fabs(t_ - last_altimeter_update_ - 1.0/altimeter_update_rate_) < 0.0005)
+    if (std::abs(t_ - last_altimeter_update_ - 1.0/altimeter_update_rate_) < 0.0005)
     {
       // Altimeter noise
       if (!use_altimeter_truth_)
@@ -481,7 +490,7 @@ void Simulator::update_alt_meas()
 
 void Simulator::update_mocap_meas()
 {
-    if (fabs(t_ - last_truth_update_ - 1.0/mocap_update_rate_) < 0.0005)
+    if (std::abs(t_ - last_truth_update_ - 1.0/mocap_update_rate_) < 0.0005)
     {
       measurement_t att_meas;
       att_meas.t = t_ - mocap_time_offset_;
@@ -543,7 +552,7 @@ void Simulator::update_vo_meas()
 void Simulator::update_gnss_meas()
 {
     /// TODO: Simulate gnss sensor delay
-    if (fabs(t_ - last_gnss_update_ - 1.0/gnss_update_rate_) < 0.0005)
+    if (std::abs(t_ - last_gnss_update_) > 1.0/gnss_update_rate_)
     {
         last_gnss_update_ = t_;
         /// TODO: Simulate the random walk associated with gnss position
@@ -561,6 +570,35 @@ void Simulator::update_gnss_meas()
 
         for (std::vector<EstimatorBase*>::iterator it = est_.begin(); it != est_.end(); it++)
             (*it)->gnssCallback(t_, z, gnss_R_);
+    }
+}
+
+void Simulator::update_raw_gnss_meas()
+{
+    /// TODO: Simulator gnss sensor delay
+    if (std::abs(t_ - last_raw_gnss_update_) > 1.0/gnss_update_rate_)
+    {
+        double dt = t_ - last_raw_gnss_update_;
+        last_raw_gnss_update_ = t_;
+        clock_bias_ += normal_(rng_) * clock_walk_stdev_ * dt;
+
+        GTime t_now = t_ + start_time_;
+        Vector3d p_ECEF = WSG84::ned2ecef(x_e2n_, dyn_.get_state().p);
+        Vector3d v_NED = dyn_.get_global_pose().q().rota(dyn_.get_state().v);
+        Vector3d v_ECEF = x_e2n_.q().rota(v_NED);
+
+        Vector3d z;
+        int i;
+        vector<Satellite>::iterator sat;
+        for (i = 0, sat = satellites_.begin(); sat != satellites_.end(); sat++, i++)
+        {
+            sat->computeMeasurement(t_now, p_ECEF, v_ECEF, z);
+            z(0) += normal_(rng_) * pseudorange_stdev_;
+            z(1) += normal_(rng_) * pseudorange_rate_stdev_;
+            z(2) += normal_(rng_) * carrier_phase_stdev_ + carrier_phase_integer_offsets_[i];
+            for (std::vector<EstimatorBase*>::iterator it = est_.begin(); it != est_.end(); it++)
+                (*it)->rawGnssCallback(t_now, z, raw_gnss_R_, sat->id_);
+        }
     }
 }
 

@@ -18,37 +18,37 @@ const double Satellite::LAMBDA_L1 = Satellite::C_LIGHT / Satellite::FREQL1;
 
 Satellite::Satellite(int id)
 {
-  carrier_phase_ = 0;
-  id_ = id;
-  closest_eph_idx_ = 0;
+    carrier_phase_ = 0;
+    id_ = id;
+    closest_eph_idx_ = 0;
 }
 
 void Satellite::update(const GTime &g, const Vector3d &rec_pos, const Vector3d &rec_vel)
 {
-  double dt = (g - t_last_udpate_).toSec();
-  t_last_udpate_ = g;
+    double dt = (g - t_last_udpate_).toSec();
+    t_last_udpate_ = g;
 }
 
 void Satellite::addEphemeris(const eph_t &eph)
 {
-  ASSERT((eph.sat == id_),
-         "Tried to add ephemeris from a different satellite");
-  ASSERT((eph_.size() > 0) ? eph.toe >= eph_.back().toe : true,
-         "tried to push ephemeris out of order");
+    ASSERT((eph.sat == id_),
+           "Tried to add ephemeris from a different satellite");
+    ASSERT((eph_.size() > 0) ? eph.toe >= eph_.back().toe : true,
+           "tried to push ephemeris out of order");
 
-  if (eph_.size() > 0 && (eph.toe == eph_.back().toe))
-  {
-    eph_.back() = eph;
-  }
-  else
-  {
-    eph_.push_back(eph);
-  }
+    if (eph_.size() > 0 && (eph.toe == eph_.back().toe))
+    {
+        eph_.back() = eph;
+    }
+    else
+    {
+        eph_.push_back(eph);
+    }
 
-  if (!se)
-  {
-    se = &eph_[0];
-  }
+    if (!se)
+    {
+        se = &eph_[0];
+    }
 }
 
 void Satellite::computeMeasurement(const GTime& rec_time, const Vector3d& receiver_pos, const Vector3d& receiver_vel, Vector3d& z)
@@ -107,9 +107,9 @@ double Satellite::ionosphericDelay(const GTime& gtime, const Vector3d& lla, cons
     // https://gssc.esa.int/navipedia/index.php/Klobuchar_Ionospheric_Model
 
     const double ion[]={ /* 2004/1/1 */
-            0.1118E-07,-0.7451E-08,-0.5961E-07, 0.1192E-06,
-            0.1167E+06,-0.2294E+06,-0.1311E+06, 0.1049E+07
-        };
+                         0.1118E-07,-0.7451E-08,-0.5961E-07, 0.1192E-06,
+                         0.1167E+06,-0.2294E+06,-0.1311E+06, 0.1049E+07
+                       };
 
     // Earth-Centered Angle (Elevation in Semicircles)
     double psi = 0.0137 / (az_el(1)/M_PI + 0.11) - 0.022;
@@ -156,41 +156,41 @@ double Satellite::ionosphericDelay(const GTime& gtime, const Vector3d& lla, cons
 
 double Satellite::selectEphemeris(const GTime &time)
 {
-  // find the closest ephemeris
-  double dt = INFINITY;
-  assert(eph_.size() > 0);
-  while (1)
-  {
-    dt = (time - se->toe).toSec();
-    if (dt < 0 && (closest_eph_idx_ > 0))
+    // find the closest ephemeris
+    double dt = INFINITY;
+    assert(eph_.size() > 0);
+    while (1)
     {
-      double prev_dt = (time - eph_[closest_eph_idx_-1].toe).toSec();
-      if (std::abs(prev_dt) < std::abs(dt))
-      {
-        dt = prev_dt;
-        closest_eph_idx_ -= 1;
-        se = &eph_[closest_eph_idx_];
-      }
-      else
-        break;
-    }
+        dt = (time - se->toe).toSec();
+        if (dt < 0 && (closest_eph_idx_ > 0))
+        {
+            double prev_dt = (time - eph_[closest_eph_idx_-1].toe).toSec();
+            if (std::abs(prev_dt) < std::abs(dt))
+            {
+                dt = prev_dt;
+                closest_eph_idx_ -= 1;
+                se = &eph_[closest_eph_idx_];
+            }
+            else
+                break;
+        }
 
-    else if (dt > 0 && (closest_eph_idx_ < eph_.size()-1))
-    {
-      double next_dt = (time - eph_[closest_eph_idx_+1].toe).toSec();
-      if (std::abs(next_dt) < std::abs(dt))
-      {
-        dt = next_dt;
-        closest_eph_idx_ += 1;
-        se = &eph_[closest_eph_idx_];
-      }
-      else
-        break;
+        else if (dt > 0 && (closest_eph_idx_ < eph_.size()-1))
+        {
+            double next_dt = (time - eph_[closest_eph_idx_+1].toe).toSec();
+            if (std::abs(next_dt) < std::abs(dt))
+            {
+                dt = next_dt;
+                closest_eph_idx_ += 1;
+                se = &eph_[closest_eph_idx_];
+            }
+            else
+                break;
+        }
+        else
+            break;
     }
-    else
-      break;
-  }
-  return dt;
+    return dt;
 }
 
 
@@ -204,7 +204,7 @@ bool Satellite::computePositionVelocityClock(const GTime& time, const Ref<Vector
     double dt = selectEphemeris(time);
 
     if (dt > MAXDTOE)
-      return false;
+        return false;
 
     // https://www.ngs.noaa.gov/gps-toolbox/bc_velo/bc_velo.c
     double n0 = std::sqrt(GM_EARTH/(se->A*se->A*se->A));
@@ -290,27 +290,29 @@ bool Satellite::computePositionVelocityClock(const GTime& time, const Ref<Vector
 
 void Satellite::readFromRawFile(std::string filename)
 {
-  std::ifstream file(filename, std::ios::in | std::ios::binary);
-  const int size = sizeof(eph_t);
-  char buf[size];
-  eph_t* eph = (eph_t*)buf;
+    std::ifstream file(filename, std::ios::in | std::ios::binary);
+    const int size = sizeof(eph_t);
+    char buf[size];
+    eph_t* eph = (eph_t*)buf;
 
-  if (!file.is_open())
-  {
-    std::cout << "unable to open " << filename << std::endl;
-    return;
-  }
+    if (!file.is_open())
+    {
+        std::cout << "unable to open " << filename << std::endl;
+        return;
+    }
 
-  while (!file.eof())
-  {
-    file.read(buf, size);
-    if (!file)
-      break;
-    eph->toe.week = eph->toe.week - DateTime::GPS_UTC_OFFSET_SEC;
-    eph->toe.tow_sec = eph->toe.week % DateTime::SECONDS_IN_WEEK - DateTime::LEAP_SECONDS;
-    eph->toe.week /= DateTime::SECONDS_IN_WEEK;
-    if (eph->sat == id_)
-      addEphemeris(*eph);
-  }
+    while (!file.eof())
+    {
+        file.read(buf, size);
+        if (!file)
+            break;
+        if (eph->sat == id_)
+        {
+            eph->toe = GTime::fromUTC(eph->toe.week, eph->toe.tow_sec);
+            eph->toc = GTime::fromUTC(eph->toc.week, eph->toc.tow_sec);
+            eph->ttr = GTime::fromUTC(eph->ttr.week, eph->ttr.tow_sec);
+            addEphemeris(*eph);
+        }
+    }
 
 }

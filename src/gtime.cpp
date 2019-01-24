@@ -141,7 +141,7 @@ double GTime::toSec() const
     return tow_sec + DateTime::SECONDS_IN_WEEK * week;
 }
 
-GTime GTime::operator+(const double& dsec)
+GTime GTime::operator+(const double& dsec) const
 {
     GTime nt = *this;
     nt += dsec;
@@ -164,11 +164,11 @@ GTime& GTime::operator +=(const double& dsec)
     return *this;
 }
 
-GTime GTime::fromUTC(int time, double sec)
+GTime GTime::fromUTC(int time_sec, double subsec)
 {
   GTime out;
-  out.week = time - DateTime::GPS_UTC_OFFSET_SEC;
-  out.tow_sec = out.week % DateTime::SECONDS_IN_WEEK - DateTime::LEAP_SECONDS;
+  out.week = time_sec - DateTime::GPS_UTC_OFFSET_SEC;
+  out.tow_sec = out.week % DateTime::SECONDS_IN_WEEK - DateTime::LEAP_SECONDS + subsec;
   out.week /= DateTime::SECONDS_IN_WEEK;
   return out;
 }
