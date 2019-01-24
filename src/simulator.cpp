@@ -172,6 +172,8 @@ void Simulator::init_imu()
 
     imu_R_.topLeftCorner<3,3>() = accel_noise * accel_noise * I_3x3;
     imu_R_.bottomRightCorner<3,3>() = gyro_noise * gyro_noise * I_3x3;
+    imu_R_.bottomLeftCorner<3,3>().setZero();
+    imu_R_.topRightCorner<3,3>().setZero();
     last_imu_update_ = 0.0;
 }
 

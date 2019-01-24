@@ -28,7 +28,7 @@
 #define MAX_X 17+NUM_FEATURES*5
 #define MAX_DX 16+NUM_FEATURES*3
 
-#ifndef NDEBUG
+#ifdef MULTIROTOR_SIM_PRINT_DEBUG
 #define DBG(msg, ...)\
   { \
     printf((msg), ##__VA_ARGS__); \
