@@ -18,37 +18,39 @@ const double Satellite::LAMBDA_L1 = Satellite::C_LIGHT / Satellite::FREQL1;
 
 Satellite::Satellite(int id)
 {
-    carrier_phase_ = 0;
     id_ = id;
-    closest_eph_idx_ = 0;
+    memset(&eph_, 0, sizeof(eph_t));
 }
 
-void Satellite::update(const GTime &g, const Vector3d &rec_pos, const Vector3d &rec_vel)
-{
-    double dt = (g - t_last_udpate_).toSec();
-    t_last_udpate_ = g;
-}
 
-void Satellite::addEphemeris(const eph_t &eph)
+void Satellite::addEphemeris(const eph_t &_eph)
 {
-    ASSERT((eph.sat == id_),
+    ASSERT( _eph.sat == id_,
            "Tried to add ephemeris from a different satellite");
-    ASSERT((eph_.size() > 0) ? eph.toe >= eph_.back().toe : true,
-           "tried to push ephemeris out of order");
+//    ASSERT((eph_.size() > 0) ? eph.toe >= eph_.back().toe : true,
+//           "tried to push ephemeris out of order");
 
-    if (eph_.size() > 0 && (eph.toe == eph_.back().toe))
-    {
-        eph_.back() = eph;
-    }
-    else
-    {
-        eph_.push_back(eph);
-    }
+    ASSERT((_eph.toe.tow_sec <= DateTime::SECONDS_IN_WEEK), "Corrupt ephemeris");
+    ASSERT((_eph.toe.week <= 1000000), "Corrupt ephemeris");
+    eph_ = _eph;
 
-    if (!se)
-    {
-        se = &eph_[0];
-    }
+//    if (eph_.size() > 0 && (eph.toe == eph_.back().toe))
+//    {
+//        eph_.back() = eph;
+//        if (eph_.size() == 1)
+//        {
+//            eph = &eph_[0];
+//        }
+//    }
+//    else
+//    {
+//        eph_.push_back(eph);
+//    }
+
+//    if (!eph)
+//    {
+//        eph = &eph_[0];
+//    }
 }
 
 void Satellite::computeMeasurement(const GTime& rec_time, const Vector3d& receiver_pos, const Vector3d& receiver_vel, Vector3d& z)
@@ -157,40 +159,40 @@ double Satellite::ionosphericDelay(const GTime& gtime, const Vector3d& lla, cons
 double Satellite::selectEphemeris(const GTime &time)
 {
     // find the closest ephemeris
-    double dt = INFINITY;
-    assert(eph_.size() > 0);
-    while (1)
-    {
-        dt = (time - se->toe).toSec();
-        if (dt < 0 && (closest_eph_idx_ > 0))
-        {
-            double prev_dt = (time - eph_[closest_eph_idx_-1].toe).toSec();
-            if (std::abs(prev_dt) < std::abs(dt))
-            {
-                dt = prev_dt;
-                closest_eph_idx_ -= 1;
-                se = &eph_[closest_eph_idx_];
-            }
-            else
-                break;
-        }
+    return (time - eph_.toe).toSec();
+//    assert(eph_.size() > 0);
+//    while (1)
+//    {
+//        dt = (time - eph.toe).toSec();
+//        if (dt < 0 && (closest_eph_idx_ > 0))
+//        {
+//            double prev_dt = (time - eph_[closest_eph_idx_-1].toe).toSec();
+//            if (std::abs(prev_dt) < std::abs(dt))
+//            {
+//                dt = prev_dt;
+//                closest_eph_idx_ -= 1;
+//                eph = &eph_[closest_eph_idx_];
+//            }
+//            else
+//                break;
+//        }
 
-        else if (dt > 0 && (closest_eph_idx_ < eph_.size()-1))
-        {
-            double next_dt = (time - eph_[closest_eph_idx_+1].toe).toSec();
-            if (std::abs(next_dt) < std::abs(dt))
-            {
-                dt = next_dt;
-                closest_eph_idx_ += 1;
-                se = &eph_[closest_eph_idx_];
-            }
-            else
-                break;
-        }
-        else
-            break;
-    }
-    return dt;
+//        else if (dt > 0 && (closest_eph_idx_ < eph_.size()-1))
+//        {
+//            double next_dt = (time - eph_[closest_eph_idx_+1].toe).toSec();
+//            if (std::abs(next_dt) < std::abs(dt))
+//            {
+//                dt = next_dt;
+//                closest_eph_idx_ += 1;
+//                eph = &eph_[closest_eph_idx_];
+//            }
+//            else
+//                break;
+//        }
+//        else
+//            break;
+//    }
+//    return dt;
 }
 
 
@@ -207,10 +209,10 @@ bool Satellite::computePositionVelocityClock(const GTime& time, const Ref<Vector
         return false;
 
     // https://www.ngs.noaa.gov/gps-toolbox/bc_velo/bc_velo.c
-    double n0 = std::sqrt(GM_EARTH/(se->A*se->A*se->A));
+    double n0 = std::sqrt(GM_EARTH/(eph_.A*eph_.A*eph_.A));
     double tk = dt;
-    double n = n0 + se->deln;
-    double mk = se->M0 + n*tk;
+    double n = n0 + eph_.deln;
+    double mk = eph_.M0 + n*tk;
     double mkdot = n;
     double ek = mk;
     double ek_prev = 0.0;
@@ -219,35 +221,35 @@ bool Satellite::computePositionVelocityClock(const GTime& time, const Ref<Vector
     while (ek - ek_prev > 1e-8 && i < 7)
     {
         ek_prev = ek;
-        ek = mk + se->e*std::sin(ek);
+        ek = mk + eph_.e*std::sin(ek);
         i++;
     }
     double sek = std::sin(ek);
     double cek = std::cos(ek);
 
 
-    double ekdot = mkdot/(1.0 - se->e * cek);
+    double ekdot = mkdot/(1.0 - eph_.e * cek);
 
-    double tak = std::atan2(std::sqrt(1.0-se->e*se->e) * sek, cek - se->e);
-    double takdot = sek*ekdot*(1.0+se->e*std::cos(tak)) / (std::sin(tak)*(1.0-se->e*cek));
+    double tak = std::atan2(std::sqrt(1.0-eph_.e*eph_.e) * sek, cek - eph_.e);
+    double takdot = sek*ekdot*(1.0+eph_.e*std::cos(tak)) / (std::sin(tak)*(1.0-eph_.e*cek));
 
 
-    double phik = tak + se->omg;
+    double phik = tak + eph_.omg;
     double sphik2 = std::sin(2.0 * phik);
     double cphik2 = std::cos(2.0 * phik);
-    double corr_u = se->cus * sphik2 + se->cuc * cphik2;
-    double corr_r = se->crs * sphik2 + se->crc * cphik2;
-    double corr_i = se->cis * sphik2 + se->cic * cphik2;
+    double corr_u = eph_.cus * sphik2 + eph_.cuc * cphik2;
+    double corr_r = eph_.crs * sphik2 + eph_.crc * cphik2;
+    double corr_i = eph_.cis * sphik2 + eph_.cic * cphik2;
     double uk = phik + corr_u;
-    double rk = se->A*(1.0 - se->e*cek) + corr_r;
-    double ik = se->i0 + se->idot*tk + corr_i;
+    double rk = eph_.A*(1.0 - eph_.e*cek) + corr_r;
+    double ik = eph_.i0 + eph_.idot*tk + corr_i;
 
     double s2uk = std::sin(2.0*uk);
     double c2uk = std::cos(2.0*uk);
 
-    double ukdot = takdot + 2.0 * (se->cus * c2uk - se->cuc*s2uk) * takdot;
-    double rkdot = se->A * se->e * sek * n / (1.0 - se->e * cek) + 2.0 * (se->crs * c2uk - se->crc * s2uk) * takdot;
-    double ikdot = se->idot + (se->cis * c2uk - se->cic * s2uk) * 2.0 * takdot;
+    double ukdot = takdot + 2.0 * (eph_.cus * c2uk - eph_.cuc*s2uk) * takdot;
+    double rkdot = eph_.A * eph_.e * sek * n / (1.0 - eph_.e * cek) + 2.0 * (eph_.crs * c2uk - eph_.crc * s2uk) * takdot;
+    double ikdot = eph_.idot + (eph_.cis * c2uk - eph_.cic * s2uk) * 2.0 * takdot;
 
     double cuk = std::cos(uk);
     double suk = std::sin(uk);
@@ -258,8 +260,8 @@ bool Satellite::computePositionVelocityClock(const GTime& time, const Ref<Vector
     double xpkdot = rkdot * cuk - ypk * ukdot;
     double ypkdot = rkdot * suk + xpk * ukdot;
 
-    double omegak = se->OMG0 + (se->OMGd - OMEGA_EARTH) * tk - OMEGA_EARTH * se->toes;
-    double omegakdot = se->OMGd - OMEGA_EARTH;
+    double omegak = eph_.OMG0 + (eph_.OMGd - OMEGA_EARTH) * tk - OMEGA_EARTH * eph_.toes;
+    double omegakdot = eph_.OMGd - OMEGA_EARTH;
 
     double cwk = std::cos(omegak);
     double swk = std::sin(omegak);
@@ -276,14 +278,14 @@ bool Satellite::computePositionVelocityClock(const GTime& time, const Ref<Vector
             + ( xpk*omegakdot + ypkdot*cik - ypk*sik*ikdot )*cwk;
     vel.z() = ypkdot*sik + ypk*cik*ikdot;
 
-    tk = (time - se->toc).toSec();
-    double dts = se->f0 + se->f1*tk + se->f2*tk*tk;
+    tk = (time - eph_.toc).toSec();
+    double dts = eph_.f0 + eph_.f1*tk + eph_.f2*tk*tk;
 
     // Correct for relativistic effects on the satellite clock
-    dts -= 2.0*std::sqrt(GM_EARTH * se->A) * se->e * sek/(C_LIGHT * C_LIGHT);
+    dts -= 2.0*std::sqrt(GM_EARTH * eph_.A) * eph_.e * sek/(C_LIGHT * C_LIGHT);
 
     clock(0) = dts; // satellite clock bias
-    clock(1) = se->f1 + se->f2*tk; // satellite drift rate
+    clock(1) = eph_.f1 + eph_.f2*tk; // satellite drift rate
 
     return true;
 }

@@ -324,7 +324,7 @@ void Simulator::init_raw_gnss()
     {
         Satellite sat(i);
         sat.readFromRawFile(ephemeris_filename_);
-        if (sat.eph_.size() > 0)
+        if (sat.eph_.A > 0)
         {
             satellites_.push_back(sat);
             carrier_phase_integer_offsets_.push_back(use_raw_gnss_truth_ ? 0 : round(uniform_(rng_) * 100) - 50);

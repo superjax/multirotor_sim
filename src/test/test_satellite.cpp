@@ -161,7 +161,7 @@ TEST (Satellite, ReadFromFile)
     Satellite sat(sat_ids[i]);
     sat.readFromRawFile("../sample/eph.dat");
 
-    EXPECT_GT(sat.eph_.size(), 0);
+//    EXPECT_GT(sat.eph_.size(), 0);
   }
 }
 
@@ -183,7 +183,7 @@ TEST (Satellite, ReadFromFileCheckTime)
   {
     Satellite sat(sat_ids[i]);
     sat.readFromRawFile("../sample/eph.dat");
-    EXPECT_LE(std::abs((log_start - sat.eph_[0].toe).toSec()), Satellite::MAXDTOE);
+    EXPECT_LE(std::abs((log_start - sat.eph_.toe).toSec()), Satellite::MAXDTOE);
   }
 }
 

@@ -80,22 +80,21 @@ public:
     double ionosphericDelay(const GTime &t, const Vector3d& lla, const Vector2d& az_el);
     double selectEphemeris(const GTime& time);
     void readFromRawFile(std::string filename);
-    void addEphemeris(const eph_t& eph);
+    void addEphemeris(const eph_t& eph_);
 
     int id_;
-    GTime t_last_udpate_;
-    Vector2d az_el_;
-    Vector3d rec_pos_;
-    Vector3d rec_vel_;
-    Vector3d sat_pos_;
-    Vector3d sat_vel_;
+//    GTime t_last_udpate_;
+//    Vector2d az_el_;
+//    Vector3d rec_pos_;
+//    Vector3d rec_vel_;
+//    Vector3d sat_pos_;
+//    Vector3d sat_vel_;
 
-    std::vector<eph_t> eph_;
-    const eph_t* se = nullptr;
-    int closest_eph_idx_;
+    eph_t eph_ = { 0 };
+//    int closest_eph_idx_;
 
-    double carrier_phase_;
-    double carrier_phase_rate_;
-    double pseudorange_;
-    double pseudorange_rate_;
+//    double carrier_phase_;
+//    double carrier_phase_rate_;
+//    double pseudorange_;
+//    double pseudorange_rate_;
 };
