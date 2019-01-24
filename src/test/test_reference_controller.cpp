@@ -109,8 +109,11 @@ TEST_F (ReferenceControllerTest, Waypoints)
     }
   }
   EXPECT_NEAR(waypoint_time[0], 0.01, 1e-8);
-  EXPECT_NEAR(waypoint_time[1], 28.12, 1e-8);
-  EXPECT_NEAR(waypoint_time[2], 57.14, 1e-8);
+  EXPECT_NEAR(waypoint_time[1], 5.01, 1e-8);
+  EXPECT_NEAR(waypoint_time[2], 14.94, 1e-8);
+  EXPECT_NEAR(waypoint_time[3], 29.15, 1e-8);
+  EXPECT_NEAR(waypoint_time[4], 43.47, 1e-8);
+  EXPECT_NEAR(waypoint_time[5], 59.63, 1e-8);
 
   file.close();
 }

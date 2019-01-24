@@ -8,7 +8,7 @@
 
 using namespace multirotor_sim;
 
-TEST (GPS, lla2ecef)
+TEST (Gnss, lla2ecef)
 {
     Vector3d lla = {40.246184 * DEG2RAD , -111.647769 * DEG2RAD, 1387.997511}; // BYU Campus
     Vector3d ecef_known = {-1798810.23, -4532232.54, 4099784.74};
@@ -18,7 +18,7 @@ TEST (GPS, lla2ecef)
     ASSERT_MAT_NEAR(ecef_known, ecef_calc, 1e-2);
 }
 
-TEST (GPS, ecef2lla)
+TEST (Gnss, ecef2lla)
 {
     Vector3d ecef = {-1798810.23, -4532232.54, 4099784.74};
     Vector3d lla_known = {40.246184 * DEG2RAD , -111.647769 * DEG2RAD, 1387.998309};
@@ -28,7 +28,7 @@ TEST (GPS, ecef2lla)
     ASSERT_MAT_NEAR(lla_known, lla_calc, 1e-6);
 }
 
-TEST (GPS, ecef2lla2ecef)
+TEST (Gnss, ecef2lla2ecef)
 {
     Vector3d ecef = {-1798810.23, -4532232.54, 4099784.74};
     Vector3d lla_known = {40.246184 * DEG2RAD , -111.647769 * DEG2RAD, 1387.998309};
@@ -39,7 +39,7 @@ TEST (GPS, ecef2lla2ecef)
     ASSERT_MAT_NEAR(ecef_calc, ecef, 1e-6);
 }
 
-TEST (GPS, x_ned2ecef)
+TEST (Gnss, x_ned2ecef)
 {
     Vector3d lla0 = {40.247082 * DEG2RAD, -111.647776 * DEG2RAD, 1387.998309};
     Vector3d ecef0 = WSG84::lla2ecef(lla0);
@@ -56,7 +56,7 @@ TEST (GPS, x_ned2ecef)
     EXPECT_MAT_NEAR(ned1_hat, ned1, 1e-3);
 }
 
-TEST (GPS, ecef2ned_check_axes)
+TEST (Gnss, ecef2ned_check_axes)
 {
     Vector3d lla0 = {40.247082 * DEG2RAD, -111.647776 * DEG2RAD, 1387.998309};
     Vector3d ecef0 = WSG84::lla2ecef(lla0);
@@ -79,7 +79,7 @@ TEST (GPS, ecef2ned_check_axes)
     EXPECT_MAT_NEAR(-1.0 * E_z_N, E_r_N_E, 3e-3);
 }
 
-TEST (GPS, ned2ecef)
+TEST (Gnss, ned2ecef)
 {
     Vector3d lla0 = {40.247082 * DEG2RAD, -111.647776 * DEG2RAD, 1387.998309};
     Vector3d ecef0 = WSG84::lla2ecef(lla0);
@@ -96,7 +96,7 @@ TEST (GPS, ned2ecef)
     EXPECT_MAT_NEAR(ned1_hat, ned1, 1e-6);
 }
 
-TEST (GPS, lla2ned)
+TEST (Gnss, lla2ned)
 {
     Vector3d lla0 = {40.247082 * DEG2RAD, -111.647776 * DEG2RAD, 1387.998309};
     Vector3d lla1 = {40.246587 * DEG2RAD, -111.647761 * DEG2RAD, 1387.998309};
@@ -109,7 +109,7 @@ TEST (GPS, lla2ned)
     EXPECT_MAT_NEAR(ned1_hat, ned1, 1e-6);
 }
 
-class GpsTestEstimator : public EstimatorBase
+class GnssTestEstimator : public EstimatorBase
 {
 public:
     void imuCallback(const double& t, const Vector6d& z, const Matrix6d& R) override {}
@@ -128,9 +128,9 @@ public:
     Vector6d z_last;
 };
 
-class GpsTest : public ::testing::Test {
+class GnssTest : public ::testing::Test {
 protected:
-    GpsTest() :
+    GnssTest() :
         sim(cont, cont)
     {}
     void SetUp() override
@@ -139,33 +139,33 @@ protected:
         ofstream tmp_file(filename);
         YAML::Node node;
         node["ref_LLA"] = std::vector<double>{40.247082 * DEG2RAD, -111.647776 * DEG2RAD, 1387.998309};
-        node["gps_update_rate"] = 5;
-        node["gps_enabled"] = true;
-        node["use_gps_truth"] = false;
-        node["gps_horizontal_position_stdev"] = 1.0;
-        node["gps_vertical_position_stdev"] = 3.0;
-        node["gps_velocity_stdev"] = 0.1;
+        node["gnss_update_rate"] = 5;
+        node["gnss_enabled"] = true;
+        node["use_gnss_truth"] = false;
+        node["gnss_horizontal_position_stdev"] = 1.0;
+        node["gnss_vertical_position_stdev"] = 3.0;
+        node["gnss_velocity_stdev"] = 0.1;
         tmp_file << node;
         tmp_file.close();
 
         sim.param_filename_ = filename;
-        sim.init_gps();
+        sim.init_gnss();
         sim.register_estimator(&est);
     }
 
     ReferenceController cont;
     Simulator sim;
-    GpsTestEstimator est;
+    GnssTestEstimator est;
 };
 
-TEST_F (GpsTest, initECEF)
+TEST_F (GnssTest, initECEF)
 {
     Vector3d to_center_of_earth = sim.x_e2n_.t().normalized();
     EXPECT_MAT_NEAR(-sim.x_e2n_.q().rotp(to_center_of_earth), e_z, 4e-3);
 }
 
 
-TEST_F (GpsTest, MeasurementUpdateRate)
+TEST_F (GnssTest, MeasurementUpdateRate)
 {
     sim.update_gnss_meas();
     ASSERT_EQ(est.call_count, 0);
@@ -182,7 +182,7 @@ TEST_F (GpsTest, MeasurementUpdateRate)
     ASSERT_EQ(est.call_count, 1);
 }
 
-TEST_F (GpsTest, MeasurementPosition)
+TEST_F (GnssTest, MeasurementPosition)
 {
 
     State x;
@@ -203,7 +203,7 @@ TEST_F (GpsTest, MeasurementPosition)
     ASSERT_MAT_NEAR(est.z_last.segment<3>(3), Vector3d::Constant(0.0), 1.0);
 }
 
-TEST_F (GpsTest, MeasurementVelocity)
+TEST_F (GnssTest, MeasurementVelocity)
 {
     State x;
     x.v << 0, 0, -10;

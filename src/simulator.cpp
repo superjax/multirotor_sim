@@ -99,7 +99,7 @@ void Simulator::load(string filename)
   if (pos_enabled_ || att_enabled_)
     init_truth();
   if (gnss_enabled_)
-    init_gps();
+    init_gnss();
 
   // Load sub-class parameters
   if (features_enabled_)
@@ -271,32 +271,59 @@ void Simulator::init_truth()
 }
 
 
-void Simulator::init_gps()
+void Simulator::init_gnss()
 {
-    // GPS
+    // gnss
     Vector3d refLla;
-    double gps_pos_noise_h, gps_pos_noise_v, gps_vel_noise;
+    double gnss_pos_noise_h, gnss_pos_noise_v, gnss_vel_noise;
     get_yaml_eigen("ref_LLA", param_filename_, refLla);
     x_e2n_ = WSG84::x_ecef2ned(WSG84::lla2ecef(refLla));
-    get_yaml_node("gps_update_rate", param_filename_, gps_update_rate_);
-    get_yaml_node("use_gps_truth", param_filename_, use_gps_truth_);
-    get_yaml_node("gps_horizontal_position_stdev", param_filename_, gps_pos_noise_h);
-    get_yaml_node("gps_vertical_position_stdev", param_filename_, gps_pos_noise_v);
-    get_yaml_node("gps_velocity_stdev", param_filename_, gps_vel_noise);
-    gps_horizontal_position_stdev_ = gps_pos_noise_h * !use_gps_truth_;
-    gps_vertical_position_stdev_ = gps_pos_noise_v * !use_gps_truth_;
-    gps_velocity_stdev_ = gps_vel_noise * !use_gps_truth_;
+    get_yaml_node("gnss_update_rate", param_filename_, gnss_update_rate_);
+    get_yaml_node("use_gnss_truth", param_filename_, use_gnss_truth_);
+    get_yaml_node("gnss_horizontal_position_stdev", param_filename_, gnss_pos_noise_h);
+    get_yaml_node("gnss_vertical_position_stdev", param_filename_, gnss_pos_noise_v);
+    get_yaml_node("gnss_velocity_stdev", param_filename_, gnss_vel_noise);
+    gnss_horizontal_position_stdev_ = gnss_pos_noise_h * !use_gnss_truth_;
+    gnss_vertical_position_stdev_ = gnss_pos_noise_v * !use_gnss_truth_;
+    gnss_velocity_stdev_ = gnss_vel_noise * !use_gnss_truth_;
 
-    gps_R_.setIdentity();
-    gps_R_.block<2,2>(0,0) *= gps_pos_noise_h;
-    gps_R_(2,2) *= gps_pos_noise_v;
-    gps_R_.block<3,3>(3,3) *= gps_vel_noise;
-    auto gps_pos_block = gps_R_.block<3,3>(0,0);
-    auto gps_vel_block = gps_R_.block<3,3>(3,3);
-    gps_pos_block = x_e2n_.q().R().transpose() * gps_pos_block * x_e2n_.q().R();
-    gps_vel_block = x_e2n_.q().R().transpose() * gps_vel_block * x_e2n_.q().R();
+    gnss_R_.setIdentity();
+    gnss_R_.block<2,2>(0,0) *= gnss_pos_noise_h;
+    gnss_R_(2,2) *= gnss_pos_noise_v;
+    gnss_R_.block<3,3>(3,3) *= gnss_vel_noise;
+    auto gnss_pos_block = gnss_R_.block<3,3>(0,0);
+    auto gnss_vel_block = gnss_R_.block<3,3>(3,3);
+    gnss_pos_block = x_e2n_.q().R().transpose() * gnss_pos_block * x_e2n_.q().R();
+    gnss_vel_block = x_e2n_.q().R().transpose() * gnss_vel_block * x_e2n_.q().R();
 
-    last_gps_update_ = 0.0;
+    last_gnss_update_ = 0.0;
+}
+
+void Simulator::init_raw_gnss()
+{
+    Vector3d refLla;
+    get_yaml_eigen("ref_LLA", param_filename_, refLla);
+    x_e2n_ = WSG84::x_ecef2ned(WSG84::lla2ecef(refLla));
+    double pseudorange_noise, p_rate_noise, cp_noise;
+    get_yaml_node("gnss_update_rate", param_filename_, gnss_update_rate_);
+    get_yaml_node("use_raw_gnss_truth", param_filename_, use_raw_gnss_truth_);
+    get_yaml_node("pseudorange_stdev", param_filename_, pseudorange_noise);
+    get_yaml_node("pseudorange_rate_stdev", param_filename_, p_rate_noise);
+    get_yaml_node("carrier_phase_stdev", param_filename_, cp_noise);
+    get_yaml_node("ephemeris_filename", param_filename_, ephemeris_filename_);
+    pseudorange_stdev_ = pseudorange_noise * !use_raw_gnss_truth_;
+    pseudorange_rate_stdev_ = p_rate_noise * !use_raw_gnss_truth_;
+    carrier_phase_stdev_ = cp_noise * !use_raw_gnss_truth_;
+
+    for (int i = 0; i < 100; i++)
+    {
+        Satellite sat(i);
+        sat.readFromRawFile(ephemeris_filename_);
+        if (sat.eph_.size() > 0)
+            satellites_.push_back(sat);
+    }
+    start_time_ = satellites_[0].eph_[0].toe;
+    last_raw_gnss_update_ = 0.0;
 }
 
 void Simulator::register_estimator(EstimatorBase *est)
@@ -515,25 +542,25 @@ void Simulator::update_vo_meas()
 
 void Simulator::update_gnss_meas()
 {
-    /// TODO: Simulate GPS sensor delay
-    if (fabs(t_ - last_gps_update_ - 1.0/gps_update_rate_) < 0.0005)
+    /// TODO: Simulate gnss sensor delay
+    if (fabs(t_ - last_gnss_update_ - 1.0/gnss_update_rate_) < 0.0005)
     {
-        last_gps_update_ = t_;
-        /// TODO: Simulate the random walk associated with GPS position
+        last_gnss_update_ = t_;
+        /// TODO: Simulate the random walk associated with gnss position
         Vector3d p_NED = dyn_.get_global_pose().t();
-        p_NED.segment<2>(0) += gps_horizontal_position_stdev_ * randomNormal<double, 2, 1>(normal_, rng_);
-        p_NED(2) += gps_vertical_position_stdev_ * normal_(rng_);
+        p_NED.segment<2>(0) += gnss_horizontal_position_stdev_ * randomNormal<double, 2, 1>(normal_, rng_);
+        p_NED(2) += gnss_vertical_position_stdev_ * normal_(rng_);
         Vector3d p_ECEF = WSG84::ned2ecef(x_e2n_, p_NED);
 
         Vector3d v_NED = dyn_.get_global_pose().q().rota(dyn_.get_state().v);
         Vector3d v_ECEF = x_e2n_.q().rota(v_NED);
-        v_ECEF += gps_velocity_stdev_ * randomNormal<double, 3, 1>(normal_, rng_);
+        v_ECEF += gnss_velocity_stdev_ * randomNormal<double, 3, 1>(normal_, rng_);
 
         Vector6d z;
         z << p_ECEF, v_ECEF;
 
         for (std::vector<EstimatorBase*>::iterator it = est_.begin(); it != est_.end(); it++)
-            (*it)->gnssCallback(t_, z, gps_R_);
+            (*it)->gnssCallback(t_, z, gnss_R_);
     }
 }
 

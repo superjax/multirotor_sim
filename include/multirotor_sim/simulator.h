@@ -13,6 +13,7 @@
 
 #include "multirotor_sim/utils.h"
 #include "multirotor_sim/wsg84.h"
+#include "multirotor_sim/satellite.h"
 #include "multirotor_sim/environment.h"
 #include "multirotor_sim/state.h"
 #include "multirotor_sim/dynamics.h"
@@ -77,7 +78,8 @@ public:
   void init_altimeter();
   void init_vo();
   void init_truth();
-  void init_gps();  
+  void init_gnss();
+  void init_raw_gnss();
 
   bool run();
 
@@ -88,6 +90,7 @@ public:
   void update_mocap_meas();
   void update_vo_meas();
   void update_gnss_meas();
+  void update_raw_gnss_meas();
 
   void register_estimator(EstimatorBase* est);
 
@@ -334,16 +337,28 @@ public:
   double mocap_transmission_time_;
   deque<std::pair<double, measurement_t>, aligned_allocator<std::pair<double, measurement_t>>> mocap_measurement_buffer_; // container to hold measurements while waiting for delay
 
-  // GPS
+  // GNSS
   bool gnss_enabled_;
   Xformd x_e2n_; // transform from the ECEF frame to the Inertial (NED) frame
-  Matrix6d gps_R_;
-  bool use_gps_truth_;
-  double gps_update_rate_;
-  double gps_horizontal_position_stdev_;
-  double gps_vertical_position_stdev_;
-  double gps_velocity_stdev_;
-  double last_gps_update_;
-  Vector3d gps_position_noise_;
+  Matrix6d gnss_R_;
+  bool use_gnss_truth_;
+  double gnss_update_rate_;
+  double gnss_horizontal_position_stdev_;
+  double gnss_vertical_position_stdev_;
+  double gnss_velocity_stdev_;
+  double last_gnss_update_;
+  Vector3d gnss_position_noise_;
+
+  // RAW GNSS
+  Matrix3d raw_gnss_R_;
+  bool use_raw_gnss_truth_;
+  double pseudorange_stdev_;
+  double pseudorange_rate_stdev_;
+  double carrier_phase_stdev_;
+  std::string ephemeris_filename_;
+  std::vector<int> carrier_phase_integer_offsets_;
+  std::vector<Satellite> satellites_;
+  double last_raw_gnss_update_;
+  GTime start_time_;
 };
 }
