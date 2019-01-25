@@ -2,7 +2,6 @@
 #include <stdint.h>
 #include <vector>
 #include <fstream>
-#include <variant>
 
 #include <Eigen/Core>
 
