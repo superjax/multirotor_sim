@@ -93,6 +93,13 @@ void Satellite::computeMeasurement(const GTime& rec_time, const Vector3d& receiv
     return;
 }
 
+Vector2d Satellite::los2azimuthElevation(const Vector3d &receiver_pos_ecef, const Vector3d &los_ecef)
+{
+    Vector2d az_el;
+    los2azimuthElevation(receiver_pos_ecef, los_ecef, az_el);
+    return az_el;
+}
+
 void Satellite::los2azimuthElevation(const Vector3d& receiver_pos_ecef, const Vector3d& los_ecef, Vector2d& az_el)
 {
     xform::Xformd x_e2n = WSG84::x_ecef2ned(receiver_pos_ecef);
