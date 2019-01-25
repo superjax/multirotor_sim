@@ -49,10 +49,10 @@ target_link_libraries(multirotor_sim ${YAML_CPP_LIBRARIES} stdc++fs geometry nan
 if (${GTEST_FOUND})
     include_directories(include ${GTEST_INCLUDE_DIRS} ${EIGEN3_INCLUDE_DIRS})
     add_executable(multirotor_sim_test
-        src/test/test_gps.cpp
+        src/test/test_gnss.cpp
         src/test/test_time.cpp
         src/test/test_satellite.cpp
-        src/test/test_raw_gps.cpp
+        src/test/test_raw_gnss.cpp
         src/test/test_state.cpp
         src/test/test_dynamics.cpp
         src/test/test_reference_controller.cpp

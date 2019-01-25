@@ -82,18 +82,5 @@ public:
     void addEphemeris(const eph_t& eph_);
 
     int id_;
-//    GTime t_last_udpate_;
-//    Vector2d az_el_;
-//    Vector3d rec_pos_;
-//    Vector3d rec_vel_;
-//    Vector3d sat_pos_;
-//    Vector3d sat_vel_;
-
     eph_t eph_ = { 0 };
-//    int closest_eph_idx_;
-
-//    double carrier_phase_;
-//    double carrier_phase_rate_;
-//    double pseudorange_;
-//    double pseudorange_rate_;
 };
