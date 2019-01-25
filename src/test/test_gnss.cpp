@@ -174,7 +174,7 @@ TEST_F (GnssTest, MeasurementUpdateRate)
     State x;
     x.p << 1000, 0, 0;
     sim.dyn_.set_state(x);
-    sim.t_ = 0.2;
+    sim.t_ = 0.3;
 
     sim.update_gnss_meas();
     ASSERT_EQ(est.call_count, 1);
@@ -189,7 +189,7 @@ TEST_F (GnssTest, MeasurementPosition)
     State x;
     x.p << 1000, 0, 0;
     sim.dyn_.set_state(x);
-    sim.t_ = 0.2;
+    sim.t_ = 0.3;
 
     sim.update_gnss_meas();
 
@@ -209,7 +209,7 @@ TEST_F (GnssTest, MeasurementVelocity)
     State x;
     x.v << 0, 0, -10;
     sim.dyn_.set_state(x);
-    sim.t_ = 0.2;
+    sim.t_ = 0.3;
 
     sim.update_gnss_meas();
 

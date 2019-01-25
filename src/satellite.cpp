@@ -1,5 +1,4 @@
-﻿#include <variant>
-#include <Eigen/Core>
+﻿#include <Eigen/Core>
 
 #include "multirotor_sim/satellite.h"
 #include "multirotor_sim/wsg84.h"
