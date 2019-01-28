@@ -228,6 +228,19 @@ public:
    */
   Vector3d get_acc();
 
+
+  /**
+   * @brief get_position_ecef
+   * @return current position in ECEF coordinates
+   */
+  Vector3d get_position_ecef() const;
+
+  /**
+   * @brief get_velocity_ecef
+   * @return current velocity in ECEF coordinates
+   */
+  Vector3d get_velocity_ecef() const;
+
   // Progress indicator, updated by run()
   ProgressBar prog_;
   bool prog_indicator_;
@@ -350,6 +363,7 @@ public:
   Vector3d gnss_position_noise_;
 
   // RAW GNSS
+  bool raw_gnss_enabled_;
   Matrix3d raw_gnss_R_;
   bool use_raw_gnss_truth_;
   double pseudorange_stdev_;

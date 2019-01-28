@@ -87,6 +87,7 @@ void Simulator::load(string filename)
   get_yaml_node("vo_enabled", filename, vo_enabled_);
   get_yaml_node("features_enabled", filename, features_enabled_);
   get_yaml_node("gnss_enabled", filename, gnss_enabled_);
+  get_yaml_node("raw_gnss_enabled", filename, raw_gnss_enabled_);
 
   if (imu_enabled_)
     init_imu();
@@ -100,6 +101,8 @@ void Simulator::load(string filename)
     init_truth();
   if (gnss_enabled_)
     init_gnss();
+  if (raw_gnss_enabled_)
+      init_raw_gnss();
 
   // Load sub-class parameters
   if (features_enabled_)
@@ -307,6 +310,7 @@ void Simulator::init_raw_gnss()
     double pseudorange_noise, p_rate_noise, cp_noise, clock_walk;
     get_yaml_node("gnss_update_rate", param_filename_, gnss_update_rate_);
     get_yaml_node("use_raw_gnss_truth", param_filename_, use_raw_gnss_truth_);
+    get_yaml_node("use_raw_gnss_truth", param_filename_, use_raw_gnss_truth_);
     get_yaml_node("pseudorange_stdev", param_filename_, pseudorange_noise);
     get_yaml_node("pseudorange_rate_stdev", param_filename_, p_rate_noise);
     get_yaml_node("carrier_phase_stdev", param_filename_, cp_noise);
@@ -322,7 +326,7 @@ void Simulator::init_raw_gnss()
 
     for (int i = 0; i < 100; i++)
     {
-        Satellite sat(i);
+        Satellite sat(i, satellites_.size());
         sat.readFromRawFile(ephemeris_filename_);
         if (sat.eph_.A > 0)
         {
@@ -330,6 +334,10 @@ void Simulator::init_raw_gnss()
             carrier_phase_integer_offsets_.push_back(use_raw_gnss_truth_ ? 0 : round(uniform_(rng_) * 100) - 50);
         }
     }
+
+    raw_gnss_R_ = Vector3d{pseudorange_stdev_*pseudorange_stdev_,
+                           pseudorange_rate_stdev_*pseudorange_rate_stdev_,
+                           carrier_phase_stdev_*carrier_phase_stdev_}.asDiagonal();
 
     clock_bias_ = uniform_(rng_) * clock_init_stdev_;
     last_raw_gnss_update_ = 0.0;
@@ -583,9 +591,8 @@ void Simulator::update_raw_gnss_meas()
         clock_bias_ += normal_(rng_) * clock_walk_stdev_ * dt;
 
         GTime t_now = t_ + start_time_;
-        Vector3d p_ECEF = WSG84::ned2ecef(x_e2n_, dyn_.get_state().p);
-        Vector3d v_NED = dyn_.get_global_pose().q().rota(dyn_.get_state().v);
-        Vector3d v_ECEF = x_e2n_.q().rota(v_NED);
+        Vector3d p_ECEF = get_position_ecef();
+        Vector3d v_ECEF = get_velocity_ecef();
 
         Vector3d z;
         int i;
@@ -597,7 +604,7 @@ void Simulator::update_raw_gnss_meas()
             z(1) += normal_(rng_) * pseudorange_rate_stdev_;
             z(2) += normal_(rng_) * carrier_phase_stdev_ + carrier_phase_integer_offsets_[i];
             for (std::vector<EstimatorBase*>::iterator it = est_.begin(); it != est_.end(); it++)
-                (*it)->rawGnssCallback(t_now, z, raw_gnss_R_, sat->id_);
+                (*it)->rawGnssCallback(t_now, z, raw_gnss_R_, *sat);
         }
     }
 }
@@ -617,6 +624,8 @@ void Simulator::update_measurements()
     update_vo_meas();
   if (gnss_enabled_)
     update_gnss_meas();
+  if (raw_gnss_enabled_)
+    update_raw_gnss_meas();
 }
 
 
@@ -830,6 +839,17 @@ Matrix6d Simulator::get_mocap_noise_covariance() const
       return Matrix6d::Identity() * 1e-8;
   else
       return cov.asDiagonal();
+}
+
+Vector3d Simulator::get_position_ecef() const
+{
+    return WSG84::ned2ecef(x_e2n_, dyn_.get_state().p);
+}
+
+Vector3d Simulator::get_velocity_ecef() const
+{
+    Vector3d v_NED = dyn_.get_global_pose().q().rota(dyn_.get_state().v);
+    return x_e2n_.q().rota(v_NED);
 }
 
 }

@@ -4,6 +4,7 @@
 
 #include "multirotor_sim/state.h"
 #include "multirotor_sim/gtime.h"
+#include "multirotor_sim/satellite.h"
 
 namespace  multirotor_sim
 {
@@ -30,7 +31,8 @@ public:
     // t - Time of measurement (GPS Time)
     // z - gnss measurement [rho(m), rhodot(m/s), l(cycles)]
     // R - gnss covariance
-    virtual void rawGnssCallback(const GTime& t, const Vector3d& z, const Matrix3d& R, int id) = 0;
+    // sat - Satellite object related to this measurement
+    virtual void rawGnssCallback(const GTime& t, const Vector3d& z, const Matrix3d& R, Satellite& sat) = 0;
 };
 
 }

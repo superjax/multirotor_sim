@@ -9,7 +9,7 @@ class TestSatellite : public ::testing::Test
 {
 protected:
   TestSatellite() :
-    sat(1)
+    sat(1, 0)
   {}
   void SetUp() override
     {
@@ -158,7 +158,7 @@ TEST (Satellite, ReadFromFile)
   std::vector<Satellite> satellites;
   for (int i = 0; i < sat_ids.size(); i++)
   {
-    Satellite sat(sat_ids[i]);
+    Satellite sat(sat_ids[i], i);
     sat.readFromRawFile("../sample/eph.dat");
 
 //    EXPECT_GT(sat.eph_.size(), 0);
@@ -181,7 +181,7 @@ TEST (Satellite, ReadFromFileCheckTime)
 
   for (int i = 0; i < sat_ids.size(); i++)
   {
-    Satellite sat(sat_ids[i]);
+    Satellite sat(sat_ids[i], i);
     sat.readFromRawFile("../sample/eph.dat");
     EXPECT_LE(std::abs((log_start - sat.eph_.toe).toSec()), Satellite::MAXDTOE);
   }
@@ -211,7 +211,7 @@ TEST (Satellite, ReadFromFileCheckPositions)
 
   for (int i = 0; i < sat_ids.size(); i++)
   {
-    Satellite sat(sat_ids[i]);
+    Satellite sat(sat_ids[i], i);
     sat.readFromRawFile("../sample/eph.dat");
 
     Vector3d pos, vel;
@@ -234,7 +234,7 @@ TEST (Satellite, ReadFromFileCheckAzEl)
 
   for (int i = 0; i < sat_ids.size(); i++)
   {
-    Satellite sat(sat_ids[i]);
+    Satellite sat(sat_ids[i], i);
     sat.readFromRawFile("../sample/eph.dat");
 
     Vector3d pos, vel;
@@ -248,7 +248,7 @@ TEST (Satellite, ReadFromFileCheckAzEl)
 
 TEST (Satellite, CheckMagnitudeOfCarrierPhase)
 {
-  Satellite sat(3);
+  Satellite sat(3, 0);
   sat.readFromRawFile("../sample/eph.dat");
   GTime log_start = GTime::fromUTC(1541454646,  0.993);
   Vector3d rec_pos {-1798904.13, -4532227.1 ,  4099781.95};

@@ -71,7 +71,7 @@ public:
     static const double FREQL1;
     static const double LAMBDA_L1;
 
-    Satellite(int id);
+    Satellite(int id, int idx);
     void update(const GTime &g, const Vector3d& rec_pos, const Vector3d& rec_vel);
     bool computePositionVelocityClock(const GTime &g, const Ref<Vector3d> &pos, const Ref<Vector3d> &vel, const Ref<Vector2d> &clock);
     void computeMeasurement(const GTime& rec_time, const Vector3d& receiver_pos, const Vector3d &receiver_vel, Vector3d &z);
@@ -83,5 +83,6 @@ public:
     void addEphemeris(const eph_t& eph_);
 
     int id_;
+    int idx_;
     eph_t eph_ = { 0 };
 };

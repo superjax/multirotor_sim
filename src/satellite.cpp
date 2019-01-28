@@ -15,9 +15,10 @@ const double Satellite::LAMBDA_L1 = Satellite::C_LIGHT / Satellite::FREQL1;
 
 
 
-Satellite::Satellite(int id)
+Satellite::Satellite(int id, int idx)
 {
     id_ = id;
+    idx_ = idx;
     memset(&eph_, 0, sizeof(eph_t));
 }
 
