@@ -53,7 +53,7 @@ void Satellite::addEphemeris(const eph_t &_eph)
 //    }
 }
 
-void Satellite::computeMeasurement(const GTime& rec_time, const Vector3d& receiver_pos, const Vector3d& receiver_vel, const Vector2d& clk_bias, Vector3d& z )
+void Satellite::computeMeasurement(const GTime& rec_time, const Vector3d& receiver_pos, const Vector3d& receiver_vel, const Vector2d& clk_bias, Vector3d& z ) const
 {
     Vector3d sat_pos, sat_vel;
     Vector2d sat_clk;
@@ -89,19 +89,19 @@ void Satellite::computeMeasurement(const GTime& rec_time, const Vector3d& receiv
     double ion_delay = ionosphericDelay(rec_time, lla, az_el);
     z(0) += ion_delay;
 
-    z(2) = los_to_sat.norm() / LAMBDA_L1;
+    z(2) = z(0) / LAMBDA_L1;
 
     return;
 }
 
-Vector2d Satellite::los2azimuthElevation(const Vector3d &receiver_pos_ecef, const Vector3d &los_ecef)
+Vector2d Satellite::los2azimuthElevation(const Vector3d &receiver_pos_ecef, const Vector3d &los_ecef) const
 {
     Vector2d az_el;
     los2azimuthElevation(receiver_pos_ecef, los_ecef, az_el);
     return az_el;
 }
 
-void Satellite::los2azimuthElevation(const Vector3d& receiver_pos_ecef, const Vector3d& los_ecef, Vector2d& az_el)
+void Satellite::los2azimuthElevation(const Vector3d& receiver_pos_ecef, const Vector3d& los_ecef, Vector2d& az_el) const
 {
     xform::Xformd x_e2n = WSG84::x_ecef2ned(receiver_pos_ecef);
     Vector3d los_ned = x_e2n.q().rotp(los_ecef.normalized());
@@ -110,7 +110,7 @@ void Satellite::los2azimuthElevation(const Vector3d& receiver_pos_ecef, const Ve
     az_el(1) = q_los.pitch();
 }
 
-double Satellite::ionosphericDelay(const GTime& gtime, const Vector3d& lla, const Vector2d& az_el)
+double Satellite::ionosphericDelay(const GTime& gtime, const Vector3d& lla, const Vector2d& az_el) const
 {
     // Klobuchar Algorithm:
     // https://gssc.esa.int/navipedia/index.php/Klobuchar_Ionospheric_Model
@@ -163,7 +163,7 @@ double Satellite::ionosphericDelay(const GTime& gtime, const Vector3d& lla, cons
         return C_LIGHT * F * 5e-9;
 }
 
-double Satellite::selectEphemeris(const GTime &time)
+double Satellite::selectEphemeris(const GTime &time) const
 {
     // find the closest ephemeris
     return (time - eph_.toe).toSec();
@@ -203,7 +203,7 @@ double Satellite::selectEphemeris(const GTime &time)
 }
 
 
-bool Satellite::computePositionVelocityClock(const GTime& time, const Ref<Vector3d> &_pos, const Ref<Vector3d> &_vel, const Ref<Vector2d>& _clock)
+bool Satellite::computePositionVelocityClock(const GTime& time, const Ref<Vector3d> &_pos, const Ref<Vector3d> &_vel, const Ref<Vector2d>& _clock) const
 {
     // const-cast hackery to get around Ref
     Ref<Vector3d> pos = const_cast<Ref<Vector3d>&>(_pos);
