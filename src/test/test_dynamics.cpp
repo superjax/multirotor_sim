@@ -8,7 +8,7 @@
 
 TEST (Dynamics, Propagate)
 {
-  std::string filename = "tmp.params.yaml";
+  std::string filename = "/tmp/params.yaml";
   std::ofstream tmp_file(filename);
   YAML::Node node;
   node["throttle_eq"] = 0.5;
@@ -42,7 +42,7 @@ TEST (Dynamics, Propagate)
   dyn_euler.RK4_ = false;
 
 
-  std::ofstream file("/tmp/ceres_sandbox/Dynamics.Propagate.log");
+  std::ofstream file("/tmp/Dynamics.Propagate.log");
   double t;
   double dt = 0.01;
   Vector4d u;
