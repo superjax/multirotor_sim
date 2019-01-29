@@ -118,10 +118,10 @@ TEST_F (RawGpsTest, MeasurementIsCloseToTruth)
     Vector3d z_true;
     for (int i = 0; i < 15; i++)
     {
-        sim.satellites_[i].computeMeasurement(t, pos_ecef, vel_ecef, Vector2d::Zero(), z_true);
-        ASSERT_NEAR(z_true[0], est.z_last[i][0], 4.0);
-        ASSERT_NEAR(z_true[1], est.z_last[i][1], 0.3);
-        ASSERT_NEAR(z_true[2], est.z_last[i][2], 100);
+        sim.satellites_[i].computeMeasurement(t, pos_ecef, vel_ecef, Vector2d{sim.clock_bias_, sim.clock_bias_rate_}, z_true);
+        EXPECT_NEAR(z_true[0], est.z_last[i][0], 4.0);
+        EXPECT_NEAR(z_true[1], est.z_last[i][1], 0.3);
+        EXPECT_NEAR(z_true[2], est.z_last[i][2], 100);
     }
 }
 

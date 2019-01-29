@@ -29,6 +29,7 @@ protected:
     node["vo_enabled"] = false;
     node["features_enabled"] = false;
     node["gnss_enabled"] = false;
+    node["raw_gnss_enabled"] = false;
     node["path_type"] = 0;
     node["waypoints"] = std::vector<double>
         {10, 0, -5, .705,
