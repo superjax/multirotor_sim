@@ -42,7 +42,7 @@ TEST (Dynamics, Propagate)
   dyn_euler.RK4_ = false;
 
 
-  std::ofstream file("Dynamics.Propagate.log");
+  std::ofstream file("/tmp/ceres_sandbox/Dynamics.Propagate.log");
   double t;
   double dt = 0.01;
   Vector4d u;
