@@ -53,7 +53,7 @@ void Satellite::addEphemeris(const eph_t &_eph)
 //    }
 }
 
-void Satellite::computeMeasurement(const GTime& rec_time, const Vector3d& receiver_pos, const Vector3d& receiver_vel, Vector3d& z)
+void Satellite::computeMeasurement(const GTime& rec_time, const Vector3d& receiver_pos, const Vector3d& receiver_vel, const Vector2d& clk_bias, Vector3d& z )
 {
     Vector3d sat_pos, sat_vel;
     Vector2d sat_clk;
@@ -75,10 +75,10 @@ void Satellite::computeMeasurement(const GTime& rec_time, const Vector3d& receiv
     z(0) = los_to_sat.norm();
 
     // compute relative velocity between receiver and satellite, adjusted by the clock drift rate
-    z(1) = ((sat_vel - receiver_vel).transpose() * los_to_sat / z(0))(0) - C_LIGHT * sat_clk(1);
+    z(1) = ((sat_vel - receiver_vel).transpose() * los_to_sat / z(0))(0) + C_LIGHT * (clk_bias(1) - sat_clk(1));
 
     // adjust range by the satellite clock offset
-    z(0) -= C_LIGHT * sat_clk(0);
+    z(0) += C_LIGHT * (clk_bias(1) - sat_clk(0));
 
     // Compute Azimuth and Elevation to satellite
     Vector2d az_el;

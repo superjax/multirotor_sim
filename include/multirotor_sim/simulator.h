@@ -372,6 +372,7 @@ public:
   double clock_walk_stdev_;
   double clock_init_stdev_;
   double clock_bias_;
+  double clock_bias_rate_;
   std::string ephemeris_filename_;
   std::vector<int> carrier_phase_integer_offsets_;
   std::vector<Satellite> satellites_;

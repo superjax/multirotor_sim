@@ -139,7 +139,7 @@ TEST_F (TestSatellite, PsuedorangeSim)
 
     Vector3d z;
 
-    sat.computeMeasurement(time, provo_ecef, rec_vel, z);
+    sat.computeMeasurement(time, provo_ecef, rec_vel, Vector2d::Zero(), z);
 
     ionoutc_t ion = {true, true,
                      0.1118E-07,-0.7451E-08,-0.5961E-07, 0.1192E-06,
@@ -253,7 +253,7 @@ TEST (Satellite, CheckMagnitudeOfCarrierPhase)
   GTime log_start = GTime::fromUTC(1541454646,  0.993);
   Vector3d rec_pos {-1798904.13, -4532227.1 ,  4099781.95};
   Vector3d z;
-  sat.computeMeasurement(log_start, rec_pos, Vector3d::Zero(), z);
+  sat.computeMeasurement(log_start, rec_pos, Vector3d::Zero(), Vector2d::Zero(), z);
 
   EXPECT_NEAR(z(2), 1.3e8, 1e7);
 }

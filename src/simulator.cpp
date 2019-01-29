@@ -588,7 +588,8 @@ void Simulator::update_raw_gnss_meas()
     {
         double dt = t_ - last_raw_gnss_update_;
         last_raw_gnss_update_ = t_;
-        clock_bias_ += normal_(rng_) * clock_walk_stdev_ * dt;
+        clock_bias_rate_ += normal_(rng_) * clock_walk_stdev_ * dt;
+        clock_bias_ += clock_bias_rate_ * dt;
 
         GTime t_now = t_ + start_time_;
         Vector3d p_ECEF = get_position_ecef();
@@ -599,7 +600,7 @@ void Simulator::update_raw_gnss_meas()
         vector<Satellite>::iterator sat;
         for (i = 0, sat = satellites_.begin(); sat != satellites_.end(); sat++, i++)
         {
-            sat->computeMeasurement(t_now, p_ECEF, v_ECEF, z);
+            sat->computeMeasurement(t_now, p_ECEF, v_ECEF, Vector2d{clock_bias_, clock_bias_rate_}, z);
             z(0) += normal_(rng_) * pseudorange_stdev_;
             z(1) += normal_(rng_) * pseudorange_rate_stdev_;
             z(2) += normal_(rng_) * carrier_phase_stdev_ + carrier_phase_integer_offsets_[i];

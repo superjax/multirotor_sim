@@ -118,7 +118,7 @@ TEST_F (RawGpsTest, MeasurementIsCloseToTruth)
     Vector3d z_true;
     for (int i = 0; i < 15; i++)
     {
-        sim.satellites_[i].computeMeasurement(t, pos_ecef, vel_ecef, z_true);
+        sim.satellites_[i].computeMeasurement(t, pos_ecef, vel_ecef, Vector2d::Zero(), z_true);
         ASSERT_NEAR(z_true[0], est.z_last[i][0], 4.0);
         ASSERT_NEAR(z_true[1], est.z_last[i][1], 0.3);
         ASSERT_NEAR(z_true[2], est.z_last[i][2], 100);
@@ -155,7 +155,7 @@ TEST_F (RawGpsTest, LeastSquaresPositioningPseudoranges)
             sim.satellites_[i].computePositionVelocityClock(t, sat_pos, sat_vel, sat_clk_bias);
 
             Vector3d z ;
-            sim.satellites_[i].computeMeasurement(t, xhat, vel_ecef, z);
+            sim.satellites_[i].computeMeasurement(t, xhat, vel_ecef, Vector2d::Zero(), z);
             b(i) = est.z_last[i](0) - z(0);
 
             A.block<1,3>(i,0) = (xhat - sat_pos).normalized().transpose();

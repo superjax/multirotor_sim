@@ -74,7 +74,7 @@ public:
     Satellite(int id, int idx);
     void update(const GTime &g, const Vector3d& rec_pos, const Vector3d& rec_vel);
     bool computePositionVelocityClock(const GTime &g, const Ref<Vector3d> &pos, const Ref<Vector3d> &vel, const Ref<Vector2d> &clock);
-    void computeMeasurement(const GTime& rec_time, const Vector3d& receiver_pos, const Vector3d &receiver_vel, Vector3d &z);
+    void computeMeasurement(const GTime& rec_time, const Vector3d& receiver_pos, const Vector3d &receiver_vel, const Vector2d &clk_bias, Vector3d &z);
     void los2azimuthElevation(const Vector3d& receiver_pos_ecef, const Vector3d& los_ecef, Vector2d& az_el);
     Vector2d los2azimuthElevation(const Vector3d& receiver_pos_ecef, const Vector3d& los_ecef);
     double ionosphericDelay(const GTime &t, const Vector3d& lla, const Vector2d& az_el);
