@@ -126,8 +126,7 @@ RK4: true
 # Sensor Configuration
 imu_enabled: true
 alt_enabled: true
-att_enabled: true
-pos_enabled: true
+mocap_enabled: true
 vo_enabled: true
 features_enabled: true
 gnss_enabled: true

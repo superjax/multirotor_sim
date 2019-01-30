@@ -54,9 +54,7 @@ TEST (Dynamics, Propagate)
   for (int i = 0; i < 50; i++)
   {
     t = dt * i;
-    Vector4d noise;
-    random_normal_vec(noise, 0.1, dist, gen);
-    u += dt * noise;
+    u += dt * randomNormal<Vector4d>(0.1, dist, gen);
     dyn_rk4.run(t, u);
     dyn_euler.run(t, u);
     file.write((char*)&t, sizeof(double));

@@ -17,8 +17,7 @@ public:
     EIGEN_MAKE_ALIGNED_OPERATOR_NEW
     void imuCallback(const double& t, const Vector6d& z, const Matrix6d& R) override {}
     void altCallback(const double& t, const Vector1d& z, const Matrix1d& R) override {}
-    void posCallback(const double& t, const Vector3d& z, const Matrix3d& R) override {}
-    void attCallback(const double& t, const Quatd& z, const Matrix3d& R) override {}
+    void mocapCallback(const double& t, const Xformd& z, const Matrix6d& R) override {}
     void voCallback(const double& t, const Xformd& z, const Matrix6d& R) override {}
     void featCallback(const double& t, const Vector2d& z, const Matrix2d& R, int id, double depth) override {}
     void gnssCallback(const double& t, const Vector6d& z, const Matrix6d& R) override {}
@@ -42,7 +41,7 @@ public:
 class RawGpsTest : public ::testing::Test {
 protected:
     RawGpsTest() :
-        sim(cont, cont, false, 1)
+        sim(&cont, &cont, false, 1)
     {}
 
     void SetUp() override
@@ -112,9 +111,9 @@ TEST_F (RawGpsTest, MeasurementIsCloseToTruth)
     sim.update_raw_gnss_meas();
 
     GTime t = sim.t_ + sim.start_time_;
-    Vector3d pos_ecef = WSG84::ned2ecef(sim.x_e2n_, x.p);
+    Vector3d pos_ecef = WSG84::ned2ecef(sim.X_e2n_, x.p);
     Vector3d vel_ned = sim.dyn_.get_state().q.rota(sim.dyn_.get_state().v);
-    Vector3d vel_ecef = sim.x_e2n_.q().rota(vel_ned);
+    Vector3d vel_ecef = sim.X_e2n_.q().rota(vel_ned);
     Vector3d z_true;
     for (int i = 0; i < 15; i++)
     {
@@ -135,10 +134,10 @@ TEST_F (RawGpsTest, LeastSquaresPositioningPseudoranges)
 
     GTime t = sim.t_ + sim.start_time_;
     Vector3d vel_ned = sim.dyn_.get_state().q.rota(sim.dyn_.get_state().v);
-    Vector3d vel_ecef = sim.x_e2n_.q().rota(vel_ned);
+    Vector3d vel_ecef = sim.X_e2n_.q().rota(vel_ned);
 
     Vector3d xhat = Vector3d::Zero();
-    Vector3d xtrue = WSG84::ned2ecef(sim.x_e2n_, x.p);
+    Vector3d xtrue = WSG84::ned2ecef(sim.X_e2n_, x.p);
 
     Matrix<double, 15, 4> A;
     Matrix<double, 15, 1> b;
@@ -170,8 +169,8 @@ TEST_F (RawGpsTest, LeastSquaresPositioningPseudoranges)
     } while (dx.norm() > 1e-4);
 
 //    cout << (xhat - xtrue).transpose() << endl;
-    Vector3d xhat_ned = WSG84::ecef2ned(sim.x_e2n_, xhat);
-    Vector3d xtrue_ned = WSG84::ecef2ned(sim.x_e2n_, xtrue);
+    Vector3d xhat_ned = WSG84::ecef2ned(sim.X_e2n_, xhat);
+    Vector3d xtrue_ned = WSG84::ecef2ned(sim.X_e2n_, xtrue);
 //    cout << "xhat:\n" << xhat_ned.transpose() <<
 //            "\nx:\n" << xtrue_ned.transpose() << endl;
 

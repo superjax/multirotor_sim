@@ -346,11 +346,13 @@ private:
   std::vector <std::string> tokens;
 };
 
-template<typename T, int S>
-void random_normal_vec(Eigen::Matrix<T,S,1>& vec, double stdev, std::normal_distribution<T>& dist, std::default_random_engine& gen)
+template<typename Derived>
+Derived randomNormal(double stdev, std::normal_distribution<typename Derived::Scalar>& dist, std::default_random_engine& gen)
 {
-  for (int i = 0; i < S; ++i)
+  Derived vec;
+  for (int i = 0; i < Derived::RowsAtCompileTime; ++i)
     vec(i) = stdev*dist(gen);
+  return vec;
 }
 
 inline bool isNan(const Eigen::Ref<const Eigen::MatrixXd>& A)

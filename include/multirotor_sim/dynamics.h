@@ -57,6 +57,7 @@ public:
   void f(const State& x, const Vector4d& u, ErrorState& dx, Vector6d& imu) const;
   
   const State& get_state() const { return x_; }
+  State& get_state() { return x_; }
   void set_state(const State& x) { x_ = x; }
 
   const Xformd& get_global_pose() const { return x_.X; }
@@ -77,8 +78,8 @@ public:
   double angular_drag_;
   double max_thrust_;
   Vector6d imu_;
-  Vector3d p_b_u_; // Body to IMU translation
-  Quatd q_b_u_; // Body to IMU rotation
+  Vector3d p_b2u_; // Body to IMU translation
+  Quatd q_b2u_; // Body to IMU rotation
 
   bool wind_enabled_;
   double vw_walk_stdev_;

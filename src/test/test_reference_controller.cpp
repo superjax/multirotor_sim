@@ -9,7 +9,7 @@ class ReferenceControllerTest : public ::testing::Test
 {
 public:
   ReferenceControllerTest() :
-    sim(cont, cont, false) {}
+    sim(&cont, &cont, false) {}
 
 protected:
 
@@ -24,8 +24,7 @@ protected:
     node["log_filename"] = "";
     node["imu_enabled"] = false;
     node["alt_enabled"] = false;
-    node["att_enabled"] = false;
-    node["pos_enabled"] = false;
+    node["mocap_enabled"] = false;
     node["vo_enabled"] = false;
     node["features_enabled"] = false;
     node["gnss_enabled"] = false;
@@ -101,8 +100,8 @@ TEST_F (ReferenceControllerTest, Waypoints)
   while(sim.run())
   {
     file.write((char*)&sim.t_, sizeof(double));
-    file.write((char*)sim.dyn_.get_state().arr.data(), sizeof(double) * State::SIZE);
-    file.write((char*)sim.traj_.getCommandedState(sim.t_).arr.data(), sizeof(double) * State::SIZE);
+    file.write((char*)sim.state().arr.data(), sizeof(double) * State::SIZE);
+    file.write((char*)sim.traj_->getCommandedState(sim.t_).arr.data(), sizeof(double) * State::SIZE);
     if (cont.current_waypoint_id_ != prev_waypoint_id)
     {
       prev_waypoint_id = cont.current_waypoint_id_;

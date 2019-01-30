@@ -114,8 +114,7 @@ class GnssTestEstimator : public EstimatorBase
 public:
     void imuCallback(const double& t, const Vector6d& z, const Matrix6d& R) override {}
     void altCallback(const double& t, const Vector1d& z, const Matrix1d& R) override {}
-    void posCallback(const double& t, const Vector3d& z, const Matrix3d& R) override {}
-    void attCallback(const double& t, const Quatd& z, const Matrix3d& R) override {}
+    void mocapCallback(const double& t, const Xformd& z, const Matrix6d& R) override {}
     void voCallback(const double& t, const Xformd& z, const Matrix6d& R) override {}
     void featCallback(const double& t, const Vector2d& z, const Matrix2d& R, int id, double depth) override {}
     void rawGnssCallback(const GTime& t, const Vector3d& z, const Matrix3d& R, Satellite& sat) override {}
@@ -132,7 +131,7 @@ public:
 class GnssTest : public ::testing::Test {
 protected:
     GnssTest() :
-        sim(cont, cont)
+        sim()
     {}
     void SetUp() override
     {
@@ -154,15 +153,14 @@ protected:
         sim.register_estimator(&est);
     }
 
-    ReferenceController cont;
     Simulator sim;
     GnssTestEstimator est;
 };
 
 TEST_F (GnssTest, initECEF)
 {
-    Vector3d to_center_of_earth = sim.x_e2n_.t().normalized();
-    EXPECT_MAT_NEAR(-sim.x_e2n_.q().rotp(to_center_of_earth), e_z, 4e-3);
+    Vector3d to_center_of_earth = sim.X_e2n_.t().normalized();
+    EXPECT_MAT_NEAR(-sim.X_e2n_.q().rotp(to_center_of_earth), e_z, 4e-3);
 }
 
 

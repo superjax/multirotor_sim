@@ -5,7 +5,7 @@
 #include <deque>
 #include <fstream>
 #include <functional>
-#include <stdint.h>
+#include <cstdint>
 
 #include <Eigen/Core>
 
@@ -45,39 +45,25 @@ namespace multirotor_sim
 class Simulator
 {
 public:
-  typedef enum {
-      ACC,
-      ALT,
-      ATT,
-      POS,
-      VEL,
-      FEAT,
-      VO,
-      GNSS,
-      TOTAL_MEAS
-    } measurement_type_t;
-
   typedef struct
   {
     double t;
-    measurement_type_t type;
     VectorXd z;
     MatrixXd R;
     int feature_id;
     double depth;
   } measurement_t;
   
-  Simulator(ControllerBase& _cont, TrajectoryBase& _traj);
+  Simulator(bool prog_indicator=false, uint64_t seed=0);
+  Simulator(ControllerBase *_cont, TrajectoryBase *_traj, bool prog_indicator=false, uint64_t seed=0);
   ~Simulator();
-  Simulator(ControllerBase& _cont, TrajectoryBase& _traj, bool prog_indicator);
-  Simulator(ControllerBase& _cont, TrajectoryBase& _traj, bool prog_indicator, uint64_t seed);
   
   void load(std::string filename);
   void init_imu();
   void init_camera();
   void init_altimeter();
   void init_vo();
-  void init_truth();
+  void init_mocap();
   void init_gnss();
   void init_raw_gnss();
 
@@ -94,20 +80,19 @@ public:
 
   void register_estimator(EstimatorBase* est);
 
-  const Vector6d& get_true_imu() const { return dyn_.imu_;}
-  Xformd get_pose() const;
-  Vector3d get_vel() const;
-  Matrix6d get_imu_noise_covariance() const;
-  Matrix6d get_mocap_noise_covariance() const;
-  inline Vector3d get_accel_bias() const { return accel_bias_; }
-  inline Vector3d get_gyro_bias() const { return gyro_bias_; }
+  const Vector6d& imu() const { return dyn_.imu_;}
+  const State& state() const { return dyn_.get_state(); }
+  State& state() { return dyn_.get_state(); }
+  Vector3d get_position_ecef() const;
+  Vector3d get_velocity_ecef() const;
 
   void log_state();
   
   Environment env_;
   Dynamics dyn_;
-  ControllerBase& cont_;
-  TrajectoryBase& traj_;
+  ControllerBase* cont_;
+  TrajectoryBase* traj_;
+  bool owned_controller_;
   std::vector<EstimatorBase*> est_;
   double t_, dt_, tmax_;
 
@@ -152,27 +137,8 @@ public:
   bool get_feature_in_frame(feature_t &feature, bool retrack);
 
 
-  /**
-   * @brief get_previously_tracked_feature_in_frame
-   * @param feature
-   * @return true if success
-   */
   bool get_previously_tracked_feature_in_frame(feature_t &feature);
-
-  /**
-   * @brief create_new_feature_in_frame
-   * @param feature
-   * @return true if success
-   */
   bool create_new_feature_in_frame(feature_t &feature);
-
-  
-  /**
-   * @brief is_feature_tracked
-   * Returns true if the landmark referred to by env_id is already in the tracked_features_ list
-   * @param env_id - the id of the point in the environment points array
-   * @return true if tracked, false otherwise
-   */
   bool is_feature_tracked(const int env_id) const;
   
   /**
@@ -182,64 +148,8 @@ public:
    * after a call to run()
    */
   void update_camera_pose();
-  
-  
-  /**
-   * @brief get_attitude
-   * @return current attitude, sampled from normal distribution centered at true mean
-   * with covariance R_att_
-   */
-  Vector4d get_attitude();
-  
-  /**
-   * @brief get_position
-   * @return current position, sampled from normal distribution centered at true mean
-   * with covariance R_pos_
-   */
-  Vector3d get_position();
-  
-  /**
-   * @brief get_pixel
-   * @param feature
-   * @return current pixel measurement of feature sampled from normal distribution 
-   * centered at true mean with covariance R_feat_
-   */
-  Vector2d get_pixel(const feature_t& feature);
-  
-  /**
-   * @brief get_depth
-   * @param feature
-   * @return current feature depth of feature sampled from normal distribution 
-   * centered at true mean with variance R_depth_
-   */
-  double get_depth(const feature_t& feature);
-  
-  /**
-   * @brief get_altitude
-   * @return current altitude, sampled from normal distribution centered at true mean
-   * with variance R_alt_
-   */
-  Matrix<double, 1, 1> get_altitude();
-  
-  /**
-   * @brief get_acc
-   * @return current acceleration, sampled from normal distribution centered at true mean
-   * with covariance R_acc_
-   */
-  Vector3d get_acc();
 
 
-  /**
-   * @brief get_position_ecef
-   * @return current position in ECEF coordinates
-   */
-  Vector3d get_position_ecef() const;
-
-  /**
-   * @brief get_velocity_ecef
-   * @return current velocity in ECEF coordinates
-   */
-  Vector3d get_velocity_ecef() const;
 
   // Progress indicator, updated by run()
   ProgressBar prog_;
@@ -251,9 +161,6 @@ public:
   // Command vector passed from controller to dynamics [F, Omega]
   Vector4d u_;
 
-  // measurement vector
-//  std::vector<measurement_t, Eigen::aligned_allocator<measurement_t> > meas_;
-  
   // Random number Generation
   uint64_t seed_;
   default_random_engine rng_;
@@ -261,90 +168,71 @@ public:
   normal_distribution<double> normal_;
 
   // IMU
-  Quatd q_b_u_;
-  Vector3d p_b_u_;
-
   bool imu_enabled_;
+  Quatd q_b2u_;
+  Vector3d p_b2u_;
   double imu_update_rate_;
   double last_imu_update_;
   Matrix6d imu_R_;
-  bool use_accel_truth_;
   Vector3d accel_bias_; // Memory for random walk
-  double accel_noise_stdev_; // Standard deviation of accelerometer noise
-  double accel_walk_stdev_; // Strength of accelerometer random walk
-  Vector3d accel_noise_;
-
-  bool use_gyro_truth_;
+  double accel_noise_stdev_;
+  double accel_walk_stdev_;
   Vector3d gyro_bias_; // Memory for random walk
-  double gyro_noise_stdev_; // Standard deviation of gyro noise
-  double gyro_walk_stdev_; // Strength of gyro random walk
-  Vector3d gyro_noise_;
+  double gyro_noise_stdev_;
+  double gyro_walk_stdev_;
   
   // Camera (Features)
   bool features_enabled_;
-  Quatd q_b_c_;
-  Vector3d p_b_c_;
+  Quatd q_b2c_;
+  Vector3d p_b2c_;
+  Quatd q_I2c_; // rotation from inertial frame to camera frame (updated by update_camera_pose())
+  Vector3d p_I2c_; // translation from inertial frame to camera frame (updated by update_camera_pose())
   Matrix2d feat_R_;
-  bool use_camera_truth_;
   double pixel_noise_stdev_;
   double camera_update_rate_;
   double last_camera_update_;
   int next_feature_id_;
   double camera_time_delay_;
-  Vector2d pixel_noise_;
   bool loop_closure_; // whether to re-use features if they show up in the frame again
-  vector<Vector3d> cam_; // Elements are landmarks in camera FOV given by a vector containing [pixel_x,pixel_y,label]
   vector<feature_t, aligned_allocator<feature_t>> tracked_points_; // currently tracked features
   deque<measurement_t, aligned_allocator<measurement_t>> camera_measurements_buffer_; // container to hold measurements while waiting for delay
-  Quatd q_I_c_; // rotation from inertial frame to camera frame (updated by update_camera_pose())
-  Vector3d t_I_c_; // translation from inertial frame to camera frame (updated by update_camera_pose())
-  double feat_move_prob_; // probability of moving a feature (simulating bad data association)
-  Matrix<double, 2, 3> cam_F_; // Camera intrinsics
-  Vector2d cam_center_; // Camera intrinsics
-  Vector2d image_size_; // Camera intrinsics
+  Matrix<double, 2, 3> cam_F_;
+  Vector2d cam_center_;
+  Vector2d image_size_;
 
   // Altimeter
   bool alt_enabled_;
-  Matrix<double, 1, 1> alt_R_;
-  bool use_altimeter_truth_;
-  double altimeter_update_rate_; // determines how often to generate an altitude measurement
+  Matrix1d alt_R_;
+  double altimeter_update_rate_;
   double last_altimeter_update_;
-  double altimeter_noise_stdev_; // Standard deviation of altimeter noise
-  double altimeter_noise_;
+  double altimeter_noise_stdev_;
 
   // Depth
   bool depth_enabled_;
-  bool use_depth_truth_;
   Matrix1d depth_R_;
-  double depth_update_rate_; // determines how often to generate an altitude measurement
+  double depth_update_rate_;
   double last_depth_update_;
-  double depth_noise_stdev_; // Standard deviation of altimeter noise
-  double depth_noise_;
+  double depth_noise_stdev_;
 
   // Visual Odometry
   bool vo_enabled_;
-  xform::Xformd T_i2bk_; // Inertial to body keyframe pose
-  Matrix<double, 6, 6> vo_R_;
-  bool use_vo_truth_;
+  xform::Xformd X_I2bk_; // Inertial to body keyframe pose
+  Matrix6d vo_R_;
   double vo_delta_position_;
   double vo_delta_attitude_;
   double vo_translation_noise_stdev_;
   double vo_rotation_noise_stdev_;
 
   // Motion Capture
-  bool pos_enabled_;
-  bool att_enabled_;
-  Quatd q_b_m_;
-  Vector3d p_b_m_;
-  Matrix3d att_R_;
-  Matrix3d pos_R_;
-  bool use_attitude_truth_;
-  bool use_position_truth_;
-  double mocap_update_rate_; // determines how often to supply truth measurements
+  bool mocap_enabled_;
+  Quatd q_b2m_;
+  Vector3d p_b2m_;
+  Matrix6d mocap_R_;
+  double mocap_update_rate_;
   double attitude_noise_stdev_;
   double position_noise_stdev_;
-  double last_truth_update_;
-  double next_truth_measurement_;
+  double last_mocap_update_;
+  double next_mocap_measurement_;
   double mocap_time_offset_;
   double mocap_transmission_noise_;
   double mocap_transmission_time_;
@@ -352,9 +240,8 @@ public:
 
   // GNSS
   bool gnss_enabled_;
-  Xformd x_e2n_; // transform from the ECEF frame to the Inertial (NED) frame
+  Xformd X_e2n_; // transform from the ECEF frame to the Inertial (NED) frame
   Matrix6d gnss_R_;
-  bool use_gnss_truth_;
   double gnss_update_rate_;
   double gnss_horizontal_position_stdev_;
   double gnss_vertical_position_stdev_;
@@ -365,7 +252,6 @@ public:
   // RAW GNSS
   bool raw_gnss_enabled_;
   Matrix3d raw_gnss_R_;
-  bool use_raw_gnss_truth_;
   double pseudorange_stdev_;
   double pseudorange_rate_stdev_;
   double carrier_phase_stdev_;
