@@ -5,6 +5,7 @@
 #include "multirotor_sim/state.h"
 #include "multirotor_sim/gtime.h"
 #include "multirotor_sim/satellite.h"
+#include "multirotor_sim/state.h"
 
 namespace  multirotor_sim
 {
