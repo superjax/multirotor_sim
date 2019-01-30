@@ -21,7 +21,7 @@ public:
     virtual void altCallback(const double& t, const Vector1d& z, const Matrix1d& R) {}
     virtual void mocapCallback(const double& t, const Xformd& z, const Matrix6d& R) {}
     virtual void voCallback(const double& t, const Xformd& z, const Matrix6d& R) {}
-    virtual void imageCallback(const double& t, const Image& z, const Matrix2d& R) {}
+    virtual void imageCallback(const double& t, const Image& z, const Matrix2d& R_pix, const Matrix1d& R_depth) {}
 
     // t - current time (seconds)
     // z - gnss measurement [p_{b/ECEF}^ECEF, v_{b/ECEF}^ECEF]

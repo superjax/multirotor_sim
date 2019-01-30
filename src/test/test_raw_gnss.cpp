@@ -38,6 +38,7 @@ public:
 
 
 class RawGpsTest : public ::testing::Test {
+public: EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 protected:
     RawGpsTest() :
         sim(&cont, &cont, false, 1)

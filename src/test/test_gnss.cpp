@@ -112,6 +112,7 @@ TEST (Gnss, lla2ned)
 class GnssTestEstimator : public EstimatorBase
 {
 public:
+    EIGEN_MAKE_ALIGNED_OPERATOR_NEW
     void imuCallback(const double& t, const Vector6d& z, const Matrix6d& R) override {}
     void altCallback(const double& t, const Vector1d& z, const Matrix1d& R) override {}
     void mocapCallback(const double& t, const Xformd& z, const Matrix6d& R) override {}
@@ -128,6 +129,7 @@ public:
 };
 
 class GnssTest : public ::testing::Test {
+public: EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 protected:
     GnssTest() :
         sim()
