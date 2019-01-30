@@ -242,13 +242,13 @@ void Simulator::init_mocap()
   // Truth
   double att_noise, pos_noise;
   bool use_mocap_truth;
-  get_yaml_node("truth_update_rate", param_filename_, mocap_update_rate_);
+  get_yaml_node("mocap_update_rate", param_filename_, mocap_update_rate_);
   get_yaml_node("use_mocap_truth", param_filename_, use_mocap_truth);
   get_yaml_node("attitude_noise_stdev", param_filename_, att_noise);
   get_yaml_node("position_noise_stdev", param_filename_, pos_noise);
-  get_yaml_node("truth_time_offset", param_filename_, mocap_time_offset_);
-  get_yaml_node("truth_transmission_noise", param_filename_, mocap_transmission_noise_);
-  get_yaml_node("truth_transmission_time", param_filename_, mocap_transmission_time_);
+  get_yaml_node("mocap_time_offset", param_filename_, mocap_time_offset_);
+  get_yaml_node("mocap_transmission_noise", param_filename_, mocap_transmission_noise_);
+  get_yaml_node("mocap_transmission_time", param_filename_, mocap_transmission_time_);
   get_yaml_eigen("p_b_m", param_filename_, p_b2m_);
   get_yaml_eigen("q_b_m", param_filename_, q_b2m_.arr_);
   attitude_noise_stdev_ = att_noise * !use_mocap_truth;

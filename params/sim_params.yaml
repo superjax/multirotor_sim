@@ -171,15 +171,14 @@ depth_noise_stdev: 0.1
 ## Truth
 p_b_m: [0.0, 0.0, 0.0]
 q_b_m: [1.0, 0.0, 0.0, 0.0]
-truth_update_rate: 100
-use_attitude_truth: false
-use_position_truth: false
+mocap_update_rate: 100
+use_mocap_truth: false
 attitude_noise_stdev: 0.01
 position_noise_stdev: 0.01
-truth_delay: 0
-truth_time_offset: 0
-truth_transmission_noise: 0
-truth_transmission_time: 0
+mocap_delay: 0
+mocap_time_offset: 0
+mocap_transmission_noise: 0
+mocap_transmission_time: 0
 
 
 ## GNSS
