@@ -368,7 +368,7 @@ void Simulator::update_camera_pose()
 
 void Simulator::update_imu_meas()
 {
-    if (std::abs(t_ - last_imu_update_ - 1.0/imu_update_rate_) < 0.0005)
+    if (std::abs(t_ - last_imu_update_) > 1.0/imu_update_rate_)
     {
       double dt = t_ - last_imu_update_;
       last_imu_update_ = t_;
