@@ -364,9 +364,9 @@ void Simulator::update_camera_pose()
 
 void Simulator::update_imu_meas()
 {
-  if (std::abs(t_ - last_imu_update_) > 1.0/imu_update_rate_)
+  double dt = t_ - last_imu_update_;
+  if (std::round(dt * 1e4) / 1e4 >= 1.0/imu_update_rate_)
   {
-    double dt = t_ - last_imu_update_;
     last_imu_update_ = t_;
 
     // Bias random walks and IMU noise
@@ -387,7 +387,7 @@ void Simulator::update_imu_meas()
 void Simulator::update_camera_meas()
 {
   // If it's time to capture new measurements, then do it
-  if (std::abs(t_ - last_camera_update_ - 1.0/camera_update_rate_) < 0.0005)
+  if (std::round((t_ - last_camera_update_) * 1e4) / 1e4 >= 1.0/camera_update_rate_)
   {
     last_camera_update_ = t_;
     update_camera_pose();
@@ -469,7 +469,7 @@ void Simulator::update_camera_meas()
 
 void Simulator::update_alt_meas()
 {
-  if (std::abs(t_ - last_altimeter_update_ - 1.0/altimeter_update_rate_) < 0.0005)
+  if (std::round((t_ - last_altimeter_update_) * 1e4) / 1e4 >= 1.0/altimeter_update_rate_)
   {
     Vector1d z_alt;
     z_alt << -1.0 * state().p.z() + altimeter_noise_stdev_ * normal_(rng_);
@@ -483,7 +483,7 @@ void Simulator::update_alt_meas()
 
 void Simulator::update_mocap_meas()
 {
-  if (std::abs(t_ - last_mocap_update_ - 1.0/mocap_update_rate_) < 0.0005)
+  if (std::round((t_ - last_mocap_update_) * 1e4) / 1e4 >= 1.0/mocap_update_rate_)
   {
     measurement_t mocap_meas;
     mocap_meas.t = t_ - mocap_time_offset_;
@@ -543,7 +543,7 @@ void Simulator::update_vo_meas()
 void Simulator::update_gnss_meas()
 {
   /// TODO: Simulate gnss sensor delay
-  if (std::abs(t_ - last_gnss_update_) > 1.0/gnss_update_rate_)
+  if (std::round((t_ - last_gnss_update_) * 1e4) / 1e4 >= 1.0/gnss_update_rate_)
   {
     last_gnss_update_ = t_;
     /// TODO: Simulate the random walk associated with gnss position
@@ -567,9 +567,9 @@ void Simulator::update_gnss_meas()
 void Simulator::update_raw_gnss_meas()
 {
   /// TODO: Simulator gnss sensor delay
-  if (std::abs(t_ - last_raw_gnss_update_) > 1.0/gnss_update_rate_)
+  double dt = t_ - last_raw_gnss_update_;
+  if (std::round(dt * 1e4) / 1e4 >= 1.0/gnss_update_rate_)
   {
-    double dt = t_ - last_raw_gnss_update_;
     last_raw_gnss_update_ = t_;
     clock_bias_rate_ += normal_(rng_) * clock_walk_stdev_ * dt;
     clock_bias_ += clock_bias_rate_ * dt;
@@ -611,30 +611,6 @@ void Simulator::update_measurements()
   if (raw_gnss_enabled_)
     update_raw_gnss_meas();
 }
-
-//void Simulator::get_features(const std::vector<int>& ids, ) const
-//{
-//  x = dyn_.get_state();
-//  for (auto it = ids.begin(); it != ids.end(); it++)
-//  {
-//    int i = *it;
-//    if (i < 0)
-//    {
-//      continue;
-//      // This happens if the feature hasn't been added yet (because of the camera time offset)
-//      // This usually happens when no features are in the camera's field of view
-////      std::stringstream err;
-////      err << "File: " << __FILE__ << ", Line: " << __LINE__;
-////      err << "\nEKF feature not found in truth - cannot compare";
-////      throw std::runtime_error(err.str());
-//    }
-
-//    int xZETA = 5*i;
-//    int xRHO = 5*i + 4;
-//    xf.block<4,1>(xZETA,0) = Quatd::from_two_unit_vectors(e_z, tracked_points_[i].zeta).elements();
-//    x(xRHO,0) =1.0/ tracked_points_[i].depth;
-//  }
-//}
 
 
 bool Simulator::update_feature(feature_t &feature) const
