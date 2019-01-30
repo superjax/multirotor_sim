@@ -73,13 +73,13 @@ void Simulator::load(string filename)
   get_yaml_node("alt_enabled", filename, alt_enabled_);
   get_yaml_node("mocap_enabled", filename, mocap_enabled_);
   get_yaml_node("vo_enabled", filename, vo_enabled_);
-  get_yaml_node("features_enabled", filename, features_enabled_);
+  get_yaml_node("camera_enabled", filename, camera_enabled_);
   get_yaml_node("gnss_enabled", filename, gnss_enabled_);
   get_yaml_node("raw_gnss_enabled", filename, raw_gnss_enabled_);
 
   if (imu_enabled_)
     init_imu();
-  if (features_enabled_)
+  if (camera_enabled_)
     init_camera();
   if (alt_enabled_)
     init_altimeter();
@@ -93,7 +93,7 @@ void Simulator::load(string filename)
     init_raw_gnss();
 
   // Load sub-class parameters
-  if (features_enabled_)
+  if (camera_enabled_)
     env_.load(filename);
   dyn_.load(filename);
   cont_->load(filename);
@@ -198,10 +198,14 @@ void Simulator::init_camera()
   get_yaml_node("depth_noise_stdev", param_filename_, depth_noise);
   depth_noise_stdev_ = depth_noise * !use_depth_truth;
 
+  image_id_ = 0;
   next_feature_id_ = 0;
   last_camera_update_ = 0.0;
   feat_R_ = pixel_noise * pixel_noise * I_2x2;
   depth_R_ << depth_noise * depth_noise;
+
+  tracked_points_.reserve(NUM_FEATURES);
+  img_.reserve(NUM_FEATURES);
 }
 
 
@@ -380,7 +384,7 @@ void Simulator::update_imu_meas()
 }
 
 
-void Simulator::update_feature_meas()
+void Simulator::update_camera_meas()
 {
   // If it's time to capture new measurements, then do it
   if (std::abs(t_ - last_camera_update_ - 1.0/camera_update_rate_) < 0.0005)
@@ -442,14 +446,23 @@ void Simulator::update_feature_meas()
   }
 
   // Push out the measurement if it is time to send it
-  if ((t_ > last_camera_update_ + camera_time_delay_) && (camera_measurements_buffer_.size() > 0));
+  if ((t_ > last_camera_update_ + camera_time_delay_) && (camera_measurements_buffer_.size() > 0))
   {
+    // Populate the Image class with all feature measurements
+    img_.clear();
+    img_.t = t_;
+    img_.id = image_id_;
     for (auto zit = camera_measurements_buffer_.begin(); zit != camera_measurements_buffer_.end(); zit++)
     {
-      for (std::vector<EstimatorBase*>::iterator eit = est_.begin(); eit != est_.end(); eit++)
-        (*eit)->featCallback(t_, zit->z, zit->R, zit->feature_id, zit->depth);
+      img_.pixs.push_back(zit->z);
+      img_.feat_ids.push_back(zit->feature_id);
+      img_.depths.push_back(zit->depth);
     }
+
+    for (std::vector<EstimatorBase*>::iterator eit = est_.begin(); eit != est_.end(); eit++)
+        (*eit)->imageCallback(t_, img_, feat_R_);
     camera_measurements_buffer_.clear();
+    ++image_id_;
   }
 }
 
@@ -585,8 +598,8 @@ void Simulator::update_measurements()
 {
   if (imu_enabled_)
     update_imu_meas();
-  if (features_enabled_)
-    update_feature_meas();
+  if (camera_enabled_)
+    update_camera_meas();
   if (alt_enabled_)
     update_alt_meas();
   if (mocap_enabled_)

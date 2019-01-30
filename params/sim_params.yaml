@@ -128,7 +128,7 @@ imu_enabled: true
 alt_enabled: true
 mocap_enabled: true
 vo_enabled: true
-features_enabled: true
+camera_enabled: true
 gnss_enabled: true
 raw_gnss_enabled: true
 

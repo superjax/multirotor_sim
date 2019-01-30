@@ -26,7 +26,7 @@ protected:
     node["alt_enabled"] = false;
     node["mocap_enabled"] = false;
     node["vo_enabled"] = false;
-    node["features_enabled"] = false;
+    node["camera_enabled"] = false;
     node["gnss_enabled"] = false;
     node["raw_gnss_enabled"] = false;
     node["path_type"] = 0;
