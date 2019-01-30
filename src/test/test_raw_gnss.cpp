@@ -19,7 +19,6 @@ public:
     void altCallback(const double& t, const Vector1d& z, const Matrix1d& R) override {}
     void mocapCallback(const double& t, const Xformd& z, const Matrix6d& R) override {}
     void voCallback(const double& t, const Xformd& z, const Matrix6d& R) override {}
-    void featCallback(const double& t, const Vector2d& z, const Matrix2d& R, int id, double depth) override {}
     void gnssCallback(const double& t, const Vector6d& z, const Matrix6d& R) override {}
     void rawGnssCallback(const GTime& t, const Vector3d& z, const Matrix3d& R, Satellite& sat) override
     {

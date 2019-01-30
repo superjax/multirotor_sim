@@ -169,4 +169,30 @@ struct IMU
         gyro(arr.data()+3)
     {}
 };
-}
+
+struct Image
+{
+  EIGEN_MAKE_ALIGNED_OPERATOR_NEW
+  int id; // image label
+  double t; // time stamp of this image
+  std::vector<Vector2d, aligned_allocator<Vector2d>> pixs; // pixel measurements in this image
+  std::vector<double> depths; // feature distances corresponding to pixel measurements
+  std::vector<int> feat_ids; // feature ids corresonding to pixel measurements
+
+  void reserve(const int& N)
+  {
+    pixs.reserve(N);
+    depths.reserve(N);
+    feat_ids.reserve(N);
+  }
+
+  void clear()
+  {
+    pixs.clear();
+    depths.clear();
+    feat_ids.clear();
+  }
+};
+
+
+} // namespace multirotor_sim

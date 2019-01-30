@@ -71,7 +71,7 @@ public:
 
   void update_measurements();
   void update_imu_meas();
-  void update_feature_meas();
+  void update_camera_meas();
   void update_alt_meas();
   void update_mocap_meas();
   void update_vo_meas();
@@ -182,7 +182,7 @@ public:
   double gyro_walk_stdev_;
   
   // Camera (Features)
-  bool features_enabled_;
+  bool camera_enabled_;
   Quatd q_b2c_;
   Vector3d p_b2c_;
   Quatd q_I2c_; // rotation from inertial frame to camera frame (updated by update_camera_pose())
@@ -199,6 +199,8 @@ public:
   Matrix<double, 2, 3> cam_F_;
   Vector2d cam_center_;
   Vector2d image_size_;
+  Image img_;
+  int image_id_;
 
   // Altimeter
   bool alt_enabled_;
