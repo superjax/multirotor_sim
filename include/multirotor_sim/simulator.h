@@ -45,6 +45,7 @@ namespace multirotor_sim
 class Simulator
 {
 public:
+  EIGEN_MAKE_ALIGNED_OPERATOR_NEW
   typedef struct
   {
     double t;

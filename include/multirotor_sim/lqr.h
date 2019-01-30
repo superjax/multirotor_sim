@@ -40,6 +40,7 @@ template<typename T>
 class LQR
 {
 public:
+  EIGEN_MAKE_ALIGNED_OPERATOR_NEW
   CareSolver<6,4> care_solver;
   Matrix<T,6,6> A_, Q_, P_;
   Matrix<T,6,4> B_;

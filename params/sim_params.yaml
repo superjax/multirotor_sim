@@ -120,6 +120,7 @@ use_camera_truth: false
 use_altimeter_truth: false
 use_depth_truth: false
 use_vo_truth: false
+use_mocap_truth: false
 
 RK4: true
 
@@ -140,6 +141,8 @@ accel_bias_walk: 0.00
 gyro_init_stdev: 0.1
 gyro_noise_stdev: 0.01
 gyro_bias_walk: 0.0
+p_b_u: [0.0, 0.0, 0.0 ]
+q_b_u: [1.0, 0.0, 0.0, 0.0]
 
 ## Camera
 camera_time_delay: 0.05
@@ -153,8 +156,8 @@ loop_closure: false
 q_b_c: [0.712301460669, -0.00770717975554, 0.0104993233706, 0.701752800292]
 p_b_c: [1.0, 0.0, 0.0 ]
 # p_b_c: [-0.0216401454975, -0.064676986768, 0.00981073058949 ]
-p_b_u: [0.0, 0.0, 0.0 ]
-q_b_u: [1.0, 0.0, 0.0, 0.0]
+
+# Visual Odometry
 vo_delta_position: 1.0
 vo_delta_attitude: 0.1
 vo_translation_noise_stdev: 0.1
@@ -168,11 +171,10 @@ altimeter_noise_stdev: 0.1
 depth_update_rate: 30
 depth_noise_stdev: 0.1
 
-## Truth
+## Motion Capture
 p_b_m: [0.0, 0.0, 0.0]
 q_b_m: [1.0, 0.0, 0.0, 0.0]
 mocap_update_rate: 100
-use_mocap_truth: false
 attitude_noise_stdev: 0.01
 position_noise_stdev: 0.01
 mocap_delay: 0

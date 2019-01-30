@@ -48,6 +48,7 @@ static const Matrix3d M_ = [] {
 class Dynamics
 {      
 public:
+  EIGEN_MAKE_ALIGNED_OPERATOR_NEW
   Dynamics();
   
   void load(std::string filename);

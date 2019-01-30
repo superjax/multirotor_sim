@@ -13,6 +13,7 @@ template<typename T>
 class NLC
 {
 public:
+  EIGEN_MAKE_ALIGNED_OPERATOR_NEW
   typedef Matrix<T,3,3> Mat3;
   typedef Matrix<T,3,1> Vec3;
   typedef Matrix<T,4,1> Vec4;
