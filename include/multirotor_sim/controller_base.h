@@ -10,7 +10,6 @@ namespace  multirotor_sim
 class ControllerBase
 {
 public:
-  virtual void load(std::string filename) {}
 
   // t - current time (seconds)
   // x - current state

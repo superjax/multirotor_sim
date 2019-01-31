@@ -18,25 +18,10 @@ Simulator::Simulator(bool prog_indicator, uint64_t seed) :
   uniform_(0.0, 1.0),
   prog_indicator_(prog_indicator)
 {
-  ReferenceController* ref_con = new ReferenceController();
-  cont_ = ref_con;
-  traj_ = ref_con;
+  cont_ = static_cast<ControllerBase*>(&ref_con_);
+  traj_ = static_cast<TrajectoryBase*>(&ref_con_);
   srand(seed_);
 }
-
-
-Simulator::Simulator(ControllerBase *_cont, TrajectoryBase* _traj, bool prog_indicator, uint64_t seed):
-  seed_(seed == 0 ? std::chrono::system_clock::now().time_since_epoch().count() : seed),
-  cont_(_cont),
-  traj_(_traj),
-  env_(seed_),
-  rng_(seed_),
-  uniform_(0.0, 1.0),
-  prog_indicator_(prog_indicator)
-{
-  srand(seed_);
-}
-
 
 Simulator::~Simulator()
 {
@@ -95,8 +80,7 @@ void Simulator::load(string filename)
   if (camera_enabled_)
     env_.load(filename);
   dyn_.load(filename);
-  cont_->load(filename);
-  traj_->load(filename);
+  ref_con_.load(filename);
 
   // Start Progress Bar
   if (prog_indicator_)
@@ -342,6 +326,15 @@ void Simulator::register_estimator(EstimatorBase *est)
   est_.push_back(est);
 }
 
+void Simulator::use_custom_controller(ControllerBase *cont)
+{
+  cont_ = cont;
+}
+
+void Simulator::use_custom_trajectory(TrajectoryBase *traj)
+{
+  traj_ = traj;
+}
 
 void Simulator::log_state()
 {
@@ -376,7 +369,7 @@ void Simulator::update_imu_meas()
     imu.segment<3>(0) = dyn_.get_imu_accel() + accel_bias_ + randomNormal<Vector3d>(accel_noise_stdev_, normal_,  rng_);
     imu.segment<3>(3) = dyn_.get_imu_gyro() + gyro_bias_ + randomNormal<Vector3d>(gyro_noise_stdev_, normal_,  rng_);;
 
-    for (std::vector<EstimatorBase*>::iterator it = est_.begin(); it != est_.end(); it++)
+    for (estVec::iterator it = est_.begin(); it != est_.end(); it++)
       (*it)->imuCallback(t_, imu, imu_R_);
   }
 }
@@ -457,7 +450,7 @@ void Simulator::update_camera_meas()
       img_.depths.push_back(zit->depth);
     }
 
-    for (std::vector<EstimatorBase*>::iterator eit = est_.begin(); eit != est_.end(); eit++)
+    for (estVec::iterator eit = est_.begin(); eit != est_.end(); eit++)
         (*eit)->imageCallback(t_, img_, feat_R_, depth_R_);
     camera_measurements_buffer_.clear();
     ++image_id_;
@@ -473,7 +466,7 @@ void Simulator::update_alt_meas()
     z_alt << -1.0 * state().p.z() + altimeter_noise_stdev_ * normal_(rng_);
 
     last_altimeter_update_ = t_;
-    for (std::vector<EstimatorBase*>::iterator it = est_.begin(); it != est_.end(); it++)
+    for (estVec::iterator it = est_.begin(); it != est_.end(); it++)
       (*it)->altCallback(t_, z_alt, alt_R_);
   }
 }
@@ -510,7 +503,7 @@ void Simulator::update_mocap_meas()
     measurement_t* m = &(mocap_measurement_buffer_[0].second);
     if (mocap_enabled_)
     {
-      for (std::vector<EstimatorBase*>::iterator it = est_.begin(); it != est_.end(); it++)
+      for (estVec::iterator it = est_.begin(); it != est_.end(); it++)
         (*it)->mocapCallback(t_, Xformd(m->z), m->R);
     }
     mocap_measurement_buffer_.erase(mocap_measurement_buffer_.begin());
@@ -530,7 +523,7 @@ void Simulator::update_vo_meas()
                                            (T_i2b.t() + T_i2b.q().inverse().rotp(p_b2c_))));
     T_c2ck.q_ = q_b2c_.inverse() * T_i2b.q().inverse() * X_I2bk_.q().inverse() * q_b2c_;
 
-    for (std::vector<EstimatorBase*>::iterator it = est_.begin(); it != est_.end(); it++)
+    for (estVec::iterator it = est_.begin(); it != est_.end(); it++)
       (*it)->voCallback(t_, T_c2ck, vo_R_);
 
     // Set new keyframe to current pose
@@ -557,7 +550,7 @@ void Simulator::update_gnss_meas()
     Vector6d z;
     z << p_ECEF, v_ECEF;
 
-    for (std::vector<EstimatorBase*>::iterator it = est_.begin(); it != est_.end(); it++)
+    for (estVec::iterator it = est_.begin(); it != est_.end(); it++)
       (*it)->gnssCallback(t_, z, gnss_R_);
   }
 }
@@ -585,7 +578,7 @@ void Simulator::update_raw_gnss_meas()
       z(0) += normal_(rng_) * pseudorange_stdev_;
       z(1) += normal_(rng_) * pseudorange_rate_stdev_;
       z(2) += normal_(rng_) * carrier_phase_stdev_ + carrier_phase_integer_offsets_[i];
-      for (std::vector<EstimatorBase*>::iterator it = est_.begin(); it != est_.end(); it++)
+      for (estVec::iterator it = est_.begin(); it != est_.end(); it++)
         (*it)->rawGnssCallback(t_now, z, raw_gnss_R_, *sat);
     }
   }

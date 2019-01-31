@@ -9,13 +9,13 @@ class ReferenceControllerTest : public ::testing::Test
 {
 public:
   ReferenceControllerTest() :
-    sim(&cont, &cont, false) {}
+    sim(false) {}
 
 protected:
 
   void SetUp() override
   {
-    std::string filename = "tmp.params.yaml";
+    filename = "tmp.params.yaml";
     ofstream tmp_file(filename);
     YAML::Node node;
     node["tmax"] = 60.0;
@@ -85,18 +85,24 @@ protected:
 
     tmp_file << node;
     tmp_file.close();
-    cont.load(filename);
+
     sim.load(filename);
   }
-  ReferenceController cont;
   Simulator sim;
+  std::string filename;
 };
 
-TEST_F (ReferenceControllerTest, Waypoints)
+TEST_F (ReferenceControllerTest, WaypointsSupplied)
 {
   int prev_waypoint_id = -1;
   std::vector<double> waypoint_time;
-  ofstream file("ReferenceController.NonlinearController_Waypoints.log");
+  ofstream file("/tmp/ReferenceController.NonlinearController_Waypoints.log");
+
+  ReferenceController cont;
+  cont.load(filename);
+  sim.use_custom_controller(&cont);
+  sim.use_custom_trajectory(&cont);
+
   while(sim.run())
   {
     file.write((char*)&sim.t_, sizeof(double));
@@ -105,6 +111,33 @@ TEST_F (ReferenceControllerTest, Waypoints)
     if (cont.current_waypoint_id_ != prev_waypoint_id)
     {
       prev_waypoint_id = cont.current_waypoint_id_;
+      waypoint_time.push_back(sim.t_);
+    }
+  }
+  EXPECT_NEAR(waypoint_time[0], 0.01, 1e-8);
+  EXPECT_NEAR(waypoint_time[1], 5.01, 1e-8);
+  EXPECT_NEAR(waypoint_time[2], 14.94, 1e-8);
+  EXPECT_NEAR(waypoint_time[3], 29.15, 1e-8);
+  EXPECT_NEAR(waypoint_time[4], 43.47, 1e-8);
+  EXPECT_NEAR(waypoint_time[5], 59.63, 1e-8);
+
+  file.close();
+}
+
+TEST_F (ReferenceControllerTest, WaypointsInternal)
+{
+  int prev_waypoint_id = -1;
+  std::vector<double> waypoint_time;
+  ofstream file("ReferenceController.NonlinearController_Waypoints.log");
+
+  while(sim.run())
+  {
+    file.write((char*)&sim.t_, sizeof(double));
+    file.write((char*)sim.state().arr.data(), sizeof(double) * State::SIZE);
+    file.write((char*)sim.traj_->getCommandedState(sim.t_).arr.data(), sizeof(double) * State::SIZE);
+    if (sim.ref_con_.current_waypoint_id_ != prev_waypoint_id)
+    {
+      prev_waypoint_id = sim.ref_con_.current_waypoint_id_;
       waypoint_time.push_back(sim.t_);
     }
   }

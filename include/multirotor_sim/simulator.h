@@ -6,6 +6,7 @@
 #include <fstream>
 #include <functional>
 #include <cstdint>
+#include <memory>
 
 #include <Eigen/Core>
 
@@ -18,6 +19,7 @@
 #include "multirotor_sim/state.h"
 #include "multirotor_sim/dynamics.h"
 #include "multirotor_sim/controller_base.h"
+#include "multirotor_sim/controller.h"
 #include "multirotor_sim/trajectory_base.h"
 #include "multirotor_sim/estimator_base.h"
 
@@ -55,8 +57,7 @@ public:
     double depth;
   } measurement_t;
   
-  Simulator(bool prog_indicator=false, uint64_t seed=-1);
-  Simulator(ControllerBase *_cont, TrajectoryBase *_traj, bool prog_indicator=false, uint64_t seed=-1);
+  Simulator(bool prog_indicator=false, uint64_t seed=0);
   ~Simulator();
   
   void load(std::string filename);
@@ -79,6 +80,8 @@ public:
   void update_gnss_meas();
   void update_raw_gnss_meas();
 
+  void use_custom_controller(ControllerBase* cont);
+  void use_custom_trajectory(TrajectoryBase* traj);
   void register_estimator(EstimatorBase* est);
 
   const Vector6d& imu() const { return dyn_.imu_;}
@@ -88,13 +91,14 @@ public:
   Vector3d get_velocity_ecef() const;
 
   void log_state();
-  
+
   Environment env_;
   Dynamics dyn_;
+  ReferenceController ref_con_;
   ControllerBase* cont_;
   TrajectoryBase* traj_;
-  bool owned_controller_;
-  std::vector<EstimatorBase*> est_;
+  typedef std::vector<EstimatorBase*> estVec;
+  estVec est_;
   double t_, dt_, tmax_;
 
   typedef struct
