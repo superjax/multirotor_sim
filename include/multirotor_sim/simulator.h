@@ -55,8 +55,8 @@ public:
     double depth;
   } measurement_t;
   
-  Simulator(bool prog_indicator=false, uint64_t seed=0);
-  Simulator(ControllerBase *_cont, TrajectoryBase *_traj, bool prog_indicator=false, uint64_t seed=0);
+  Simulator(bool prog_indicator=false, uint64_t seed=-1);
+  Simulator(ControllerBase *_cont, TrajectoryBase *_traj, bool prog_indicator=false, uint64_t seed=-1);
   ~Simulator();
   
   void load(std::string filename);

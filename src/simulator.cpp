@@ -12,7 +12,7 @@ namespace  multirotor_sim
 
 
 Simulator::Simulator(bool prog_indicator, uint64_t seed) :
-  seed_(seed == 0 ? std::chrono::system_clock::now().time_since_epoch().count() : seed),
+  seed_(seed < 0 ? std::chrono::system_clock::now().time_since_epoch().count() : seed),
   env_(seed_),
   rng_(seed_),
   uniform_(0.0, 1.0),
@@ -26,7 +26,7 @@ Simulator::Simulator(bool prog_indicator, uint64_t seed) :
 
 
 Simulator::Simulator(ControllerBase *_cont, TrajectoryBase* _traj, bool prog_indicator, uint64_t seed):
-  seed_(seed == 0 ? std::chrono::system_clock::now().time_since_epoch().count() : seed),
+  seed_(seed < 0 ? std::chrono::system_clock::now().time_since_epoch().count() : seed),
   cont_(_cont),
   traj_(_traj),
   env_(seed_),
@@ -55,11 +55,9 @@ void Simulator::load(string filename)
   get_yaml_node("tmax", filename, tmax_);
   get_yaml_node("dt", filename, dt_);
   get_yaml_node("seed", filename, seed_);
-  if (seed_ > 1)
-  {
-    rng_ = default_random_engine(seed_);
-    srand(seed_);
-  }
+  seed_ < 0 ? std::chrono::system_clock::now().time_since_epoch().count() : seed_;
+  rng_ = default_random_engine(seed_);
+  srand(seed_);
 
   // Log
   get_yaml_node("log_filename", filename, log_filename_);
