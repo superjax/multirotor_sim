@@ -40,7 +40,6 @@ protected:
     std::default_random_engine generator_;
     std::uniform_real_distribution<double> uniform_;
     std::normal_distribution<double> normal_;
-    double move_stdev_;
     double floor_level_;
     double max_offset_;
     Vector2d img_size_;

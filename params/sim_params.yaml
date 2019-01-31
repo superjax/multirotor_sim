@@ -1,7 +1,7 @@
 tmax: 300.0 # Simulation total time, time step is determined by IMU rate
 dt: 0.005
 log_filename: ""
-seed: -1 # -1 initializes seed with time
+seed: 0 # 0 initializes seed with time
 
 # Path type:
 #   0 : waypoints
@@ -103,8 +103,6 @@ control_type: 0
 
 # Environment Setup
 wall_max_offset: 1.0 # Points are distributed normally about the wall
-feat_move_prob: 0.00   
-points_move_stdev: 0.05
 
 
 # Wind Setup

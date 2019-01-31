@@ -12,13 +12,18 @@ Environment::Environment(int seed)
 void Environment::load(string filename)
 {
   get_yaml_node("wall_max_offset", filename, max_offset_);
-  get_yaml_node("points_move_stdev", filename, move_stdev_);
   get_yaml_eigen("image_size", filename, img_size_);
   Vector2d focal_len;
   get_yaml_eigen("focal_len", filename, focal_len);
   get_yaml_eigen("cam_center", filename, img_center_);
   finv_ = focal_len.cwiseInverse();
 
+  int seed;
+  get_yaml_node("seed", filename, seed);
+  if (seed == 0)
+    seed = std::chrono::system_clock::now().time_since_epoch().count();
+  generator_ = std::default_random_engine(seed);
+  srand(seed);
 
   point_idx_ = 0;
   floor_level_ = 0;

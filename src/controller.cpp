@@ -68,9 +68,10 @@ void ReferenceController::load(const std::string filename)
     // Random number generation
     int seed;
     get_yaml_node("seed", filename, seed);
-    if (seed < 0)
+    if (seed == 0)
       seed = std::chrono::system_clock::now().time_since_epoch().count();
     rng_ = std::default_random_engine(seed);
+    srand(seed);
     udist_ = std::uniform_real_distribution<double>(-1.0, 1.0);
 
     get_yaml_node("path_type", filename, path_type_);

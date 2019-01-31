@@ -1,4 +1,4 @@
-﻿#include "simulator.h"
+#include "simulator.h"
 #include <Eigen/StdVector>
 #include <chrono>
 
@@ -12,7 +12,7 @@ namespace  multirotor_sim
 
 
 Simulator::Simulator(bool prog_indicator, uint64_t seed) :
-  seed_(seed < 0 ? std::chrono::system_clock::now().time_since_epoch().count() : seed),
+  seed_(seed == 0 ? std::chrono::system_clock::now().time_since_epoch().count() : seed),
   env_(seed_),
   rng_(seed_),
   uniform_(0.0, 1.0),
@@ -26,7 +26,7 @@ Simulator::Simulator(bool prog_indicator, uint64_t seed) :
 
 
 Simulator::Simulator(ControllerBase *_cont, TrajectoryBase* _traj, bool prog_indicator, uint64_t seed):
-  seed_(seed < 0 ? std::chrono::system_clock::now().time_since_epoch().count() : seed),
+  seed_(seed == 0 ? std::chrono::system_clock::now().time_since_epoch().count() : seed),
   cont_(_cont),
   traj_(_traj),
   env_(seed_),
@@ -55,7 +55,8 @@ void Simulator::load(string filename)
   get_yaml_node("tmax", filename, tmax_);
   get_yaml_node("dt", filename, dt_);
   get_yaml_node("seed", filename, seed_);
-  seed_ < 0 ? std::chrono::system_clock::now().time_since_epoch().count() : seed_;
+  if (seed_ == 0)
+    seed_ = std::chrono::system_clock::now().time_since_epoch().count();
   rng_ = default_random_engine(seed_);
   srand(seed_);
 
@@ -146,7 +147,7 @@ void Simulator::init_imu()
   get_yaml_node("accel_init_stdev", param_filename_, accel_init);
   get_yaml_node("accel_noise_stdev", param_filename_, accel_noise);
   get_yaml_node("accel_bias_walk", param_filename_, accel_walk);
-  accel_bias_ =  !use_accel_truth * accel_init * Vector3d::Random(); // Uniformly random init within +-accel_walk
+  accel_bias_ =  accel_init * Vector3d::Random() * !use_accel_truth; // Uniformly random init within +-accel_walk
   accel_noise_stdev_ = !use_accel_truth * accel_noise;
   accel_walk_stdev_ = !use_accel_truth * accel_walk;
 
@@ -161,10 +162,9 @@ void Simulator::init_imu()
   gyro_noise_stdev_ = gyro_noise * !use_gyro_truth;
   gyro_walk_stdev_ = gyro_walk * !use_gyro_truth;
 
+  imu_R_.setZero();
   imu_R_.topLeftCorner<3,3>() = accel_noise * accel_noise * I_3x3;
   imu_R_.bottomRightCorner<3,3>() = gyro_noise * gyro_noise * I_3x3;
-  imu_R_.bottomLeftCorner<3,3>().setZero();
-  imu_R_.topRightCorner<3,3>().setZero();
   last_imu_update_ = 0.0;
 }
 
