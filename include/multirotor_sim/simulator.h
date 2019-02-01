@@ -197,10 +197,12 @@ public:
   double camera_update_rate_;
   double last_camera_update_;
   int next_feature_id_;
-  double camera_time_delay_;
+  double camera_time_offset_;
+  double camera_transmission_noise_;
+  double camera_transmission_time_;
   bool loop_closure_; // whether to re-use features if they show up in the frame again
   vector<feature_t, aligned_allocator<feature_t>> tracked_points_; // currently tracked features
-  deque<measurement_t, aligned_allocator<measurement_t>> camera_measurements_buffer_; // container to hold measurements while waiting for delay
+  deque<std::pair<double,measurement_t>, aligned_allocator<std::pair<double,measurement_t>>> camera_measurements_buffer_; // container to hold measurements while waiting for delay
   Matrix<double, 2, 3> cam_F_;
   Vector2d cam_center_;
   Vector2d image_size_;
