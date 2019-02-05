@@ -1,4 +1,4 @@
-tmax: 300.0 # Simulation total time, time step is determined by IMU rate
+tmax: 150.0 # Simulation total time, time step is determined by IMU rate
 dt: 0.005
 log_filename: ""
 seed: 0 # 0 initializes seed with time
@@ -172,7 +172,7 @@ depth_noise_stdev: 0.1
 ## Motion Capture
 p_b_m: [0.0, 0.0, 0.0]
 q_b_m: [1.0, 0.0, 0.0, 0.0]
-mocap_update_rate: 100
+mocap_update_rate: 30
 attitude_noise_stdev: 0.01
 position_noise_stdev: 0.01
 mocap_delay: 0
