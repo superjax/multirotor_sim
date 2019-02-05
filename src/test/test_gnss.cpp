@@ -117,7 +117,7 @@ public:
     void altCallback(const double& t, const Vector1d& z, const Matrix1d& R) override {}
     void mocapCallback(const double& t, const Xformd& z, const Matrix6d& R) override {}
     void voCallback(const double& t, const Xformd& z, const Matrix6d& R) override {}
-    void rawGnssCallback(const GTime& t, const Vector3d& z, const Matrix3d& R, Satellite& sat) override {}
+    void rawGnssCallback(const GTime& t, const VecVec3& z, const VecMat3& R, std::vector<Satellite>& sat) override {}
     void gnssCallback(const double& t, const Vector6d& z, const Matrix6d& R) override
     {
         call_count++;

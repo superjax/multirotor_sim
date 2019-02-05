@@ -569,18 +569,22 @@ void Simulator::update_raw_gnss_meas()
     Vector3d p_ECEF = get_position_ecef();
     Vector3d v_ECEF = get_velocity_ecef();
 
-    Vector3d z;
+    VecVec3 z;
+    VecMat3 R;
     int i;
     vector<Satellite>::iterator sat;
     for (i = 0, sat = satellites_.begin(); sat != satellites_.end(); sat++, i++)
     {
-      sat->computeMeasurement(t_now, p_ECEF, v_ECEF, Vector2d{clock_bias_, clock_bias_rate_}, z);
-      z(0) += normal_(rng_) * pseudorange_stdev_;
-      z(1) += normal_(rng_) * pseudorange_rate_stdev_;
-      z(2) += normal_(rng_) * carrier_phase_stdev_ + carrier_phase_integer_offsets_[i];
-      for (estVec::iterator it = est_.begin(); it != est_.end(); it++)
-        (*it)->rawGnssCallback(t_now, z, raw_gnss_R_, *sat);
+      Vector3d z_i;
+      sat->computeMeasurement(t_now, p_ECEF, v_ECEF, Vector2d{clock_bias_, clock_bias_rate_}, z_i);
+      z_i(0) += normal_(rng_) * pseudorange_stdev_;
+      z_i(1) += normal_(rng_) * pseudorange_rate_stdev_;
+      z_i(2) += normal_(rng_) * carrier_phase_stdev_ + carrier_phase_integer_offsets_[i];
+      z.push_back(z_i);
+      R.push_back(raw_gnss_R_);
     }
+    for (estVec::iterator it = est_.begin(); it != est_.end(); it++)
+      (*it)->rawGnssCallback(t_now, z, R, satellites_);
   }
 }
 

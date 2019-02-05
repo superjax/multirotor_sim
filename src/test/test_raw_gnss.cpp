@@ -20,15 +20,11 @@ public:
     void mocapCallback(const double& t, const Xformd& z, const Matrix6d& R) override {}
     void voCallback(const double& t, const Xformd& z, const Matrix6d& R) override {}
     void gnssCallback(const double& t, const Vector6d& z, const Matrix6d& R) override {}
-    void rawGnssCallback(const GTime& t, const Vector3d& z, const Matrix3d& R, Satellite& sat) override
+    void rawGnssCallback(const GTime& t, const VecVec3& z, const VecMat3& R, std::vector<Satellite>& sat) override
     {
         time_last = t;
         call_count++;
-        z_last.push_back(z);
-        if (((z.array()) != z.array()).any())
-        {
-            int debug = 1;
-        }
+        z_last = z;
     }
 
     GTime time_last;

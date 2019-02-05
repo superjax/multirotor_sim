@@ -10,6 +10,8 @@
 namespace  multirotor_sim
 {
 
+typedef std::vector<Vector3d, aligned_allocator<Vector3d>> VecVec3;
+typedef std::vector<Matrix3d, aligned_allocator<Matrix3d>> VecMat3;
 class EstimatorBase
 {
 public:
@@ -29,10 +31,10 @@ public:
     virtual void gnssCallback(const double& t, const Vector6d& z, const Matrix6d& R) {}
 
     // t - Time of measurement (GPS Time)
-    // z - gnss measurement [rho(m), rhodot(m/s), l(cycles)]
-    // R - gnss covariance
-    // sat - Satellite object related to this measurement
-    virtual void rawGnssCallback(const GTime& t, const Vector3d& z, const Matrix3d& R, Satellite& sat) {}
+    // z - gnss measurements [[rho(m), rhodot(m/s), l(cycles)], x N]
+    // R - gnss covariance xN
+    // sat - Satellite objects related to each measurement
+    virtual void rawGnssCallback(const GTime& t, const VecVec3& z, const VecMat3& R, std::vector<Satellite>& sat) {}
 };
 
 }
