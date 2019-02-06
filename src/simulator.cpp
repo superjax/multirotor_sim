@@ -97,13 +97,12 @@ bool Simulator::run()
   {
     // Propagate forward in time and get new control input and true acceleration
     t_ += dt_;
-    cont_->computeControl(t_, dyn_.get_state(), traj_->getCommandedState(t_), u_);
+    traj_->getCommandedState(t_, xc_, ur_);
+    cont_->computeControl(t_, dyn_.get_state(), xc_, u_);
     dyn_.run(dt_, u_);
     if (prog_indicator_)
       prog_.print(t_/dt_);
     update_measurements();
-
-    log_state();
     return true;
   }
   else
@@ -337,16 +336,6 @@ void Simulator::use_custom_trajectory(TrajectoryBase *traj)
 {
   traj_ = traj;
 }
-
-void Simulator::log_state()
-{
-  if (log_.is_open())
-  {
-    log_.write((char*)&t_, sizeof(double));
-    log_.write((char*)dyn_.get_state().arr.data(), sizeof(double)*State::SIZE);
-  }
-}
-
 
 void Simulator::update_camera_pose()
 {

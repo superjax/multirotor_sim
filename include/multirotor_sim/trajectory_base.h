@@ -11,8 +11,9 @@ class TrajectoryBase
 {
 public:
   // t - current time (seconds)
-  // (return) commanded state
-  virtual const State& getCommandedState(const double& t) = 0;
+  // (return) x_c commanded state
+  // (return) u_r reference input
+  virtual void getCommandedState(const double& t, State& x_c, Vector4d& u_r) = 0;
 };
 
 }

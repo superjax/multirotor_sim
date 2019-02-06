@@ -107,7 +107,7 @@ TEST_F (ReferenceControllerTest, WaypointsSupplied)
   {
     file.write((char*)&sim.t_, sizeof(double));
     file.write((char*)sim.state().arr.data(), sizeof(double) * State::SIZE);
-    file.write((char*)sim.traj_->getCommandedState(sim.t_).arr.data(), sizeof(double) * State::SIZE);
+    file.write((char*)sim.commanded_state().arr.data(), sizeof(double) * State::SIZE);
     if (cont.current_waypoint_id_ != prev_waypoint_id)
     {
       prev_waypoint_id = cont.current_waypoint_id_;
@@ -134,7 +134,7 @@ TEST_F (ReferenceControllerTest, WaypointsInternal)
   {
     file.write((char*)&sim.t_, sizeof(double));
     file.write((char*)sim.state().arr.data(), sizeof(double) * State::SIZE);
-    file.write((char*)sim.traj_->getCommandedState(sim.t_).arr.data(), sizeof(double) * State::SIZE);
+    file.write((char*)sim.commanded_state().arr.data(), sizeof(double) * State::SIZE);
     if (sim.ref_con_.current_waypoint_id_ != prev_waypoint_id)
     {
       prev_waypoint_id = sim.ref_con_.current_waypoint_id_;

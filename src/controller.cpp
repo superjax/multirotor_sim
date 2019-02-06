@@ -226,14 +226,15 @@ void ReferenceController::load(const std::string filename)
     printf("Unable to find file %s\n", (current_working_dir() + filename).c_str());
 }
 
-const State& ReferenceController::getCommandedState(const double &t)
+void ReferenceController::getCommandedState(const double &t, State &x_c, Vector4d &u_r)
 {
   // Refresh the waypoint
   if (path_type_ < 2)
     updateWaypointManager();
   if (path_type_ == 2)
     updateTrajectoryManager();
-  return xc_;
+  x_c = xc_;
+  u_r.setZero();
 }
 
 void ReferenceController::updateWaypointManager()

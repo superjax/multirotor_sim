@@ -87,10 +87,14 @@ public:
   const Vector6d& imu() const { return dyn_.imu_;}
   const State& state() const { return dyn_.get_state(); }
   State& state() { return dyn_.get_state(); }
+  const Vector4d& input() const { return u_; }
+  Vector4d& input() { return u_; }
+  const State& commanded_state() const {return xc_;}
+  Vector4d& reference_input() { return ur_; }
+  const Vector4d& reference_input() const { return ur_; }
+  State& commanded_state() {return xc_;}
   Vector3d get_position_ecef() const;
   Vector3d get_velocity_ecef() const;
-
-  void log_state();
 
   Environment env_;
   Dynamics dyn_;
@@ -163,8 +167,9 @@ public:
   std::string param_filename_;
   ofstream log_;
 
-  // Command vector passed from controller to dynamics [F, Omega]
-  Vector4d u_;
+  Vector4d u_; // Command vector passed from controller to dynamics [F, Omega]
+  Vector4d ur_; // Reference Command given by the trajectory
+  State xc_; // Desired State
 
   // Random number Generation
   uint64_t seed_;
