@@ -114,12 +114,12 @@ TEST_F (ReferenceControllerTest, WaypointsSupplied)
       waypoint_time.push_back(sim.t_);
     }
   }
-  EXPECT_NEAR(waypoint_time[0], 0.01, 1e-8);
-  EXPECT_NEAR(waypoint_time[1], 5.01, 1e-8);
-  EXPECT_NEAR(waypoint_time[2], 14.94, 1e-8);
-  EXPECT_NEAR(waypoint_time[3], 29.15, 1e-8);
-  EXPECT_NEAR(waypoint_time[4], 43.47, 1e-8);
-  EXPECT_NEAR(waypoint_time[5], 59.63, 1e-8);
+  EXPECT_NEAR(waypoint_time[0], 0.01, 0.1);
+  EXPECT_NEAR(waypoint_time[1], 5.01, 0.1);
+  EXPECT_NEAR(waypoint_time[2], 14.94, 0.1);
+  EXPECT_NEAR(waypoint_time[3], 29.15, 0.1);
+  EXPECT_NEAR(waypoint_time[4], 43.47, 0.1);
+  EXPECT_NEAR(waypoint_time[5], 59.63, 0.1);
 
   file.close();
 }
@@ -141,12 +141,12 @@ TEST_F (ReferenceControllerTest, WaypointsInternal)
       waypoint_time.push_back(sim.t_);
     }
   }
-  EXPECT_NEAR(waypoint_time[0], 0.01, 1e-8);
-  EXPECT_NEAR(waypoint_time[1], 5.01, 1e-8);
-  EXPECT_NEAR(waypoint_time[2], 14.94, 1e-8);
-  EXPECT_NEAR(waypoint_time[3], 29.15, 1e-8);
-  EXPECT_NEAR(waypoint_time[4], 43.47, 1e-8);
-  EXPECT_NEAR(waypoint_time[5], 59.63, 1e-8);
+  EXPECT_NEAR(waypoint_time[0], 0.01, 0.1);
+  EXPECT_NEAR(waypoint_time[1], 5.01, 0.1);
+  EXPECT_NEAR(waypoint_time[2], 14.94, 0.1);
+  EXPECT_NEAR(waypoint_time[3], 29.15, 0.1);
+  EXPECT_NEAR(waypoint_time[4], 43.47, 0.1);
+  EXPECT_NEAR(waypoint_time[5], 59.63, 0.1);
 
   file.close();
 }
