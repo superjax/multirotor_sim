@@ -15,7 +15,7 @@ ReferenceController::ReferenceController() :
   s_prev_ = 0;
 }
 
-void ReferenceController::computeControl(const double& t, const State &x, const State& x_c, Vector4d& u)
+void ReferenceController::computeControl(const double& t, const State &x, const State& x_c, const Vector4d &ur, Vector4d& u)
 {
   // Function constants
   static const Vector3d e3(0,0,1); // general unit vector in z-direction

@@ -98,7 +98,7 @@ bool Simulator::run()
     // Propagate forward in time and get new control input and true acceleration
     t_ += dt_;
     traj_->getCommandedState(t_, xc_, ur_);
-    cont_->computeControl(t_, dyn_.get_state(), xc_, u_);
+    cont_->computeControl(t_, dyn_.get_state(), xc_, ur_, u_);
     dyn_.run(dt_, u_);
     if (prog_indicator_)
       prog_.print(t_/dt_);
