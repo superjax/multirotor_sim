@@ -13,9 +13,10 @@ public:
 
   // t - current time (seconds)
   // x - current state
-  // x_c - desired state
+  // xc - desired state
+  // ur - reference input
   // u - output [F, tau_x, tau_y, tau_z].T
-  virtual void computeControl(const double& t, const State& x, const State& x_c, Vector4d& u) = 0;
+  virtual void computeControl(const double& t, const State& x, const State& xc, const Vector4d& ur, Vector4d& u) = 0;
 };
 
 }

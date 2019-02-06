@@ -110,9 +110,9 @@ public:
   void load(const std::string filename);
   void updateWaypointManager();
   void updateTrajectoryManager();
-  void computeControl(const double& t, const State &x, const State& x_c, Vector4d& u) override;
+  void computeControl(const double& t, const State &x, const State& x_c, const Vector4d& ur, Vector4d& u) override;
   
-  const State& getCommandedState(const double& t) override;
+  void getCommandedState(const double& t, State& x_c, Vector4d& u_r) override;
   const Eigen::MatrixXd get_waypoints() const { return waypoints_; }
 };
 

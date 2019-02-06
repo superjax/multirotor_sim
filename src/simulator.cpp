@@ -97,13 +97,12 @@ bool Simulator::run()
   {
     // Propagate forward in time and get new control input and true acceleration
     t_ += dt_;
-    cont_->computeControl(t_, dyn_.get_state(), traj_->getCommandedState(t_), u_);
+    traj_->getCommandedState(t_, xc_, ur_);
+    cont_->computeControl(t_, dyn_.get_state(), xc_, ur_, u_);
     dyn_.run(dt_, u_);
     if (prog_indicator_)
       prog_.print(t_/dt_);
     update_measurements();
-
-    log_state();
     return true;
   }
   else
@@ -159,7 +158,9 @@ void Simulator::init_camera()
   bool use_camera_truth;
   double pixel_noise;
   Vector2d focal_len;
-  get_yaml_node("camera_time_delay", param_filename_, camera_time_delay_);
+  get_yaml_node("camera_time_offset", param_filename_, camera_time_offset_);
+  get_yaml_node("camera_transmission_time", param_filename_, camera_transmission_time_);
+  get_yaml_node("camera_transmission_noise", param_filename_, camera_transmission_noise_);
   get_yaml_node("use_camera_truth", param_filename_, use_camera_truth);
   get_yaml_node("camera_update_rate", param_filename_, camera_update_rate_);
   get_yaml_eigen("cam_center", param_filename_, cam_center_);
@@ -336,16 +337,6 @@ void Simulator::use_custom_trajectory(TrajectoryBase *traj)
   traj_ = traj;
 }
 
-void Simulator::log_state()
-{
-  if (log_.is_open())
-  {
-    log_.write((char*)&t_, sizeof(double));
-    log_.write((char*)dyn_.get_state().arr.data(), sizeof(double)*State::SIZE);
-  }
-}
-
-
 void Simulator::update_camera_pose()
 {
   p_I2c_ = dyn_.get_state().p + dyn_.get_state().q.rota(p_b2c_);
@@ -383,18 +374,20 @@ void Simulator::update_camera_meas()
     last_camera_update_ = t_;
     update_camera_pose();
 
+    double pub_time = t_ + std::max(camera_transmission_time_ + normal_(rng_) * camera_transmission_noise_, 0.0);
+
     // Update feature measurements for currently tracked features
     for(auto it = tracked_points_.begin(); it != tracked_points_.end();)
     {
       if (update_feature(*it))
       {
         measurement_t meas;
-        meas.t = t_;
+        meas.t = t_ + camera_time_offset_;
         meas.z = it->pixel + randomNormal<Vector2d>(pixel_noise_stdev_, normal_, rng_);
         meas.R = feat_R_;
         meas.feature_id = (*it).id;
         meas.depth = it->depth + depth_noise_stdev_ * normal_(rng_);
-        camera_measurements_buffer_.push_back(meas);
+        camera_measurements_buffer_.push_back(std::pair<double, measurement_t>{pub_time, meas});
         DBG("update feature - ID = %d\n", it->id);
         it++;
       }
@@ -427,27 +420,27 @@ void Simulator::update_camera_meas()
 
       // Create a measurement for this new feature
       measurement_t meas;
-      meas.t = t_;
+      meas.t = t_ + camera_time_offset_;
       meas.z = new_feature.pixel + randomNormal<Vector2d>(pixel_noise_stdev_, normal_, rng_);
       meas.R = feat_R_;
       meas.feature_id = new_feature.id;
       meas.depth = new_feature.depth + depth_noise_stdev_ * normal_(rng_);
-      camera_measurements_buffer_.push_back(meas);
+      camera_measurements_buffer_.push_back(std::pair<double, measurement_t>{pub_time, meas});
     }
   }
 
   // Push out the measurement if it is time to send it
-  if ((t_ > last_camera_update_ + camera_time_delay_) && (camera_measurements_buffer_.size() > 0))
+  if (camera_measurements_buffer_.size() > 0 && camera_measurements_buffer_[0].first >= t_)
   {
     // Populate the Image class with all feature measurements
     img_.clear();
-    img_.t = t_;
+    img_.t = camera_measurements_buffer_[0].second.t;
     img_.id = image_id_;
     for (auto zit = camera_measurements_buffer_.begin(); zit != camera_measurements_buffer_.end(); zit++)
     {
-      img_.pixs.push_back(zit->z);
-      img_.feat_ids.push_back(zit->feature_id);
-      img_.depths.push_back(zit->depth);
+      img_.pixs.push_back(zit->second.z);
+      img_.feat_ids.push_back(zit->second.feature_id);
+      img_.depths.push_back(zit->second.depth);
     }
 
     for (estVec::iterator eit = est_.begin(); eit != est_.end(); eit++)
@@ -476,25 +469,25 @@ void Simulator::update_mocap_meas()
 {
   if (std::round((t_ - last_mocap_update_) * 1e4) / 1e4 >= 1.0/mocap_update_rate_)
   {
-    measurement_t mocap_meas;
-    mocap_meas.t = t_ - mocap_time_offset_;
-    mocap_meas.z.resize(7,1);
+    measurement_t meas;
+    meas.t = t_ + mocap_time_offset_;
+    meas.z.resize(7,1);
 
     // Add noise to mocap measurements and transform into mocap coordinate frame
     Vector3d noise = randomNormal<Vector3d>(position_noise_stdev_, normal_, rng_);
     Vector3d I_p_b_I = state().p; // p_{b/I}^I
     Vector3d I_p_m_I = I_p_b_I + state().q.rota(p_b2m_); // p_{m/I}^I = p_{b/I}^I + R(q_I^b)^T (p_{m/b}^b)
-    mocap_meas.z.topRows<3>() = I_p_m_I + noise;
+    meas.z.topRows<3>() = I_p_m_I + noise;
 
     noise = randomNormal<Vector3d>(attitude_noise_stdev_, normal_, rng_);
     Quatd q_I_m = state().q * q_b2m_; //  q_I^m = q_I^b * q_b^m
-    mocap_meas.z.bottomRows<4>() = (q_I_m + noise).elements();
+    meas.z.bottomRows<4>() = (q_I_m + noise).elements();
 
-    mocap_meas.R = mocap_R_;
+    meas.R = mocap_R_;
 
     double pub_time = std::max(mocap_transmission_time_ + normal_(rng_) * mocap_transmission_noise_, 0.0) + t_;
 
-    mocap_measurement_buffer_.push_back(std::pair<double, measurement_t>{pub_time, mocap_meas});
+    mocap_measurement_buffer_.push_back(std::pair<double, measurement_t>{pub_time, meas});
     last_mocap_update_ = t_;
   }
 
@@ -504,7 +497,7 @@ void Simulator::update_mocap_meas()
     if (mocap_enabled_)
     {
       for (estVec::iterator it = est_.begin(); it != est_.end(); it++)
-        (*it)->mocapCallback(t_, Xformd(m->z), m->R);
+        (*it)->mocapCallback(m->t, Xformd(m->z), m->R);
     }
     mocap_measurement_buffer_.erase(mocap_measurement_buffer_.begin());
   }

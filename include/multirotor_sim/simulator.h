@@ -87,10 +87,14 @@ public:
   const Vector6d& imu() const { return dyn_.imu_;}
   const State& state() const { return dyn_.get_state(); }
   State& state() { return dyn_.get_state(); }
+  const Vector4d& input() const { return u_; }
+  Vector4d& input() { return u_; }
+  const State& commanded_state() const {return xc_;}
+  Vector4d& reference_input() { return ur_; }
+  const Vector4d& reference_input() const { return ur_; }
+  State& commanded_state() {return xc_;}
   Vector3d get_position_ecef() const;
   Vector3d get_velocity_ecef() const;
-
-  void log_state();
 
   Environment env_;
   Dynamics dyn_;
@@ -163,8 +167,9 @@ public:
   std::string param_filename_;
   ofstream log_;
 
-  // Command vector passed from controller to dynamics [F, Omega]
-  Vector4d u_;
+  Vector4d u_; // Command vector passed from controller to dynamics [F, Omega]
+  Vector4d ur_; // Reference Command given by the trajectory
+  State xc_; // Desired State
 
   // Random number Generation
   uint64_t seed_;
@@ -197,10 +202,12 @@ public:
   double camera_update_rate_;
   double last_camera_update_;
   int next_feature_id_;
-  double camera_time_delay_;
+  double camera_time_offset_;
+  double camera_transmission_noise_;
+  double camera_transmission_time_;
   bool loop_closure_; // whether to re-use features if they show up in the frame again
   vector<feature_t, aligned_allocator<feature_t>> tracked_points_; // currently tracked features
-  deque<measurement_t, aligned_allocator<measurement_t>> camera_measurements_buffer_; // container to hold measurements while waiting for delay
+  deque<std::pair<double,measurement_t>, aligned_allocator<std::pair<double,measurement_t>>> camera_measurements_buffer_; // container to hold measurements while waiting for delay
   Matrix<double, 2, 3> cam_F_;
   Vector2d cam_center_;
   Vector2d image_size_;
