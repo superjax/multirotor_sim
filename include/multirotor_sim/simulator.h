@@ -211,7 +211,7 @@ public:
   Matrix<double, 2, 3> cam_F_;
   Vector2d cam_center_;
   Vector2d image_size_;
-  Image img_;
+  ImageFeat img_;
   int image_id_;
 
   // Altimeter
