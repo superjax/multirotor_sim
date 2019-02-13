@@ -332,6 +332,7 @@ public:
     {
       ss << *itr;
       ss >> ret;
+      return true;
     }
     return false;
   }

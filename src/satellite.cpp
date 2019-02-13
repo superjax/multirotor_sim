@@ -78,7 +78,7 @@ void Satellite::computeMeasurement(const GTime& rec_time, const Vector3d& receiv
     z(1) = ((sat_vel - receiver_vel).transpose() * los_to_sat / z(0))(0) + C_LIGHT * (clk_bias(1) - sat_clk(1));
 
     // adjust range by the satellite clock offset
-    z(0) += C_LIGHT * (clk_bias(1) - sat_clk(0));
+    z(0) += C_LIGHT * (clk_bias(0) - sat_clk(0));
 
     // Compute Azimuth and Elevation to satellite
     Vector2d az_el;

@@ -174,8 +174,9 @@ struct IMU
   {}
 };
 
-struct Image
+class ImageFeat
 {
+public:
   EIGEN_MAKE_ALIGNED_OPERATOR_NEW
   int id; // image label
   double t; // time stamp of this image
