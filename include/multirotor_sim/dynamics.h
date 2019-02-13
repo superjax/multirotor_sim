@@ -18,11 +18,14 @@ namespace multirotor_sim
 
 // Input indices
 enum {
-  THRUST,
-  TAUX,
-  TAUY,
-  TAUZ,
-  INPUT_SIZE
+  THRUST = 0,
+  TAUX = 1,
+  TAUY = 2,
+  TAUZ = 3,
+  WX = 1,
+  WY = 2,
+  WZ = 3,
+  INPUT_SIZE = 4
 };
 
 // IMU indices
@@ -54,12 +57,14 @@ public:
   void load(std::string filename);
   void run(const double dt, const Vector4d& u);
   
-  void f(const State& x, const Vector4d& u, ErrorState& dx) const;
+  void f(const State& x, const Vector4d& ft, ErrorState& dx) const;
   void f(const State& x, const Vector4d& u, ErrorState& dx, Vector6d& imu) const;
   
   const State& get_state() const { return x_; }
   State& get_state() { return x_; }
   void set_state(const State& x) { x_ = x; }
+
+  Vector4d low_level_control(const State& x, const Vector4d& u) const;
 
   const Xformd& get_global_pose() const { return x_.X; }
   const double& get_drag() const { return drag_constant_; }

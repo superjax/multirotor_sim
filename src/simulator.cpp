@@ -61,6 +61,8 @@ void Simulator::load(string filename)
   get_yaml_node("gnss_enabled", filename, gnss_enabled_);
   get_yaml_node("raw_gnss_enabled", filename, raw_gnss_enabled_);
 
+  init_platform();
+
   if (imu_enabled_)
     init_imu();
   if (camera_enabled_)
@@ -99,7 +101,7 @@ bool Simulator::run()
     t_ += dt_;
     traj_->getCommandedState(t_, xc_, ur_);
     cont_->computeControl(t_, dyn_.get_state(), xc_, ur_, u_);
-    dyn_.run(dt_, u_);
+    dyn_.run(dt_, compute_low_level_control(u_));
     if (prog_indicator_)
       prog_.print(t_/dt_);
     update_measurements();
@@ -113,6 +115,14 @@ bool Simulator::run()
   }
 }
 
+void Simulator::init_platform()
+{
+    get_yaml_node("max_thrust", param_filename_, max_thrust_);
+    get_yaml_eigen("max_torque", param_filename_, max_torque_);
+    get_yaml_eigen("kp_w", param_filename_, kp_w_);
+    get_yaml_eigen("kd_w", param_filename_, kd_w_);
+    w_err_prev_ = Vector3d::Zero();
+}
 
 void Simulator::init_imu()
 {
@@ -708,6 +718,34 @@ Vector3d Simulator::get_velocity_ecef() const
 {
   Vector3d v_NED = dyn_.get_global_pose().q().rota(dyn_.get_state().v);
   return X_e2n_.q().rota(v_NED);
+}
+
+inline static double sat(double x, double max, double min)
+{
+    return x > max ? max : x < min ? min : x;
+}
+
+inline static Vector3d sat(const Vector3d& x, const Vector3d& max, const Vector3d& min)
+{
+    Vector3d out;
+    for (int i = 0; i < 3; i++)
+        out(i) = x(i) > max(i) ? max(i) : x(i) < min(i) ? min(i) : x(i);
+    return out;
+}
+
+
+// u = {F[0-1], Wx(rad/s), Wy, Wz}
+Vector4d Simulator::compute_low_level_control(const Vector4d& u)
+{
+    Vector4d forces_and_torques;
+    forces_and_torques(THRUST) = sat(u(THRUST)*max_thrust_, max_thrust_, 0.0);
+    Vector3d w_err = u.segment<3>(WX) - state().w;
+    Vector3d p_term = kp_w_.cwiseProduct(w_err);
+    Vector3d d_term = kd_w_.cwiseProduct(w_err - w_err_prev_)/dt_;
+    w_err_prev_ = w_err;
+
+    forces_and_torques.segment<3>(TAUX) = sat(p_term - d_term, max_torque_, -1.0*max_torque_);
+    return forces_and_torques;
 }
 
 }

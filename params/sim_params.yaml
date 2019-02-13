@@ -53,6 +53,10 @@ traj_yaw_period: 20
 throttle_eq: 0.5
 mass: 1.0
 max_thrust: 19.6133
+max_torque: [0.30625, 0.30625, 0.1] # N-m
+kp_w: [1.0, 1.0, 1.0] # Inner loop controller gains
+kd_w: [0.0, 0.0, 0.0] # Inner loop controller gains
+
 waypoint_threshold: 0.1
 waypoint_velocity_threshold: 0.5
 drag_constant: 0.1
@@ -70,12 +74,12 @@ lqr_max_yaw_error: 0.1
 lqr_Q: [1, 1, 10, 100, 100, 100]
 lqr_R: [10000, 1000, 1000, 1000]
 
-roll_kp: 10.0
+roll_kp: 1.0
 roll_ki: 0.0
-roll_kd: 1.0
-pitch_kp: 10.0
+roll_kd: 0.0
+pitch_kp: 1.0
 pitch_ki: 0.0
-pitch_kd: 1.0
+pitch_kd: 0.0
 yaw_rate_kp: 1.0
 yaw_rate_ki: 0.0
 yaw_rate_kd: 0.0
@@ -89,6 +93,7 @@ max_tau_y: 1.0
 max_tau_z: 1.0
 
 inertia: [0.1, 0.1, 0.1]
+
 
 x0: [0, 0, -5,   # POS
      1, 0, 0, 0, # ATT 

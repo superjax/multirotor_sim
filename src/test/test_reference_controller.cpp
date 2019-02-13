@@ -18,7 +18,7 @@ protected:
     filename = "tmp.params.yaml";
     ofstream tmp_file(filename);
     YAML::Node node;
-    node["tmax"] = 60.0;
+    node["tmax"] = 60;
     node["seed"] = 1;
     node["dt"] = 0.01;
     node["log_filename"] = "";
@@ -45,6 +45,9 @@ protected:
     node["throttle_eq"] = 0.5;
     node["mass"] = 1.0;
     node["max_thrust"] = 19.6133;
+    node["max_torque"] = std::vector<double>{0.30625, 0.30625, 0.1};
+    node["kp_w"] = std::vector<double>{1.0, 1.0, 1.0};
+    node["kd_w"] = std::vector<double>{0.0, 0.0, 0.0};
     node["waypoint_threshold"] = 0.1;
     node["waypoint_velocity_threshold"] = 0.5;
     node["drag_constant"] = 0.1;
@@ -105,7 +108,7 @@ TEST_F (ReferenceControllerTest, WaypointsSupplied)
 
   while(sim.run())
   {
-    file.write((char*)&sim.t_, sizeof(double));
+     file.write((char*)&sim.t_, sizeof(double));
     file.write((char*)sim.state().arr.data(), sizeof(double) * State::SIZE);
     file.write((char*)sim.commanded_state().arr.data(), sizeof(double) * State::SIZE);
     if (cont.current_waypoint_id_ != prev_waypoint_id)
@@ -115,11 +118,10 @@ TEST_F (ReferenceControllerTest, WaypointsSupplied)
     }
   }
   EXPECT_NEAR(waypoint_time[0], 0.01, 0.1);
-  EXPECT_NEAR(waypoint_time[1], 5.01, 0.1);
-  EXPECT_NEAR(waypoint_time[2], 14.94, 0.1);
-  EXPECT_NEAR(waypoint_time[3], 29.15, 0.1);
-  EXPECT_NEAR(waypoint_time[4], 43.47, 0.1);
-  EXPECT_NEAR(waypoint_time[5], 59.63, 0.1);
+  EXPECT_NEAR(waypoint_time[1], 5.25, 0.1);
+  EXPECT_NEAR(waypoint_time[2], 16.45, 0.1);
+  EXPECT_NEAR(waypoint_time[3], 30.25, 0.1);
+  EXPECT_NEAR(waypoint_time[4], 44.32, 0.1);
 
   file.close();
 }
@@ -142,11 +144,10 @@ TEST_F (ReferenceControllerTest, WaypointsInternal)
     }
   }
   EXPECT_NEAR(waypoint_time[0], 0.01, 0.1);
-  EXPECT_NEAR(waypoint_time[1], 5.01, 0.1);
-  EXPECT_NEAR(waypoint_time[2], 14.94, 0.1);
-  EXPECT_NEAR(waypoint_time[3], 29.15, 0.1);
-  EXPECT_NEAR(waypoint_time[4], 43.47, 0.1);
-  EXPECT_NEAR(waypoint_time[5], 59.63, 0.1);
+  EXPECT_NEAR(waypoint_time[1], 5.25, 0.1);
+  EXPECT_NEAR(waypoint_time[2], 16.45, 0.1);
+  EXPECT_NEAR(waypoint_time[3], 30.25, 0.1);
+  EXPECT_NEAR(waypoint_time[4], 44.32, 0.1);
 
   file.close();
 }

@@ -44,12 +44,12 @@ TEST (Dynamics, Propagate)
 
   std::ofstream file("/tmp/Dynamics.Propagate.log");
   double t;
-  double dt = 0.01;
+  double dt = 0.002;
   Vector4d u;
   u.setZero();
   std::normal_distribution<double> dist;
   std::default_random_engine gen;
-  u(0) = 0.5;
+  u(0) = 9.80665;
 
   for (int i = 0; i < 50; i++)
   {

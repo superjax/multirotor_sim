@@ -61,6 +61,7 @@ public:
   ~Simulator();
   
   void load(std::string filename);
+  void init_platform();
   void init_imu();
   void init_camera();
   void init_altimeter();
@@ -70,6 +71,7 @@ public:
   void init_raw_gnss();
 
   bool run();
+  Vector4d compute_low_level_control(const Vector4d& u); // {F[0-1], Wx(rad/s), Wy, Wz}
 
   void update_measurements();
   void update_imu_meas();
@@ -176,6 +178,13 @@ public:
   default_random_engine rng_;
   uniform_real_distribution<double> uniform_;
   normal_distribution<double> normal_;
+
+  // Multirotor Hardware
+  double max_thrust_;
+  Vector3d max_torque_;
+  Vector3d kp_w_;
+  Vector3d kd_w_;
+  Vector3d w_err_prev_;
 
   // IMU
   bool imu_enabled_;

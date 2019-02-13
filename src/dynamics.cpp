@@ -42,13 +42,14 @@ void Dynamics::load(std::string filename)
   }
 }
 
-void Dynamics::f(const State &x, const Vector4d &u, ErrorState &dx) const
+// u = [F(N), Taux(N-m), Tauy, Tauz]
+void Dynamics::f(const State &x, const Vector4d &ft, ErrorState &dx) const
 {
   Eigen::Vector3d v_rel_ = x.v - x.q.rotp(vw_); // Vehicle air velocity
   dx.p = x.q.rota(x.v);
-  dx.v = -1.0 * e_z * u(THRUST)*max_thrust_ / mass_ - drag_constant_ * v_rel_ + x.q.rotp(gravity_) - x.w.cross(x.v);
+  dx.v = -1.0 * e_z * ft(THRUST) / mass_ - drag_constant_ * v_rel_ + x.q.rotp(gravity_) - x.w.cross(x.v);
   dx.q = x.w;
-  dx.w = inertia_inv_ * (u.segment<3>(TAUX) - x.w.cross(inertia_matrix_ * x.w) - angular_drag_ * x.w.cwiseProduct(x.w));
+  dx.w = inertia_inv_ * (ft.segment<3>(TAUX) - x.w.cross(inertia_matrix_ * x.w) - angular_drag_ * x.w.cwiseProduct(x.w));
 }
 
 void Dynamics::f(const State &x, const Vector4d &u, ErrorState &dx, Vector6d& imu) const
@@ -58,6 +59,7 @@ void Dynamics::f(const State &x, const Vector4d &u, ErrorState &dx, Vector6d& im
     imu.segment<3>(GYRO) = q_b2u_.rotp(x.w);
 }
 
+// u = [F(N), Taux(N-m), Tauy, Tauz]
 void Dynamics::run(const double dt, const Vector4d &u)
 {
   if (RK4_)
