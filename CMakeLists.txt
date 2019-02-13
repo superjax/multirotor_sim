@@ -52,7 +52,7 @@ if (${GTEST_FOUND})
         src/test/test_gnss.cpp
         src/test/test_time.cpp
         src/test/test_satellite.cpp
-        src/test/test_raw_gnss.cpp
+        # src/test/test_raw_gnss.cpp
         src/test/test_state.cpp
         src/test/test_dynamics.cpp
         src/test/test_reference_controller.cpp
