@@ -74,12 +74,12 @@ lqr_max_yaw_error: 0.1
 lqr_Q: [1, 1, 10, 100, 100, 100]
 lqr_R: [10000, 1000, 1000, 1000]
 
-roll_kp: 1.0
+roll_kp: 10.0
 roll_ki: 0.0
-roll_kd: 0.0
-pitch_kp: 1.0
+roll_kd: 1.0
+pitch_kp: 10.0
 pitch_ki: 0.0
-pitch_kd: 0.0
+pitch_kd: 1.0
 yaw_rate_kp: 1.0
 yaw_rate_ki: 0.0
 yaw_rate_kd: 0.0
@@ -139,10 +139,10 @@ raw_gnss_enabled: true
 ## IMU
 imu_update_rate: 250
 accel_init_stdev: 0.1
-accel_noise_stdev: 0.01
+accel_noise_stdev: 0.2
 accel_bias_walk: 0.00
 gyro_init_stdev: 0.1
-gyro_noise_stdev: 0.01
+gyro_noise_stdev: 0.1
 gyro_bias_walk: 0.0
 p_b_u: [0.0, 0.0, 0.0 ]
 q_b_u: [1.0, 0.0, 0.0, 0.0]
@@ -197,12 +197,12 @@ gnss_velocity_stdev: 0.1
 
 ## Raw GNSS
 use_raw_gnss_truth: false
-pseudorange_stdev: 3.0
-pseudorange_rate_stdev: 0.1
+pseudorange_stdev: 1.0
+pseudorange_rate_stdev: 0.25
 carrier_phase_stdev: 0.01
 ephemeris_filename: "../sample/eph.dat"
 start_time_week: 2026
 start_time_tow_sec: 165029
-clock_init_stdev: 1e-4
-clock_walk_stdev: 1e-7
+clock_init_stdev: 1e-9
+clock_walk_stdev: 1e-9
 

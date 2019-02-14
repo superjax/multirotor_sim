@@ -17,7 +17,7 @@ protected:
   {
     filename = "tmp.params.yaml";
     ofstream tmp_file(filename);
-    YAML::Node node;
+    YAML::Node node = YAML::LoadFile("../params/sim_params.yaml");
     node["tmax"] = 60;
     node["seed"] = 1;
     node["dt"] = 0.01;
@@ -38,53 +38,11 @@ protected:
          -8, -12, -4.5, -2.3,
           8, -5, -4, 1.7};
     node["control_type"] = 0;
-
-    node["Kp"] = std::vector<double> {1, 1, 1};
-    node["Kd"] = std::vector<double> {0, 0, 0};
-    node["Kv"] = std::vector<double> {2, 2, 2};
-    node["throttle_eq"] = 0.5;
-    node["mass"] = 1.0;
-    node["max_thrust"] = 19.6133;
-    node["max_torque"] = std::vector<double>{0.30625, 0.30625, 0.1};
-    node["kp_w"] = std::vector<double>{1.0, 1.0, 1.0};
-    node["kd_w"] = std::vector<double>{0.0, 0.0, 0.0};
-    node["waypoint_threshold"] = 0.1;
-    node["waypoint_velocity_threshold"] = 0.5;
-    node["drag_constant"] = 0.1;
-
-    node["sh_kv"] = 50;
-    node["sh_ks"] = 0.1;
-    node["roll_kp"] = 10.0;
-    node["roll_ki"] = 0.0;
-    node["roll_kd"] = 1.0;
-    node["pitch_kp"] = 10.0;
-    node["pitch_ki"] = 0.0;
-    node["pitch_kd"] = 1.0;
-    node["yaw_rate_kp"] = 1.0;
-    node["yaw_rate_ki"] = 0.0;
-    node["yaw_rate_kd"] = 0.0;
-    node["max_roll"] = 1.0;
-    node["max_pitch"] = 1.0;
-    node["max_yaw_rate"] = 1.0;
-    node["max_throttle"] = 1.0;
-    node["max_vel"] = 5.0;
-    node["max_tau_x"] = 1.0;
-    node["max_tau_y"] = 1.0;
-    node["max_tau_z"] = 1.0;
-
-    node["angular_drag_constant"] = 0.01;
-    node["RK4"] = true;
-    node["p_b_u"] = std::vector<double>{0, 0, 0};
-    node["q_b_u"] = std::vector<double>{1, 0, 0, 0};
-    node["enable_wind"] = false;
-    node["wind_init_stdev"] = 0.1;
-    node["wind_walk_stdev"] = 0.1;
     node["x0"] = std::vector<double>
        {0, 0, -5,
         1, 0, 0, 0,
         1, 0, 0,
         0, 0, 0};
-    node["inertia"] = std::vector<double>{0.1, 0.1, 0.1};
 
     tmp_file << node;
     tmp_file.close();

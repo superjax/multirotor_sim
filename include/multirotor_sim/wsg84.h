@@ -2,12 +2,16 @@
 
 #include <Eigen/Core>
 #include "geometry/xform.h"
+#include "multirotor_sim/gtime.h"
+#include "multirotor_sim/satellite.h"
 
 using namespace Eigen;
 using namespace xform;
 
+
 struct WSG84
 {
+    typedef std::vector<Vector3d, aligned_allocator<Vector3d>> VecVec3;
     static constexpr double A = 6378137.0;       // WGS-84 Earth semimajor axis (m)
     static constexpr double B = 6356752.314245;  // Derived Earth semiminor axis (m)
     static constexpr double F = (A - B) / A;     // Ellipsoid Flatness
@@ -135,6 +139,46 @@ struct WSG84
         q1 = quat::Quatd::from_axis_angle(e_z, lla(1));
         q2 = quat::Quatd::from_axis_angle(e_y, -M_PI/2.0 - lla(0));
         return q1 * q2;
+    }
+
+
+    static bool pointPositioning(const GTime &t, const VecVec3 &z, std::vector<Satellite> &sats, Vector3d &xhat)
+    {
+      const int nsat = sats.size();
+      MatrixXd A, b;
+      A.resize(nsat, 4);
+      b.resize(nsat, 1);
+      Matrix<double, 4, 1> dx;
+      GTime that = t;
+      ColPivHouseholderQR<MatrixXd> solver;
+
+      int iter = 0;
+      do
+      {
+        iter++;
+        int i = 0;
+        for (Satellite sat : sats)
+        {
+          Vector3d sat_pos, sat_vel;
+          Vector2d sat_clk_bias;
+          sat.computePositionVelocityClock(t, sat_pos, sat_vel, sat_clk_bias);
+
+          Vector3d zhat ;
+          sat.computeMeasurement(t, xhat, Vector3d::Zero(), Vector2d::Zero(), zhat);
+          b(i) = z[i](0) - zhat(0);
+
+          A.block<1,3>(i,0) = (xhat - sat_pos).normalized().transpose();
+          A(i,3) = Satellite::C_LIGHT;
+          i++;
+        }
+
+        solver.compute(A);
+        dx = solver.solve(b);
+
+        xhat += dx.topRows<3>();
+        that += dx(3);
+      } while (dx.norm() > 1e-4 && iter < 10);
+      return iter < 10;
     }
 };
 
