@@ -24,12 +24,16 @@ public:
     {
         time_last = t;
         call_count++;
-        z_last = z;
+        z_last.resize(z.size());
+        for (int i = 0; i < z.size(); i++)
+        {
+            z_last[i] = z[i];
+        }
     }
 
     GTime time_last;
     int call_count = 0;
-    std::vector<Vector3d, aligned_allocator<Vector3d>> z_last;
+    VecVec3 z_last;
 };
 
 
@@ -87,7 +91,7 @@ TEST_F (RawGpsTest, MeasurementUpdateRate)
     sim.t_ = 0.3;
 
     sim.update_raw_gnss_meas();
-    ASSERT_EQ(est.call_count, 15);
+    ASSERT_EQ(est.call_count, 1);
 
     for (int i = 0; i < 15; i++)
     {
@@ -95,7 +99,7 @@ TEST_F (RawGpsTest, MeasurementUpdateRate)
     }
 
     sim.update_raw_gnss_meas();
-    ASSERT_EQ(est.call_count, 15);
+    ASSERT_EQ(est.call_count, 1);
 }
 
 TEST_F (RawGpsTest, MeasurementIsCloseToTruth)
@@ -103,7 +107,7 @@ TEST_F (RawGpsTest, MeasurementIsCloseToTruth)
     State x;
     x.p << 1000, 0, 0;
     sim.dyn_.set_state(x);
-    sim.t_ = 0.3;
+    sim.t_ = 1.0;
     sim.update_raw_gnss_meas();
 
     GTime t = sim.t_ + sim.start_time_;
@@ -124,12 +128,12 @@ TEST_F (RawGpsTest, LeastSquaresPositioningPseudoranges)
 {
     State x;
     x.p << 1000, 0, 0;
-    sim.dyn_.set_state(x);
-    sim.t_ = 0.3;
+    sim.state() = x;
+    sim.t_ = 1.0;
     sim.update_raw_gnss_meas();
 
     GTime t = sim.t_ + sim.start_time_;
-    Vector3d vel_ned = sim.dyn_.get_state().q.rota(sim.dyn_.get_state().v);
+    Vector3d vel_ned = sim.state().q.rota(sim.state().v);
     Vector3d vel_ecef = sim.X_e2n_.q().rota(vel_ned);
 
     Vector3d xhat = Vector3d::Zero();
@@ -161,17 +165,14 @@ TEST_F (RawGpsTest, LeastSquaresPositioningPseudoranges)
         dx = solver.solve(b);
 
         xhat += dx.segment<3>(0);
-        t += dx(3);
-    } while (dx.norm() > 1e-4);
+//        t += dx(3);
+    } while (dx.norm() > 1e-4 && iter < 10);
 
-//    cout << (xhat - xtrue).transpose() << endl;
     Vector3d xhat_ned = WSG84::ecef2ned(sim.X_e2n_, xhat);
     Vector3d xtrue_ned = WSG84::ecef2ned(sim.X_e2n_, xtrue);
-//    cout << "xhat:\n" << xhat_ned.transpose() <<
-//            "\nx:\n" << xtrue_ned.transpose() << endl;
 
     EXPECT_NEAR(xhat_ned.x(), xtrue_ned.x(), 2.0);
     EXPECT_NEAR(xhat_ned.y(), xtrue_ned.y(), 2.0);
-    EXPECT_NEAR(xhat_ned.z(), xtrue_ned.z(), 3.0);
+    EXPECT_NEAR(xhat_ned.z(), xtrue_ned.z(), 4.0);
     EXPECT_LT(iter, 6);
 }

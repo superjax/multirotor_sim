@@ -1,5 +1,6 @@
 #pragma once
 #include <stdint.h>
+#include <iostream>
 
 #include "multirotor_sim/datetime.h"
 
@@ -32,4 +33,11 @@ public:
 inline GTime operator+ (const double& sec, const GTime& t)
 {
     return t + sec;
+}
+
+inline std::ostream & operator << (std::ostream &out, const GTime &t)
+{
+    out << "[ " << t.week;
+    out << ", " << t.tow_sec << " ]";
+    return out;
 }

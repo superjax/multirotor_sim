@@ -585,7 +585,9 @@ void Simulator::update_raw_gnss_meas()
       z_i(2) += normal_(rng_) * carrier_phase_stdev_ + carrier_phase_integer_offsets_[i];
       z.push_back(z_i);
       R.push_back(raw_gnss_R_);
+
     }
+
     for (estVec::iterator it = est_.begin(); it != est_.end(); it++)
       (*it)->rawGnssCallback(t_now, z, R, satellites_);
   }
