@@ -28,7 +28,7 @@ void ReferenceController::computeControl(const double& t, const State &x, const 
   t_c_ = t;
   double dt = t - prev_time_;
   prev_time_ = t;
-  if (dt < 0.0001)
+  if (dt < 1e-7)
   {
     u.setZero();
     return;

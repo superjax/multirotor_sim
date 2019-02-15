@@ -16,7 +16,8 @@ Simulator::Simulator(bool prog_indicator, uint64_t seed) :
   env_(seed_),
   rng_(seed_),
   uniform_(0.0, 1.0),
-  prog_indicator_(prog_indicator)
+  prog_indicator_(prog_indicator),
+  t_round_off_(1e7)
 {
   cont_ = static_cast<ControllerBase*>(&ref_con_);
   traj_ = static_cast<TrajectoryBase*>(&ref_con_);
@@ -357,7 +358,7 @@ void Simulator::update_camera_pose()
 void Simulator::update_imu_meas()
 {
   double dt = t_ - last_imu_update_;
-  if (std::round(dt * 1e4) / 1e4 >= 1.0/imu_update_rate_)
+  if (std::round(dt * t_round_off_) / t_round_off_ >= 1.0/imu_update_rate_)
   {
     last_imu_update_ = t_;
 
@@ -379,7 +380,7 @@ void Simulator::update_imu_meas()
 void Simulator::update_camera_meas()
 {
   // If it's time to capture new measurements, then do it
-  if (std::round((t_ - last_camera_update_) * 1e4) / 1e4 >= 1.0/camera_update_rate_)
+  if (std::round((t_ - last_camera_update_) * t_round_off_) / t_round_off_ >= 1.0/camera_update_rate_)
   {
     last_camera_update_ = t_;
     update_camera_pose();
@@ -463,7 +464,7 @@ void Simulator::update_camera_meas()
 
 void Simulator::update_alt_meas()
 {
-  if (std::round((t_ - last_altimeter_update_) * 1e4) / 1e4 >= 1.0/altimeter_update_rate_)
+  if (std::round((t_ - last_altimeter_update_) * t_round_off_) / t_round_off_ >= 1.0/altimeter_update_rate_)
   {
     Vector1d z_alt;
     z_alt << -1.0 * state().p.z() + altimeter_noise_stdev_ * normal_(rng_);
@@ -477,7 +478,7 @@ void Simulator::update_alt_meas()
 
 void Simulator::update_mocap_meas()
 {
-  if (std::round((t_ - last_mocap_update_) * 1e4) / 1e4 >= 1.0/mocap_update_rate_)
+  if (std::round((t_ - last_mocap_update_) * t_round_off_) / t_round_off_ >= 1.0/mocap_update_rate_)
   {
     measurement_t meas;
     meas.t = t_ + mocap_time_offset_;
@@ -537,7 +538,7 @@ void Simulator::update_vo_meas()
 void Simulator::update_gnss_meas()
 {
   /// TODO: Simulate gnss sensor delay
-  if (std::round((t_ - last_gnss_update_) * 1e4) / 1e4 >= 1.0/gnss_update_rate_)
+  if (std::round((t_ - last_gnss_update_) * t_round_off_) / t_round_off_ >= 1.0/gnss_update_rate_)
   {
     last_gnss_update_ = t_;
     /// TODO: Simulate the random walk associated with gnss position
@@ -562,7 +563,7 @@ void Simulator::update_raw_gnss_meas()
 {
   /// TODO: Simulator gnss sensor delay
   double dt = t_ - last_raw_gnss_update_;
-  if (std::round(dt * 1e4) / 1e4 >= 1.0/gnss_update_rate_)
+  if (std::round(dt * t_round_off_) / t_round_off_ >= 1.0/gnss_update_rate_)
   {
     last_raw_gnss_update_ = t_;
     clock_bias_rate_ += normal_(rng_) * clock_walk_stdev_ * dt;
