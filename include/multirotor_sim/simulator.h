@@ -282,7 +282,11 @@ public:
   double clock_init_stdev_;
   double clock_bias_;
   double clock_bias_rate_;
+  double multipath_prob_;
+  double multipath_error_range_;
+  double cycle_slip_prob_;
   std::string ephemeris_filename_;
+  std::vector<double> multipath_offset_;
   std::vector<int> carrier_phase_integer_offsets_;
   std::vector<Satellite> satellites_;
   double last_raw_gnss_update_;

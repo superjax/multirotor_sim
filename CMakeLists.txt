@@ -43,8 +43,11 @@ add_library(multirotor_sim STATIC
     src/satellite.cpp
     src/gnss.cpp
 )
+target_include_directories(multirotor_sim PUBLIC
+    include
+    lib/nanoflann/include
+    lib/geometry/include)
 target_link_libraries(multirotor_sim ${YAML_CPP_LIBRARIES} stdc++fs geometry nanoflann_eigen lin_alg_tools)
-
 
 if (${GTEST_FOUND})
     include_directories(include ${GTEST_INCLUDE_DIRS} ${EIGEN3_INCLUDE_DIRS})

@@ -308,6 +308,9 @@ void Simulator::init_raw_gnss()
   get_yaml_node("clock_walk_stdev", param_filename_, clock_walk);
   get_yaml_node("start_time_week", param_filename_, start_time_.week);
   get_yaml_node("start_time_tow_sec", param_filename_, start_time_.tow_sec);
+  get_yaml_node("multipath_prob", param_filename_, multipath_prob_);
+  get_yaml_node("cycle_slip_prob", param_filename_, cycle_slip_prob_);
+  get_yaml_node("multipath_error_range", param_filename_, multipath_error_range_);
   pseudorange_stdev_ = pseudorange_noise * !use_raw_gnss_truth;
   pseudorange_rate_stdev_ = p_rate_noise * !use_raw_gnss_truth;
   carrier_phase_stdev_ = cp_noise * !use_raw_gnss_truth;
@@ -321,6 +324,7 @@ void Simulator::init_raw_gnss()
     {
       satellites_.push_back(sat);
       carrier_phase_integer_offsets_.push_back(use_raw_gnss_truth ? 0 : round(uniform_(rng_) * 100) - 50);
+      multipath_offset_.push_back(0.0);
     }
   }
 
@@ -576,20 +580,38 @@ void Simulator::update_raw_gnss_meas()
     VecMat3 R;
     int i;
     vector<Satellite>::iterator sat;
+    vector<bool> slip(satellites_.size(), false);
     for (i = 0, sat = satellites_.begin(); sat != satellites_.end(); sat++, i++)
     {
+      if (normal_(rng_) * dt_ < cycle_slip_prob_)
+      {
+        slip[i] = true;
+        carrier_phase_integer_offsets_[i] = round(uniform_(rng_) * 100) - 50;
+      }
+
+      if (multipath_offset_[i] > 0)
+      {
+          if (uniform_(rng_) < (multipath_prob_ + (0.7 * (1.0 - multipath_prob_)))* 1.0/gnss_update_rate_ )
+          {
+              multipath_offset_[i] = 0;
+          }
+      }
+      else if ((uniform_(rng_)  < multipath_prob_ * 1.0/gnss_update_rate_))
+      {
+          multipath_offset_[i] = uniform_(rng_) * multipath_error_range_;
+      }
+
       Vector3d z_i;
       sat->computeMeasurement(t_now, p_ECEF, v_ECEF, Vector2d{clock_bias_, clock_bias_rate_}, z_i);
-      z_i(0) += normal_(rng_) * pseudorange_stdev_;
+      z_i(0) += normal_(rng_) * pseudorange_stdev_+ multipath_offset_[i];
       z_i(1) += normal_(rng_) * pseudorange_rate_stdev_;
       z_i(2) += normal_(rng_) * carrier_phase_stdev_ + carrier_phase_integer_offsets_[i];
       z.push_back(z_i);
       R.push_back(raw_gnss_R_);
-
     }
 
     for (estVec::iterator it = est_.begin(); it != est_.end(); it++)
-      (*it)->rawGnssCallback(t_now, z, R, satellites_);
+      (*it)->rawGnssCallback(t_now, z, R, satellites_, slip);
   }
 }
 

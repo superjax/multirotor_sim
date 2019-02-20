@@ -205,4 +205,8 @@ start_time_week: 2026
 start_time_tow_sec: 165029
 clock_init_stdev: 1e-9
 clock_walk_stdev: 1e-9
-
+multipath_prob: 0.00
+multipath_error_range: 10
+cycle_slip_prob: 0.00
+switch_weight: 1.0
+switch_dyn_weight: 0.0
