@@ -105,7 +105,7 @@ public:
   TrajectoryBase* traj_;
   typedef std::vector<EstimatorBase*> estVec;
   estVec est_;
-  double t_, dt_, tmax_;
+  double t_, dt_, tmax_, t_round_off_;
 
   typedef struct
   {
