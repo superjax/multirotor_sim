@@ -65,6 +65,7 @@ public:
   void init_imu();
   void init_camera();
   void init_altimeter();
+  void init_baro();
   void init_vo();
   void init_mocap();
   void init_gnss();
@@ -77,6 +78,7 @@ public:
   void update_imu_meas();
   void update_camera_meas();
   void update_alt_meas();
+  void update_baro_meas();
   void update_mocap_meas();
   void update_vo_meas();
   void update_gnss_meas();
@@ -229,6 +231,16 @@ public:
   double altimeter_update_rate_;
   double last_altimeter_update_;
   double altimeter_noise_stdev_;
+
+  // Barometer
+  bool baro_enabled_;
+  Matrix1d baro_R_;
+  double baro_update_rate_;
+  double last_baro_update_;
+  double baro_noise_stdev_;
+  double baro_bias_;
+  double baro_bias_walk_stdev_;
+  double alt0_;
 
   // Depth
   bool depth_enabled_;

@@ -121,6 +121,7 @@ use_accel_truth: false
 use_gyro_truth: false
 use_camera_truth: false
 use_altimeter_truth: false
+use_baro_truth: false
 use_depth_truth: false
 use_vo_truth: false
 use_mocap_truth: false
@@ -130,6 +131,7 @@ RK4: true
 # Sensor Configuration
 imu_enabled: true
 alt_enabled: true
+baro_enabled: true
 mocap_enabled: true
 vo_enabled: true
 camera_enabled: true
@@ -171,6 +173,12 @@ vo_rotation_noise_stdev: 0.01
 ## Altimeter
 altimeter_update_rate: 25
 altimeter_noise_stdev: 0.1
+
+## Barometer
+baro_update_rate: 25
+baro_noise_stdev: 3.0
+baro_init_stdev: 300.0
+baro_bias_walk: 1.0
 
 ## Depth
 depth_update_rate: 30

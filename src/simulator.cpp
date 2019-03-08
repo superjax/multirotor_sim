@@ -56,6 +56,7 @@ void Simulator::load(string filename)
   // Initialize Desired sensors
   get_yaml_node("imu_enabled", filename, imu_enabled_);
   get_yaml_node("alt_enabled", filename, alt_enabled_);
+  get_yaml_node("baro_enabled", filename, baro_enabled_);
   get_yaml_node("mocap_enabled", filename, mocap_enabled_);
   get_yaml_node("vo_enabled", filename, vo_enabled_);
   get_yaml_node("camera_enabled", filename, camera_enabled_);
@@ -70,6 +71,8 @@ void Simulator::load(string filename)
     init_camera();
   if (alt_enabled_)
     init_altimeter();
+  if (baro_enabled_)
+    init_baro();
   if (vo_enabled_)
     init_vo();
   if (mocap_enabled_)
@@ -213,6 +216,25 @@ void Simulator::init_altimeter()
   altimeter_noise_stdev_ = altimeter_noise * !use_altimeter_truth;
   alt_R_ << altimeter_noise * altimeter_noise;
   last_altimeter_update_ = 0.0;
+}
+
+void Simulator::init_baro()
+{
+  bool use_baro_truth;
+  double baro_noise, baro_walk, baro_init;
+  Vector3d refLla;
+  get_yaml_eigen("ref_LLA", param_filename_, refLla);
+  get_yaml_node("use_baro_truth", param_filename_, use_baro_truth);
+  get_yaml_node("baro_update_rate", param_filename_, baro_update_rate_);
+  get_yaml_node("baro_noise_stdev", param_filename_, baro_noise);
+  get_yaml_node("baro_init_stdev", param_filename_, baro_init);
+  get_yaml_node("baro_bias_walk", param_filename_, baro_walk);
+  alt0_ = refLla(2);
+  baro_noise_stdev_ = baro_noise * !use_baro_truth;
+  baro_bias_walk_stdev_ = baro_walk * !use_baro_truth;
+  baro_bias_ = normal_(rng_) * baro_bias_walk_stdev_;
+  baro_R_ << baro_noise * baro_noise;
+  last_baro_update_ = 0.0;
 }
 
 
@@ -479,6 +501,25 @@ void Simulator::update_alt_meas()
   }
 }
 
+void Simulator::update_baro_meas()
+{
+  if (std::round((t_ - last_baro_update_) * t_round_off_) / t_round_off_ >= 1.0/baro_update_rate_)
+  {
+    double dt = t_ - last_baro_update_;
+    baro_bias_ += dt * normal_(rng_)*baro_bias_walk_stdev_;
+
+    double alt = -1.0 * state().p.z() + alt0_;
+    double pa = 101325.0f*(float)pow((1-2.25694e-5 * alt), 5.2553);
+
+    Vector1d z_baro;
+    z_baro << pa + baro_noise_stdev_ * normal_(rng_) + baro_bias_;
+
+    last_baro_update_ = t_;
+    for (estVec::iterator it = est_.begin(); it != est_.end(); it++)
+        (*it)->baroCallback(t_, z_baro, baro_R_);
+  }
+}
+
 
 void Simulator::update_mocap_meas()
 {
@@ -640,17 +681,17 @@ bool Simulator::update_feature(feature_t &feature) const
 {
   if (feature.id > env_.get_points().size() || feature.id < 0)
     return false;
-  
+
   // Calculate the bearing vector to the feature
   Vector3d pt = env_.get_points()[feature.id];
   feature.zeta = q_I2c_.rotp(pt - p_I2c_);
   feature.zeta /= feature.zeta.norm();
   feature.depth = (env_.get_points()[feature.id] - p_I2c_).norm();
-  
+
   // we can reject anything behind the camera
   if (feature.zeta(2) < 0.0)
     return false;
-  
+
   // See if the pixel is in the camera frame
   proj(feature.zeta, feature.pixel);
   if ((feature.pixel.array() < 0).any() || (feature.pixel.array() > image_size_.array()).any())
