@@ -302,9 +302,9 @@ void Simulator::init_gnss()
   gnss_velocity_stdev_ = gnss_vel_noise * !use_gnss_truth;
 
   gnss_R_.setIdentity();
-  gnss_R_.block<2,2>(0,0) *= gnss_pos_noise_h;
-  gnss_R_(2,2) *= gnss_pos_noise_v;
-  gnss_R_.block<3,3>(3,3) *= gnss_vel_noise;
+  gnss_R_.block<2,2>(0,0) *= gnss_pos_noise_h*gnss_pos_noise_h;
+  gnss_R_(2,2) *= gnss_pos_noise_v*gnss_pos_noise_v;
+  gnss_R_.block<3,3>(3,3) *= gnss_vel_noise*gnss_vel_noise;
   auto gnss_pos_block = gnss_R_.block<3,3>(0,0);
   auto gnss_vel_block = gnss_R_.block<3,3>(3,3);
   gnss_pos_block = X_e2n_.q().R().transpose() * gnss_pos_block * X_e2n_.q().R();
