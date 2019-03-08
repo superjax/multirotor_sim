@@ -1,7 +1,7 @@
 tmax: 150.0 # Simulation total time, time step is determined by IMU rate
 dt: 0.005
 log_filename: ""
-seed: 0 # 0 initializes seed with time
+seed: 15 # 0 initializes seed with time
 
 # Path type:
 #   0 : waypoints
@@ -95,7 +95,7 @@ max_tau_z: 1.0
 inertia: [0.1, 0.1, 0.1]
 
 
-x0: [0, 0, -5,   # POS
+x0: [0, 0, 0,   # POS
      1, 0, 0, 0, # ATT 
      1, 0, 0,    # VEL
      0, 0, 0]    # OMEGA
@@ -140,12 +140,12 @@ raw_gnss_enabled: true
 
 ## IMU
 imu_update_rate: 250
-accel_init_stdev: 0.1
+accel_init_stdev: 0.0
 accel_noise_stdev: 0.2
-accel_bias_walk: 0.00
-gyro_init_stdev: 0.1
+accel_bias_walk: 0.1
+gyro_init_stdev: 0.0
 gyro_noise_stdev: 0.1
-gyro_bias_walk: 0.0
+gyro_bias_walk: 0.05
 p_b_u: [0.0, 0.0, 0.0 ]
 q_b_u: [1.0, 0.0, 0.0, 0.0]
 

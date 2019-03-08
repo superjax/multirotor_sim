@@ -351,9 +351,9 @@ void Simulator::init_raw_gnss()
     }
   }
 
-  raw_gnss_R_ = Vector3d{pseudorange_stdev_*pseudorange_stdev_,
-      pseudorange_rate_stdev_*pseudorange_rate_stdev_,
-      carrier_phase_stdev_*carrier_phase_stdev_}.asDiagonal();
+  raw_gnss_R_ = Vector3d{pseudorange_noise*pseudorange_noise,
+                         p_rate_noise*p_rate_noise,
+                         cp_noise*cp_noise}.asDiagonal();
 
   clock_bias_ = uniform_(rng_) * clock_init_stdev_;
   last_raw_gnss_update_ = 0.0;
