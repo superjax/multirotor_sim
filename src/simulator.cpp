@@ -645,9 +645,15 @@ void Simulator::update_raw_gnss_meas()
 
       Vector3d z_i;
       sat->computeMeasurement(t_now, p_ECEF, v_ECEF, Vector2d{clock_bias_, clock_bias_rate_}, z_i);
-      z_i(0) += normal_(rng_) * pseudorange_stdev_+ multipath_offset_[i];
-      z_i(1) += normal_(rng_) * pseudorange_rate_stdev_;
-      z_i(2) += normal_(rng_) * carrier_phase_stdev_ + carrier_phase_integer_offsets_[i];
+      double noise = normal_(rng_) * pseudorange_stdev_+ multipath_offset_[i];
+      cout << "1 noise = " << noise;
+      z_i(0) += noise;
+      noise = normal_(rng_) * pseudorange_rate_stdev_;
+      cout << " 2 noise = " << noise;
+      z_i(1) += noise;
+      noise = normal_(rng_) * carrier_phase_stdev_ + carrier_phase_integer_offsets_[i];
+      cout << " 3 noise = " << noise << endl;
+      z_i(2) += noise;
       z.push_back(z_i);
       R.push_back(raw_gnss_R_);
     }

@@ -17,7 +17,7 @@ protected:
   {
     filename = "tmp.params.yaml";
     ofstream tmp_file(filename);
-    YAML::Node node = YAML::LoadFile("../params/sim_params.yaml");
+    YAML::Node node = YAML::LoadFile(MULTIROTOR_SIM_DIR"/params/sim_params.yaml");
     node["tmax"] = 60;
     node["seed"] = 1;
     node["dt"] = 0.01;

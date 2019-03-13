@@ -93,6 +93,18 @@ bool get_yaml_eigen(const std::string key, const std::string filename, Eigen::Ma
   return false;
 }
 
+template <typename Derived>
+bool get_yaml_diag(const std::string key, const std::string filename, Eigen::MatrixBase<Derived>& val, bool print_error=true)
+{
+  Matrix<typename Derived::Scalar, Derived::RowsAtCompileTime, 1> diag;
+  if (get_yaml_eigen(key, filename, diag, print_error))
+  {
+    val = diag.asDiagonal();
+    return true;
+  }
+  return false;
+}
+
 template <typename T>
 bool get_yaml_priority(const std::string key, const std::string file1, const std::string file2, T& val)
 {

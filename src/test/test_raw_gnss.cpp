@@ -55,7 +55,7 @@ protected:
         node["pseudorange_stdev"] = 3.0;
         node["pseudorange_rate_stdev"] = 0.1;
         node["carrier_phase_stdev"] = 0.01;
-        node["ephemeris_filename"] = "../sample/eph.dat";
+        node["ephemeris_filename"] = MULTIROTOR_SIM_DIR"/sample/eph.dat";
         node["start_time_week"] = 2026;
         node["start_time_tow_sec"] = 165029;
         node["clock_init_stdev"] = 1e-4;
@@ -121,7 +121,7 @@ TEST_F (RawGpsTest, MeasurementIsCloseToTruth)
     for (int i = 0; i < 15; i++)
     {
         sim.satellites_[i].computeMeasurement(t, pos_ecef, vel_ecef, Vector2d{sim.clock_bias_, sim.clock_bias_rate_}, z_true);
-        EXPECT_NEAR(z_true[0], est.z_last[i][0], 5.0);
+        EXPECT_NEAR(z_true[0], est.z_last[i][0], 9.0); // 3-sigma
         EXPECT_NEAR(z_true[1], est.z_last[i][1], 0.3);
         EXPECT_NEAR(z_true[2], est.z_last[i][2], 100);
     }
@@ -174,8 +174,8 @@ TEST_F (RawGpsTest, LeastSquaresPositioningPseudoranges)
     Vector3d xhat_ned = WSG84::ecef2ned(sim.X_e2n_, xhat);
     Vector3d xtrue_ned = WSG84::ecef2ned(sim.X_e2n_, xtrue);
 
-    EXPECT_NEAR(xhat_ned.x(), xtrue_ned.x(), 2.0);
-    EXPECT_NEAR(xhat_ned.y(), xtrue_ned.y(), 2.0);
-    EXPECT_NEAR(xhat_ned.z(), xtrue_ned.z(), 4.0);
+    EXPECT_NEAR(xhat_ned.x(), xtrue_ned.x(), 5.0);
+    EXPECT_NEAR(xhat_ned.y(), xtrue_ned.y(), 5.0);
+    EXPECT_NEAR(xhat_ned.z(), xtrue_ned.z(), 7.0);
     EXPECT_LT(iter, 6);
 }

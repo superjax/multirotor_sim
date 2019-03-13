@@ -306,8 +306,7 @@ void Satellite::readFromRawFile(std::string filename)
 
     if (!file.is_open())
     {
-        std::cout << "unable to open " << filename << std::endl;
-        return;
+        throw std::runtime_error(std::string("unable to open ") + filename);
     }
 
     while (!file.eof())
