@@ -48,8 +48,11 @@ static const Matrix3d M_ = [] {
   return tmp;
 }();
 
+
 class Dynamics
 {      
+typedef Matrix<double, 12, 12> Matrix12d;
+typedef Matrix<double, 12, 1> Vector12d;
 public:
   EIGEN_MAKE_ALIGNED_OPERATOR_NEW
   Dynamics();
@@ -90,6 +93,10 @@ public:
   bool wind_enabled_;
   double vw_walk_stdev_;
   Eigen::Vector3d vw_; // Wind velocity
+  
+  bool noise_enabled_;
+  Matrix12d Qsqrt_;
+
   std::default_random_engine rng_;
   std::normal_distribution<double> standard_normal_dist_;
 };

@@ -115,6 +115,12 @@ enable_wind: false # Turn wind on and off
 wind_init_stdev: 0.1 # Variation on the initial wind direction components
 wind_walk_stdev: 0.1 # Amount of random walk in wind components
 
+enable_dynamics_noise: true
+dyn_noise: [0, 0, 0, # POS
+            0, 0, 0, # ATT
+            0.02, 0.02, 0.02, # VEL
+            0.01, 0.01, 0.01] # OMEGA
+
 
 # Truth Configuration
 use_accel_truth: false
