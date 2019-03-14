@@ -16,7 +16,11 @@ void Dynamics::load(std::string filename)
   get_yaml_node("RK4", filename, RK4_);
   get_yaml_eigen("p_b_u", filename, p_b2u_);
   get_yaml_eigen("q_b_u", filename, q_b2u);
+  get_yaml_diag("dyn_noise", filename, Qsqrt_);
+  get_yaml_node("enable_dynamics_noise", filename, noise_enabled_);
   q_b2u_ = Quatd(q_b2u);
+
+  Qsqrt_ = Qsqrt_.cwiseSqrt();
 
   // Initialize wind and its random walk/noise parameters
   double vw_init_var, vw_walk_stdev;
@@ -87,6 +91,9 @@ void Dynamics::run(const double dt, const Vector4d &u)
     f(x_, u, dx_, imu_);
     dx_.arr *= dt;
   }
+
+  if (noise_enabled_)
+    dx_.arr += Qsqrt_*randomNormal<Vector12d>(1.0, standard_normal_dist_, rng_)*dt;
 
   // Copy output
   x_ += dx_;
