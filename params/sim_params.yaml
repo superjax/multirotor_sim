@@ -125,10 +125,10 @@ dyn_noise: [0, 0, 0, # POS
 # Truth Configuration
 use_accel_truth: false
 use_gyro_truth: false
-use_camera_truth: false
+use_camera_truth: true
 use_altimeter_truth: false
 use_baro_truth: false
-use_depth_truth: false
+use_depth_truth: true
 use_vo_truth: false
 use_mocap_truth: false
 
@@ -167,8 +167,9 @@ image_size: [640, 480]
 loop_closure: false
 # q_b_c: [1, 0, 0, 0]
 q_b_c: [0.712301460669, -0.00770717975554, 0.0104993233706, 0.701752800292]
-p_b_c: [1.0, 0.0, 0.0 ]
-# p_b_c: [-0.0216401454975, -0.064676986768, 0.00981073058949 ]
+# p_b_c: [1.0, 0.0, 0.0 ]
+# p_b_c: [0.0, 0.0, 0.0 ]
+p_b_c: [-0.0216401454975, -0.064676986768, 0.00981073058949 ]
 
 # Visual Odometry
 vo_delta_position: 1.0
