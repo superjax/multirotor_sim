@@ -376,8 +376,8 @@ void Simulator::use_custom_trajectory(TrajectoryBase *traj)
 
 void Simulator::update_camera_pose()
 {
-  p_I2c_ = dyn_.get_state().p + dyn_.get_state().q.rota(p_b2c_);
-  q_I2c_ = dyn_.get_state().q * q_b2c_;
+  p_I2c_ = state().p + state().q.rota(p_b2c_);
+  q_I2c_ = state().q * q_b2c_;
 }
 
 
