@@ -24,13 +24,6 @@
 #include "multirotor_sim/estimator_base.h"
 
 
-#ifndef NUM_FEATURES  // allows you to override the number of features in the build
-#define NUM_FEATURES 12
-#endif
-
-#define MAX_X 17+NUM_FEATURES*5
-#define MAX_DX 16+NUM_FEATURES*3
-
 #ifdef MULTIROTOR_SIM_PRINT_DEBUG
 #define DBG(msg, ...)\
   { \
@@ -204,6 +197,7 @@ public:
   
   // Camera (Features)
   bool camera_enabled_;
+  int num_features_;
   Quatd q_b2c_;
   Vector3d p_b2c_;
   Quatd q_I2c_; // rotation from inertial frame to camera frame (updated by update_camera_pose())

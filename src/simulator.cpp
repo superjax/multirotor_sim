@@ -172,6 +172,7 @@ void Simulator::init_camera()
   bool use_camera_truth;
   double pixel_noise;
   Vector2d focal_len;
+  get_yaml_node("num_features", param_filename_, num_features_);
   get_yaml_node("camera_time_offset", param_filename_, camera_time_offset_);
   get_yaml_node("camera_transmission_time", param_filename_, camera_transmission_time_);
   get_yaml_node("camera_transmission_noise", param_filename_, camera_transmission_noise_);
@@ -201,8 +202,8 @@ void Simulator::init_camera()
   feat_R_ = pixel_noise * pixel_noise * I_2x2;
   depth_R_ << depth_noise * depth_noise;
 
-  tracked_points_.reserve(NUM_FEATURES);
-  img_.reserve(NUM_FEATURES);
+  tracked_points_.reserve(num_features_);
+  img_.reserve(num_features_);
 }
 
 
@@ -444,7 +445,7 @@ void Simulator::update_camera_meas()
       }
     }
 
-    while (tracked_points_.size() < NUM_FEATURES)
+    while (tracked_points_.size() < num_features_)
     {
       // Add the new feature to our "tracker"
       feature_t new_feature;
@@ -707,7 +708,7 @@ bool Simulator::get_previously_tracked_feature_in_frame(feature_t &feature)
   env_.get_center_img_center_on_ground_plane(p_I2c_, q_I2c_, ground_pt);
   vector<Vector3d, aligned_allocator<Vector3d>> pts;
   vector<size_t> ids;
-  if (env_.get_closest_points(ground_pt, NUM_FEATURES, 2.0, pts, ids))
+  if (env_.get_closest_points(ground_pt, num_features_, 2.0, pts, ids))
   {
     for (int i = 0; i < pts.size(); i++)
     {
