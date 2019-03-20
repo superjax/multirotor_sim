@@ -18,7 +18,12 @@ TEST (Dynamics, Propagate)
   node["waypoint_threshold"] = 0.1;
   node["waypoint_velocity_threshold"] = 0.5;
   node["drag_constant"] = 0.1;
-
+  node["enable_dynamics_noise"] = false;
+  node["dyn_noise"] = std::vector<double>
+     {0, 0, 0,
+      0, 0, 0,
+      0.02, 0.02, 0.02,
+      0.01, 0.01, 0.01};
   node["angular_drag_constant"] = 0.01;
   node["RK4"] = true;
   node["p_b_u"] = std::vector<double>{0, 0, 0};
