@@ -97,7 +97,7 @@ inertia: [0.1, 0.1, 0.1]
 
 x0: [0, 0, -3,   # POS
      1, 0, 0, 0, # ATT 
-     1, 0, 0,    # VEL
+     0, 0, 0,    # VEL
      0, 0, 0]    # OMEGA
 
 # Control type
@@ -115,7 +115,7 @@ enable_wind: false # Turn wind on and off
 wind_init_stdev: 0.1 # Variation on the initial wind direction components
 wind_walk_stdev: 0.1 # Amount of random walk in wind components
 
-enable_dynamics_noise: true
+enable_dynamics_noise: false
 dyn_noise: [0, 0, 0, # POS
             0, 0, 0, # ATT
             0.02, 0.02, 0.02, # VEL
@@ -125,7 +125,7 @@ dyn_noise: [0, 0, 0, # POS
 # Truth Configuration
 use_accel_truth: false
 use_gyro_truth: false
-use_camera_truth: true
+use_camera_truth: false
 use_altimeter_truth: false
 use_baro_truth: false
 use_depth_truth: true
@@ -156,8 +156,8 @@ p_b_u: [0.0, 0.0, 0.0 ]
 q_b_u: [1.0, 0.0, 0.0, 0.0]
 
 ## Camera
-num_features: 200
-camera_time_offset: 0.05
+num_features: 40
+camera_time_offset: 0.0
 camera_transmission_time: 0.0
 camera_transmission_noise: 0.0
 camera_update_rate: 30
@@ -166,13 +166,13 @@ focal_len: [250.0, 250.0]
 cam_center: [320, 240]
 image_size: [640, 480]
 loop_closure: false
-# q_b_c: [1, 0, 0, 0]
-q_b_c: [ 0.991444861374, 0.0, -0.13052619222, 0.0 ] # Pitch down 15 deg
+q_b_c: [1, 0, 0, 0]
+#q_b_c: [ 0.923879659447, 0.0, 0.382683125915, 0.0 ] # Pitch down 45 deg
 # q_b_c: [0.712301460669, -0.00770717975554, 0.0104993233706, 0.701752800292]
 # p_b_c: [1.0, 0.0, 0.0 ]
-# p_b_c: [0.0, 0.0, 0.0 ]
-p_b_c: [-0.0216401454975, -0.064676986768, 0.00981073058949 ]
-
+p_b_c: [0.0, 0.0, 0.0 ]
+#p_b_c: [-0.0216401454975, -0.064676986768, 0.00981073058949 ]
+#
 # Visual Odometry
 vo_delta_position: 1.0
 vo_delta_attitude: 0.1
