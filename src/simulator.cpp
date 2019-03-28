@@ -178,15 +178,14 @@ void Simulator::init_camera()
   get_yaml_node("camera_transmission_noise", param_filename_, camera_transmission_noise_);
   get_yaml_node("use_camera_truth", param_filename_, use_camera_truth);
   get_yaml_node("camera_update_rate", param_filename_, camera_update_rate_);
-  get_yaml_eigen("cam_center", param_filename_, cam_center_);
-  get_yaml_eigen("image_size", param_filename_, image_size_);
+  get_yaml_eigen("cam_center", param_filename_, cam_.cam_center_);
+  get_yaml_eigen("image_size", param_filename_, cam_.image_size_);
   get_yaml_eigen("q_b_c", param_filename_, q_b2c_.arr_);
   get_yaml_eigen("p_b_c", param_filename_, p_b2c_);
-  get_yaml_eigen("focal_len", param_filename_, focal_len);
+  get_yaml_eigen("focal_len", param_filename_, cam_.focal_len_);
   get_yaml_node("pixel_noise_stdev", param_filename_, pixel_noise);
   get_yaml_node("loop_closure", param_filename_, loop_closure_);
   pixel_noise_stdev_ = !use_camera_truth * pixel_noise;
-  cam_F_ << focal_len(0,0), 0, 0, 0, focal_len(1,0), 0; // Copy focal length into 2x3 matrix for future use
 
   // Depth
   double depth_noise;
@@ -348,8 +347,12 @@ void Simulator::init_raw_gnss()
     {
       satellites_.push_back(sat);
       carrier_phase_integer_offsets_.push_back(use_raw_gnss_truth ? 0 : round(uniform_(rng_) * 100) - 50);
-      multipath_offset_.push_back(0.0);
     }
+  }
+  multipath_offset_.resize(satellites_.size());
+  for (int i = 0; i < multipath_offset_.size(); i++)
+  {
+      multipath_offset_[i] = 0.0;
   }
 
   raw_gnss_R_ = Vector3d{pseudorange_noise*pseudorange_noise,
@@ -436,7 +439,7 @@ void Simulator::update_camera_meas()
           DBG("clearing feature - ID = %d because went negative [%f, %f, %f]\n",
               it->id, it->zeta(0,0), it->zeta(1,0), it->zeta(2,0));
         }
-        else if ((it->pixel.array() < 0).any() || (it->pixel.array() > image_size_.array()).any())
+        else if ((it->pixel.array() < 0).any() || (it->pixel.array() > cam_.image_size_.array()).any())
         {
           DBG("clearing feature - ID = %d because went out of frame [%f, %f]\n",
               it->id, it->pixel(0,0), it->pixel(1,0));
@@ -686,16 +689,17 @@ bool Simulator::update_feature(feature_t &feature) const
   // Calculate the bearing vector to the feature
   Vector3d pt = env_.get_points()[feature.id];
   feature.zeta = q_I2c_.rotp(pt - p_I2c_);
-  feature.zeta /= feature.zeta.norm();
-  feature.depth = (env_.get_points()[feature.id] - p_I2c_).norm();
 
   // we can reject anything behind the camera
   if (feature.zeta(2) < 0.0)
     return false;
 
+  feature.depth = feature.zeta.norm();
+  feature.zeta /= feature.depth;
+
   // See if the pixel is in the camera frame
-  proj(feature.zeta, feature.pixel);
-  if ((feature.pixel.array() < 0).any() || (feature.pixel.array() > image_size_.array()).any())
+  cam_.proj(feature.zeta, feature.pixel);
+  if ((feature.pixel.array() < 0).any() || (feature.pixel.array() > cam_.image_size_.array()).any())
     return false;
   else
     return true;
@@ -722,8 +726,8 @@ bool Simulator::get_previously_tracked_feature_in_frame(feature_t &feature)
 
       feature.zeta /= feature.zeta.norm();
       feature.depth = (pts[i] - p_I2c_).norm();
-      proj(feature.zeta, feature.pixel);
-      if ((feature.pixel.array() < 0).any() || (feature.pixel.array() > image_size_.array()).any())
+      cam_.proj(feature.zeta, feature.pixel);
+      if ((feature.pixel.array() < 0).any() || (feature.pixel.array() > cam_.image_size_.array()).any())
         continue;
       else
       {
@@ -772,13 +776,6 @@ bool Simulator::is_feature_tracked(int id) const
   }
   return it != tracked_points_.end();
 }
-
-void Simulator::proj(const Vector3d &zeta, Vector2d& pix) const
-{
-  double ezT_zeta = e_z.transpose() * zeta;
-  pix = cam_F_ * zeta / ezT_zeta + cam_center_;
-}
-
 
 Vector3d Simulator::get_position_ecef() const
 {

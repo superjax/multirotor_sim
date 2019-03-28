@@ -1,5 +1,5 @@
 tmax: 150.0 # Simulation total time, time step is determined by IMU rate
-dt: 0.005
+dt: 0.004
 log_filename: ""
 seed: 15 # 0 initializes seed with time
 
@@ -57,8 +57,8 @@ max_torque: [0.30625, 0.30625, 0.1] # N-m
 kp_w: [1.0, 1.0, 1.0] # Inner loop controller gains
 kd_w: [0.0, 0.0, 0.0] # Inner loop controller gains
 
-waypoint_threshold: 0.1
-waypoint_velocity_threshold: 0.5
+waypoint_threshold: 0.3
+waypoint_velocity_threshold: 0.7
 drag_constant: 0.1
 angular_drag_constant: 0.01
 
@@ -128,7 +128,7 @@ use_gyro_truth: false
 use_camera_truth: false
 use_altimeter_truth: false
 use_baro_truth: false
-use_depth_truth: true
+use_depth_truth: false
 use_vo_truth: false
 use_mocap_truth: false
 
@@ -156,12 +156,12 @@ p_b_u: [0.0, 0.0, 0.0 ]
 q_b_u: [1.0, 0.0, 0.0, 0.0]
 
 ## Camera
-num_features: 40
+num_features: 25
 camera_time_offset: 0.0
 camera_transmission_time: 0.0
 camera_transmission_noise: 0.0
 camera_update_rate: 30
-pixel_noise_stdev: 2.0
+pixel_noise_stdev: 0.1
 focal_len: [250.0, 250.0]
 cam_center: [320, 240]
 image_size: [640, 480]

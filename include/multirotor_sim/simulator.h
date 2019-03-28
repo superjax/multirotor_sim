@@ -11,6 +11,7 @@
 #include <Eigen/Core>
 
 #include "geometry/quat.h"
+#include "geometry/cam.h"
 
 #include "multirotor_sim/utils.h"
 #include "multirotor_sim/wsg84.h"
@@ -121,15 +122,6 @@ public:
   bool update_feature(feature_t &feature) const;
   
   /**
-   * @brief proj
-   * Calculates the Projection of bearing vector zeta with
-   * Simulator class Camera Intrinsic parameters
-   * @param zeta - bearing vector (normalized)
-   * @param pix - pixel location (in image frame)
-   */
-  void proj(const Vector3d& zeta, Vector2d& pix) const;
-  
-  /**
    * @brief get_feature_in_frame
    * If retrack is true first tries to find pixels previously tracked in the frame that are not
    * currently being tracked.  If retrack is false, or there are no previously observed landmarks,
@@ -213,9 +205,7 @@ public:
   bool loop_closure_; // whether to re-use features if they show up in the frame again
   vector<feature_t, aligned_allocator<feature_t>> tracked_points_; // currently tracked features
   deque<std::pair<double,measurement_t>, aligned_allocator<std::pair<double,measurement_t>>> camera_measurements_buffer_; // container to hold measurements while waiting for delay
-  Matrix<double, 2, 3> cam_F_;
-  Vector2d cam_center_;
-  Vector2d image_size_;
+  Camera<double> cam_;
   ImageFeat img_;
   int image_id_;
 
