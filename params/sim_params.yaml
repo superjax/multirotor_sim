@@ -1,4 +1,4 @@
-tmax: 150.0 # Simulation total time, time step is determined by IMU rate
+tmax: 60.0 # Simulation total time, time step is determined by IMU rate
 dt: 0.004
 log_filename: ""
 seed: 15 # 0 initializes seed with time
@@ -128,7 +128,7 @@ use_gyro_truth: false
 use_camera_truth: false
 use_altimeter_truth: false
 use_baro_truth: false
-use_depth_truth: false
+use_depth_truth: true
 use_vo_truth: false
 use_mocap_truth: false
 
@@ -148,19 +148,19 @@ raw_gnss_enabled: true
 imu_update_rate: 250
 accel_init_stdev: 0.0
 accel_noise_stdev: 0.2
-accel_bias_walk: 0.1
+accel_bias_walk: 0.05
 gyro_init_stdev: 0.0
 gyro_noise_stdev: 0.1
-gyro_bias_walk: 0.05
+gyro_bias_walk: 0.01
 p_b_u: [0.0, 0.0, 0.0 ]
 q_b_u: [1.0, 0.0, 0.0, 0.0]
 
 ## Camera
-num_features: 25
+num_features: 15
 camera_time_offset: 0.0
 camera_transmission_time: 0.0
 camera_transmission_noise: 0.0
-camera_update_rate: 30
+camera_update_rate: 25
 pixel_noise_stdev: 0.1
 focal_len: [250.0, 250.0]
 cam_center: [320, 240]
