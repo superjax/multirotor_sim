@@ -30,17 +30,17 @@ void Environment::load(string filename)
   kd_tree_ = new KDTree3d(3, points_, 10);
 }
 
-bool Environment::get_center_img_center_on_ground_plane(const Vector3d& t_I_c, const Quatd& q_I_c, Vector3d& point)
+bool Environment::get_center_img_center_on_ground_plane(const Xformd& x_I2c, Vector3d& point)
 {
-  Vector3d zeta_I = q_I_c.rota(e_z);
-  double depth = -t_I_c(2) / zeta_I(2);
+  Vector3d zeta_I = x_I2c.rota(e_z);
+  double depth = -x_I2c.t()(2) / zeta_I(2);
   if (depth < 0.5 || depth > 100.0 )
   {
     return false;
   }
   else
   {
-    point =  zeta_I * depth + t_I_c;
+    point =  zeta_I * depth + x_I2c.t();
     return true;
   }
 }

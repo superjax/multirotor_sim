@@ -190,10 +190,8 @@ public:
   // Camera (Features)
   bool camera_enabled_;
   int num_features_;
-  Quatd q_b2c_;
-  Vector3d p_b2c_;
-  Quatd q_I2c_; // rotation from inertial frame to camera frame (updated by update_camera_pose())
-  Vector3d p_I2c_; // translation from inertial frame to camera frame (updated by update_camera_pose())
+  Xformd x_b2c_;
+  Xformd x_I2c_;
   Matrix2d feat_R_;
   double pixel_noise_stdev_;
   double camera_update_rate_;

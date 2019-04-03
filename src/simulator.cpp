@@ -180,8 +180,8 @@ void Simulator::init_camera()
   get_yaml_node("camera_update_rate", param_filename_, camera_update_rate_);
   get_yaml_eigen("cam_center", param_filename_, cam_.cam_center_);
   get_yaml_eigen("image_size", param_filename_, cam_.image_size_);
-  get_yaml_eigen("q_b_c", param_filename_, q_b2c_.arr_);
-  get_yaml_eigen("p_b_c", param_filename_, p_b2c_);
+  get_yaml_eigen("q_b_c", param_filename_, x_b2c_.q_.arr_);
+  get_yaml_eigen("p_b_c", param_filename_, x_b2c_.t_);
   get_yaml_eigen("focal_len", param_filename_, cam_.focal_len_);
   get_yaml_node("pixel_noise_stdev", param_filename_, pixel_noise);
   get_yaml_node("loop_closure", param_filename_, loop_closure_);
@@ -380,8 +380,7 @@ void Simulator::use_custom_trajectory(TrajectoryBase *traj)
 
 void Simulator::update_camera_pose()
 {
-  p_I2c_ = state().p + state().q.rota(p_b2c_);
-  q_I2c_ = state().q * q_b2c_;
+  x_I2c_ = state().X * x_b2c_;
 }
 
 
@@ -572,9 +571,9 @@ void Simulator::update_vo_meas()
   {
     // Compute position and attitude relative to the keyframe
     Xformd T_c2ck;
-    T_c2ck.t_ = q_b2c_.rotp(T_i2b.q().rotp(X_I2bk_.t() + X_I2bk_.q().inverse().rotp(p_b2c_) -
-                                           (T_i2b.t() + T_i2b.q().inverse().rotp(p_b2c_))));
-    T_c2ck.q_ = q_b2c_.inverse() * T_i2b.q().inverse() * X_I2bk_.q().inverse() * q_b2c_;
+    T_c2ck.t_ = x_b2c_.rotp(T_i2b.q().rotp(X_I2bk_.t() + X_I2bk_.q().inverse().rotp(x_b2c_.t()) -
+                                           (T_i2b.t() + T_i2b.q().inverse().rotp(x_b2c_.t()))));
+    T_c2ck.q_ = x_b2c_.q_.inverse() * T_i2b.q().inverse() * X_I2bk_.q().inverse() * x_b2c_.q_;
 
     for (estVec::iterator it = est_.begin(); it != est_.end(); it++)
       (*it)->voCallback(t_, T_c2ck, vo_R_);
@@ -688,7 +687,7 @@ bool Simulator::update_feature(feature_t &feature) const
 
   // Calculate the bearing vector to the feature
   Vector3d pt = env_.get_points()[feature.id];
-  feature.zeta = q_I2c_.rotp(pt - p_I2c_);
+  feature.zeta = x_I2c_.transformp(pt);
 
   // we can reject anything behind the camera
   if (feature.zeta(2) < 0.0)
@@ -709,7 +708,7 @@ bool Simulator::get_previously_tracked_feature_in_frame(feature_t &feature)
 {
 
   Vector3d ground_pt;
-  env_.get_center_img_center_on_ground_plane(p_I2c_, q_I2c_, ground_pt);
+  env_.get_center_img_center_on_ground_plane(x_I2c_, ground_pt);
   vector<Vector3d, aligned_allocator<Vector3d>> pts;
   vector<size_t> ids;
   if (env_.get_closest_points(ground_pt, num_features_, 2.0, pts, ids))
@@ -720,12 +719,12 @@ bool Simulator::get_previously_tracked_feature_in_frame(feature_t &feature)
         continue;
       // Calculate the bearing vector to the feature
       Vector3d pt = env_.get_points()[ids[i]];
-      feature.zeta = q_I2c_.rotp(pt - p_I2c_);
+      feature.zeta = x_I2c_.transformp(pt);
       if (feature.zeta(2) < 0.0)
         continue;
 
-      feature.zeta /= feature.zeta.norm();
-      feature.depth = (pts[i] - p_I2c_).norm();
+      feature.depth = feature.zeta.norm();
+      feature.zeta /= feature.depth;
       cam_.proj(feature.zeta, feature.pixel);
       if ((feature.pixel.array() < 0).any() || (feature.pixel.array() > cam_.image_size_.array()).any())
         continue;
@@ -754,7 +753,7 @@ bool Simulator::get_feature_in_frame(feature_t &feature, bool retrack)
 bool Simulator::create_new_feature_in_frame(feature_t &feature)
 {
   // First, look for features in frame that are not currently being tracked
-  feature.id = env_.add_point(p_I2c_, q_I2c_, feature.zeta, feature.pixel, feature.depth);
+  feature.id = env_.add_point(x_I2c_.t_, x_I2c_.q_, feature.zeta, feature.pixel, feature.depth);
   if (feature.id != -1)
   {
     feature.id = next_feature_id_++;

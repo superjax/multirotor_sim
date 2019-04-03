@@ -3,13 +3,13 @@
 #include <Eigen/Core>
 #include <Eigen/Dense>
 
-#include "geometry/quat.h"
+#include "geometry/xform.h"
 #include "nanoflann_eigen/nanoflann_eigen.h"
 #include "multirotor_sim/utils.h"
 
 using namespace Eigen;
 using namespace std;
-using namespace quat;
+using namespace xform;
 using namespace nanoflann;
 
 class Environment
@@ -26,7 +26,7 @@ class Environment
 public:
     Environment(int seed);
     void load(std::string filename);
-    bool get_center_img_center_on_ground_plane(const Vector3d& t_I_c, const Quatd& q_I_c, Vector3d& point);
+    bool get_center_img_center_on_ground_plane(const Xformd &x_I2c, Vector3d& point);
 
     int add_point(const Vector3d& t_I_c, const Quatd& q_I_c, Vector3d& zeta, Vector2d& pix, double& depth);
     bool get_closest_points(const Vector3d &query_pt, int num_pts, double max_dist,
