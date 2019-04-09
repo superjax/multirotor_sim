@@ -22,6 +22,13 @@ Satellite::Satellite(int id, int idx)
     memset(&eph_, 0, sizeof(eph_t));
 }
 
+Satellite::Satellite(const eph_t& eph, int idx)
+{
+    id_ = eph.sat;
+    idx_ = idx;
+    addEphemeris(eph);
+}
+
 
 void Satellite::addEphemeris(const eph_t &_eph)
 {

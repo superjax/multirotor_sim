@@ -72,6 +72,7 @@ public:
     static const double LAMBDA_L1;
 
     Satellite(int id, int idx);
+    Satellite(const eph_t& eph, int idx);
     void update(const GTime &g, const Vector3d& rec_pos, const Vector3d& rec_vel);
     bool computePositionVelocityClock(const GTime &g, const Ref<Vector3d> &pos, const Ref<Vector3d> &vel, const Ref<Vector2d> &clock) const;
     void computeMeasurement(const GTime& rec_time, const Vector3d& receiver_pos, const Vector3d &receiver_vel, const Vector2d &clk_bias, Vector3d &z) const;

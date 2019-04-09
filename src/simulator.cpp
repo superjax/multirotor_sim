@@ -485,6 +485,7 @@ void Simulator::update_camera_meas()
 
     for (estVec::iterator eit = est_.begin(); eit != est_.end(); eit++)
         (*eit)->imageCallback(t_, img_, feat_R_, depth_R_);
+
     camera_measurements_buffer_.clear();
     ++image_id_;
   }

@@ -8,7 +8,7 @@ seed: 15 # 0 initializes seed with time
 #   1 : random waypoints
 #   2 : circular trajectory
 #   3 : constant velocity, randomly varying heading
-path_type: 0
+path_type: 2
 
 # User-defined waypoints
 waypoints: [    
@@ -156,11 +156,11 @@ p_b_u: [0.0, 0.0, 0.0 ]
 q_b_u: [1.0, 0.0, 0.0, 0.0]
 
 ## Camera
-num_features: 15
+num_features: 50
 camera_time_offset: 0.0
 camera_transmission_time: 0.0
 camera_transmission_noise: 0.0
-camera_update_rate: 25
+camera_update_rate: 20
 pixel_noise_stdev: 0.1
 focal_len: [250.0, 250.0]
 cam_center: [320, 240]
@@ -196,7 +196,7 @@ depth_noise_stdev: 0.1
 ## Motion Capture
 p_b_m: [0.0, 0.0, 0.0]
 q_b_m: [1.0, 0.0, 0.0, 0.0]
-mocap_update_rate: 30
+mocap_update_rate: 10
 attitude_noise_stdev: 0.01
 position_noise_stdev: 0.01
 mocap_time_offset: 0
