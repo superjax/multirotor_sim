@@ -108,6 +108,17 @@ Vector2d Satellite::los2azimuthElevation(const Vector3d &receiver_pos_ecef, cons
     return az_el;
 }
 
+Vector2d Satellite::azimuthElevation(const GTime& t, const Vector3d &rec_pos_ecef) const
+{
+  Vector3d pos, vel;
+  Vector2d clock;
+  computePositionVelocityClock(t, pos, vel, clock);
+  Vector3d los_ecef = pos - rec_pos_ecef;
+  Vector2d az_el;
+  los2azimuthElevation(rec_pos_ecef, los_ecef, az_el);
+  return az_el;
+}
+
 void Satellite::los2azimuthElevation(const Vector3d& receiver_pos_ecef, const Vector3d& los_ecef, Vector2d& az_el) const
 {
     xform::Xformd x_e2n = WSG84::x_ecef2ned(receiver_pos_ecef);

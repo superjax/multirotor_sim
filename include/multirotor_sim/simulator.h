@@ -282,7 +282,7 @@ public:
   std::string ephemeris_filename_;
   std::vector<double> multipath_offset_;
   std::vector<int> carrier_phase_integer_offsets_;
-  std::vector<Satellite> satellites_;
+  std::vector<Satellite, aligned_allocator<Satellite>> satellites_;
   double last_raw_gnss_update_;
   GTime start_time_;
 };

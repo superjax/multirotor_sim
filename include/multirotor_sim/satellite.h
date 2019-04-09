@@ -82,6 +82,7 @@ public:
     double selectEphemeris(const GTime& time) const;
     void readFromRawFile(std::string filename);
     void addEphemeris(const eph_t& eph_);
+    Vector2d azimuthElevation(const GTime &t, const Vector3d& rec_pos_ecef) const;
 
     int id_;
     int idx_;

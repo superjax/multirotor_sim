@@ -35,7 +35,7 @@ public:
     // z - gnss measurements [[rho(m), rhodot(m/s), l(cycles)], x N]
     // R - gnss covariance xN
     // sat - Satellite objects related to each measurement
-    virtual void rawGnssCallback(const GTime& t, const VecVec3& z, const VecMat3& R, std::vector<Satellite>& sat, const std::vector<bool>& slip) {}
+    virtual void rawGnssCallback(const GTime& t, const VecVec3& z, const VecMat3& R, std::vector<Satellite, aligned_allocator<Satellite>>& sat, const std::vector<bool>& slip) {}
 };
 
 }

@@ -625,7 +625,7 @@ void Simulator::update_raw_gnss_meas()
     VecVec3 z;
     VecMat3 R;
     int i;
-    vector<Satellite>::iterator sat;
+    vector<Satellite, aligned_allocator<Satellite>>::iterator sat;
     vector<bool> slip(satellites_.size(), false);
     for (i = 0, sat = satellites_.begin(); sat != satellites_.end(); sat++, i++)
     {
