@@ -73,7 +73,7 @@ public:
 
     Satellite(int id, int idx);
     Satellite(const eph_t& eph, int idx);
-    void update(const GTime &g, const Vector3d& rec_pos, const Vector3d& rec_vel);
+    void update(const GTime &g);
     bool computePositionVelocityClock(const GTime &g, const Ref<Vector3d> &pos, const Ref<Vector3d> &vel, const Ref<Vector2d> &clock) const;
     void computeMeasurement(const GTime& rec_time, const Vector3d& receiver_pos, const Vector3d &receiver_vel, const Vector2d &clk_bias, Vector3d &z) const;
     void los2azimuthElevation(const Vector3d& receiver_pos_ecef, const Vector3d& los_ecef, Vector2d& az_el) const;
@@ -87,4 +87,8 @@ public:
     int id_;
     int idx_;
     eph_t eph_ = { 0 };
+    GTime t;
+    Vector3d pos;
+    Vector3d vel;
+    Vector2d clk;
 };

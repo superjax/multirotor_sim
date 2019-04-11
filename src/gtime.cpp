@@ -172,3 +172,12 @@ GTime GTime::fromUTC(int time_sec, double subsec)
   out.week /= DateTime::SECONDS_IN_WEEK;
   return out;
 }
+
+GTime GTime::fromTime(int time, double sec)
+{
+  GTime out;
+  out.week = time - DateTime::GPS_UTC_OFFSET_SEC;
+  out.tow_sec = out.week % DateTime::SECONDS_IN_WEEK + sec;
+  out.week /= DateTime::SECONDS_IN_WEEK;
+  return out;
+}

@@ -40,3 +40,10 @@ GTime DateTime::toGTime() const
     g.tow_sec = static_cast<double>((d % 7)*SECONDS_IN_DAY + hour*SECONDS_IN_HOUR + minute*SECONDS_IN_MINUTE + second + LEAP_SECONDS);
     return g;
 }
+
+std::ostream& operator<<(std::ostream& os, const DateTime& dt)
+{
+    os << dt.month << "/" << dt.day << "/" << dt.year << " "
+       << dt.hour << ":" << dt.minute << ":" << dt.second;
+    return os;
+}

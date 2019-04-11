@@ -79,6 +79,7 @@ void eph2pos(const GTime& t, const eph_t* eph, Vector3d& pos, double* dts)
         pos[0]=x*cosO-y*cosi*sinO;
         pos[1]=x*sinO+y*cosi*cosO;
         pos[2]=y*sin(i);
+        printf("pos: %f", pos[0]);
 //    }
 
     tk= (t - eph->toc).toSec();
@@ -86,6 +87,7 @@ void eph2pos(const GTime& t, const eph_t* eph, Vector3d& pos, double* dts)
 
     /* relativity correction */
     *dts-=2.0*sqrt(mu*eph->A)*eph->e*sinE/SQR(CLIGHT);
+    printf("dts: %f", *dts);
 }
 
 /* ionosphere model ------------------------------------------------------------

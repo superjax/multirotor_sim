@@ -220,6 +220,12 @@ double Satellite::selectEphemeris(const GTime &time) const
 //    return dt;
 }
 
+void Satellite::update(const GTime &g)
+{
+    t = g;
+    computePositionVelocityClock(g, pos, vel, clk);
+}
+
 
 bool Satellite::computePositionVelocityClock(const GTime& time, const Ref<Vector3d> &_pos, const Ref<Vector3d> &_vel, const Ref<Vector2d>& _clock) const
 {

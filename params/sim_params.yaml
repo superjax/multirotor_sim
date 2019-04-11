@@ -213,7 +213,7 @@ gnss_vertical_position_stdev: 3.0
 gnss_velocity_stdev: 0.1
 
 ## Raw GNSS
-use_raw_gnss_truth: true
+use_raw_gnss_truth: false
 pseudorange_stdev: 1.0
 pseudorange_rate_stdev: 0.05
 carrier_phase_stdev: 0.01

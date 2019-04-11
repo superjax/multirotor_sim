@@ -215,17 +215,26 @@ TEST (Satellite, ReadFromFileCheckPositions)
     sat.readFromRawFile(MULTIROTOR_SIM_DIR"/sample/eph.dat");
 
     Vector3d pos, vel;
+    Vector3d oracle_pos;
+    Vector2d oracle_clock;
     Vector2d clock;
     sat.computePositionVelocityClock(log_start, pos, vel, clock);
+    eph2pos(log_start, &sat.eph_, oracle_pos, oracle_clock.data());
 
     /// TODO: Figure out why this is so far off
     EXPECT_MAT_NEAR(truth.col(i), pos, 4e5);
+    EXPECT_MAT_NEAR(pos, oracle_pos, 1e-4);
   }
 }
 
 TEST (Satellite, ReadFromFileCheckAzEl)
 {
-  std::vector<int> sat_ids = {3, 8, 10, 11, 14, 18, 22, 31, 32};
+  std::vector<int> sat_ids     = {3, 8, 10, 11, 14, 18, 22, 31, 32};
+  // Truth Data gathered from https://in-the-sky.org/satmap_radar.php?year=2018&month=11&day=5
+  // It's not especially accurate, but it's relatively close
+  std::vector<double> sat_dist = {25051000, 25277000, 22059000, 22132000, 20560000, 20874000, 23237000, 21193000, 20854000};
+  std::vector<double> sat_az   = {-62, -122, 104, -81, -14, -89, -58, 166, 40};
+  std::vector<double> sat_el   = {6, 5, 38, 33, 78, 54, 26, 48, 60};
   std::vector<Satellite> satellites;
 
   GTime log_start = GTime::fromUTC(1541454646,  0.993);
@@ -242,7 +251,9 @@ TEST (Satellite, ReadFromFileCheckAzEl)
     sat.computePositionVelocityClock(log_start, pos, vel, clock);
     Vector3d los_ecef = pos - rec_pos;
     sat.los2azimuthElevation(rec_pos, los_ecef, az_el);
-    EXPECT_GE(az_el(1), -0.2);
+    EXPECT_NEAR((pos-rec_pos).norm(), sat_dist[i], 10000);
+    EXPECT_NEAR(az_el(0)*RAD2DEG, sat_az[i], 1);
+    EXPECT_NEAR(az_el(1)*RAD2DEG, sat_el[i], 1);
   }
 }
 

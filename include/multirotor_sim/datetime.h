@@ -1,5 +1,6 @@
 #pragma once
 
+#include "ostream"
 #include "multirotor_sim/gtime.h"
 
 class GTime;
@@ -29,4 +30,7 @@ public:
     DateTime(const GTime& g);
     DateTime& operator= (const GTime& g);
     GTime toGTime() const;
+    std::ostream &operator <<(std::ostream& s);
 };
+
+std::ostream& operator<<(std::ostream& os, const DateTime& dt);
