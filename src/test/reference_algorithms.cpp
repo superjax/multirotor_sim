@@ -10,6 +10,8 @@ using namespace Eigen;
 
 #define SQR(x) (x*x)
 
+#define dbg(x) std::cout << #x": " << x << std::endl;
+
 void eph2pos(const GTime& t, const eph_t* eph, Vector3d& pos, double* dts)
 {
     // From RTKLIB eph2pos() in ephemeris.c
@@ -49,6 +51,7 @@ void eph2pos(const GTime& t, const eph_t* eph, Vector3d& pos, double* dts)
     }
     sinE=sin(E); cosE=cos(E);
 
+
 //    trace(4,"kepler: sat=%2d e=%8.5f n=%2d del=%10.3e\n",eph->sat,eph->e,n,E-Ek);
 
     u=atan2(sqrt(1.0-eph->e*eph->e)*sinE,cosE-eph->e)+eph->omg;
@@ -79,7 +82,6 @@ void eph2pos(const GTime& t, const eph_t* eph, Vector3d& pos, double* dts)
         pos[0]=x*cosO-y*cosi*sinO;
         pos[1]=x*sinO+y*cosi*cosO;
         pos[2]=y*sin(i);
-        printf("pos: %f", pos[0]);
 //    }
 
     tk= (t - eph->toc).toSec();
@@ -87,7 +89,6 @@ void eph2pos(const GTime& t, const eph_t* eph, Vector3d& pos, double* dts)
 
     /* relativity correction */
     *dts-=2.0*sqrt(mu*eph->A)*eph->e*sinE/SQR(CLIGHT);
-    printf("dts: %f", *dts);
 }
 
 /* ionosphere model ------------------------------------------------------------

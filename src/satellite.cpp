@@ -226,6 +226,7 @@ void Satellite::update(const GTime &g)
     computePositionVelocityClock(g, pos, vel, clk);
 }
 
+#define dbg(x) std::cout << #x": " << x << std::endl;
 
 bool Satellite::computePositionVelocityClock(const GTime& time, const Ref<Vector3d> &_pos, const Ref<Vector3d> &_vel, const Ref<Vector2d>& _clock) const
 {
@@ -241,18 +242,16 @@ bool Satellite::computePositionVelocityClock(const GTime& time, const Ref<Vector
 
     // https://www.ngs.noaa.gov/gps-toolbox/bc_velo/bc_velo.c
     double n0 = std::sqrt(GM_EARTH/(eph_.A*eph_.A*eph_.A));
-    double tk = dt;
-    double n = n0 + eph_.deln;
-    double mk = eph_.M0 + n*tk;
-    double mkdot = n;
-    double ek = mk;
-    double ek_prev = 0.0;
+    double mkdot = n0 + eph_.deln;
+    double mk = eph_.M0 + mkdot*dt;
 
     int i = 0;
-    while (ek - ek_prev > 1e-8 && i < 7)
+    double ek_prev;
+    double ek = mk;
+    while (std::abs(ek - ek_prev) > 1e-13 && i < 30)
     {
         ek_prev = ek;
-        ek = mk + eph_.e*std::sin(ek);
+        ek -= (ek - eph_.e * std::sin(ek) - mk) / (1.0 - eph_.e*std::cos(ek));
         i++;
     }
     double sek = std::sin(ek);
@@ -264,7 +263,6 @@ bool Satellite::computePositionVelocityClock(const GTime& time, const Ref<Vector
     double tak = std::atan2(std::sqrt(1.0-eph_.e*eph_.e) * sek, cek - eph_.e);
     double takdot = sek*ekdot*(1.0+eph_.e*std::cos(tak)) / (std::sin(tak)*(1.0-eph_.e*cek));
 
-
     double phik = tak + eph_.omg;
     double sphik2 = std::sin(2.0 * phik);
     double cphik2 = std::cos(2.0 * phik);
@@ -273,13 +271,13 @@ bool Satellite::computePositionVelocityClock(const GTime& time, const Ref<Vector
     double corr_i = eph_.cis * sphik2 + eph_.cic * cphik2;
     double uk = phik + corr_u;
     double rk = eph_.A*(1.0 - eph_.e*cek) + corr_r;
-    double ik = eph_.i0 + eph_.idot*tk + corr_i;
+    double ik = eph_.i0 + eph_.idot*dt + corr_i;
 
     double s2uk = std::sin(2.0*uk);
     double c2uk = std::cos(2.0*uk);
 
     double ukdot = takdot + 2.0 * (eph_.cus * c2uk - eph_.cuc*s2uk) * takdot;
-    double rkdot = eph_.A * eph_.e * sek * n / (1.0 - eph_.e * cek) + 2.0 * (eph_.crs * c2uk - eph_.crc * s2uk) * takdot;
+    double rkdot = eph_.A * eph_.e * sek * mkdot / (1.0 - eph_.e * cek) + 2.0 * (eph_.crs * c2uk - eph_.crc * s2uk) * takdot;
     double ikdot = eph_.idot + (eph_.cis * c2uk - eph_.cic * s2uk) * 2.0 * takdot;
 
     double cuk = std::cos(uk);
@@ -291,7 +289,7 @@ bool Satellite::computePositionVelocityClock(const GTime& time, const Ref<Vector
     double xpkdot = rkdot * cuk - ypk * ukdot;
     double ypkdot = rkdot * suk + xpk * ukdot;
 
-    double omegak = eph_.OMG0 + (eph_.OMGd - OMEGA_EARTH) * tk - OMEGA_EARTH * eph_.toes;
+    double omegak = eph_.OMG0 + (eph_.OMGd - OMEGA_EARTH) * dt - OMEGA_EARTH * eph_.toes;
     double omegakdot = eph_.OMGd - OMEGA_EARTH;
 
     double cwk = std::cos(omegak);
@@ -309,14 +307,14 @@ bool Satellite::computePositionVelocityClock(const GTime& time, const Ref<Vector
             + ( xpk*omegakdot + ypkdot*cik - ypk*sik*ikdot )*cwk;
     vel.z() = ypkdot*sik + ypk*cik*ikdot;
 
-    tk = (time - eph_.toc).toSec();
-    double dts = eph_.f0 + eph_.f1*tk + eph_.f2*tk*tk;
+    dt = (time - eph_.toc).toSec();
+    double dts = eph_.f0 + eph_.f1*dt + eph_.f2*dt*dt;
 
     // Correct for relativistic effects on the satellite clock
     dts -= 2.0*std::sqrt(GM_EARTH * eph_.A) * eph_.e * sek/(C_LIGHT * C_LIGHT);
 
     clock(0) = dts; // satellite clock bias
-    clock(1) = eph_.f1 + eph_.f2*tk; // satellite drift rate
+    clock(1) = eph_.f1 + eph_.f2*dt; // satellite drift rate
 
     return true;
 }

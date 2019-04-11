@@ -190,40 +190,51 @@ TEST (Satellite, ReadFromFileCheckTime)
 TEST (Satellite, ReadFromFileCheckPositions)
 {
   std::vector<int> sat_ids = {3, 8, 10, 11, 14, 18, 22, 31, 32};
-  std::vector<Satellite> satellites;
+//  std::vector<Satellite> satellites;
 
-  MatrixXd truth(9,3);
-  truth <<
-           -1.979905544756119,   0.839505069743874,   1.550338475517639,
-           -2.550826868235846,  -0.608941404478547,  -0.468480492854142,
-            0.903365875083797,  -2.301372567736093,   0.949931884053757,
-           -2.153305827938237,  -0.469592151583447,   1.412499785966901,
-           -0.716190834612790,  -1.596467415879906,   2.033341931482639,
-           -1.776768089932820,  -1.220720590953266,   1.513509991901378,
-           -1.823263124705158,   0.093328649658817,   1.951093711022132,
-           -0.647831455760295,  -2.514495751363997,   0.437098017226730,
-            0.136331156293721,  -1.525421674314513,   2.174087630568290;
-  truth *= 1e7;
-  truth.transposeInPlace();
+//  MatrixXd truth(9,3);
+//  truth <<
+//           -1.979905544756119,   0.839505069743874,   1.550338475517639,
+//           -2.550826868235846,  -0.608941404478547,  -0.468480492854142,
+//            0.903365875083797,  -2.301372567736093,   0.949931884053757,
+//           -2.153305827938237,  -0.469592151583447,   1.412499785966901,
+//           -0.716190834612790,  -1.596467415879906,   2.033341931482639,
+//           -1.776768089932820,  -1.220720590953266,   1.513509991901378,
+//           -1.823263124705158,   0.093328649658817,   1.951093711022132,
+//           -0.647831455760295,  -2.514495751363997,   0.437098017226730,
+//            0.136331156293721,  -1.525421674314513,   2.174087630568290;
+//  truth *= 1e7;
+//  truth.transposeInPlace();
 
   GTime log_start = GTime::fromUTC(1541454646,  0.993);
   log_start += 200;
 
-  for (int i = 0; i < sat_ids.size(); i++)
+  for (int i = 1; i < sat_ids.size(); i++)
   {
     Satellite sat(sat_ids[i], i);
     sat.readFromRawFile(MULTIROTOR_SIM_DIR"/sample/eph.dat");
 
     Vector3d pos, vel;
-    Vector3d oracle_pos;
-    Vector2d oracle_clock;
+    Vector3d oracle_pos, oracle_pos_p, oracle_pos_m;
+    double oracle_clock, oracle_clock_p, oracle_clock_m;
     Vector2d clock;
     sat.computePositionVelocityClock(log_start, pos, vel, clock);
-    eph2pos(log_start, &sat.eph_, oracle_pos, oracle_clock.data());
+    eph2pos(log_start, &sat.eph_, oracle_pos, &oracle_clock);
 
-    /// TODO: Figure out why this is so far off
-    EXPECT_MAT_NEAR(truth.col(i), pos, 4e5);
-    EXPECT_MAT_NEAR(pos, oracle_pos, 1e-4);
+    // numerically differentiate for velocity
+    double eps = 1e-3;
+    GTime tp = log_start+eps;
+    GTime tm = log_start-eps;
+    eph2pos(tp, &sat.eph_, oracle_pos_p, &oracle_clock_p);
+    eph2pos(tm, &sat.eph_, oracle_pos_m, &oracle_clock_m);
+    Vector3d oracle_vel = (oracle_pos_p - oracle_pos_m) / (tp - tm).toSec();
+    double oracle_clock_rate = (oracle_clock_p - oracle_clock_m) / (tp-tm).toSec();
+
+//    EXPECT_MAT_NEAR(truth.col(i), pos, 1e-3);
+    EXPECT_MAT_NEAR(pos, oracle_pos, 1e-8);
+    EXPECT_MAT_NEAR(vel, oracle_vel, 1e-4);
+    EXPECT_NEAR(clock(0), oracle_clock, 1e-16);
+    EXPECT_NEAR(clock(1), oracle_clock_rate, 1e-10);
   }
 }
 
@@ -232,7 +243,7 @@ TEST (Satellite, ReadFromFileCheckAzEl)
   std::vector<int> sat_ids     = {3, 8, 10, 11, 14, 18, 22, 31, 32};
   // Truth Data gathered from https://in-the-sky.org/satmap_radar.php?year=2018&month=11&day=5
   // It's not especially accurate, but it's relatively close
-  std::vector<double> sat_dist = {25051000, 25277000, 22059000, 22132000, 20560000, 20874000, 23237000, 21193000, 20854000};
+  std::vector<double> sat_dist = {25051000, 25277000, 22050000, 22132000, 20560000, 20874000, 23237000, 21193000, 20854000};
   std::vector<double> sat_az   = {-62, -122, 104, -81, -14, -89, -58, 166, 40};
   std::vector<double> sat_el   = {6, 5, 38, 33, 78, 54, 26, 48, 60};
   std::vector<Satellite> satellites;
