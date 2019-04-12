@@ -60,13 +60,20 @@ void Satellite::addEphemeris(const eph_t &_eph)
 //    }
 }
 
+// Compute Geometric Distance to Satellite while compensating for Sagnac Effect
+double Satellite::geoDist(const Vector3d& rec_pos, const Vector3d& sat_pos) const
+{
+    double r = (sat_pos - rec_pos).norm();
+    return r + OMEGA_EARTH * (sat_pos.x()*rec_pos.y() - sat_pos.y()*rec_pos.x())/C_LIGHT;
+}
+
 void Satellite::computeMeasurement(const GTime& rec_time, const Vector3d& receiver_pos, const Vector3d& receiver_vel, const Vector2d& clk_bias, Vector3d& z ) const
 {
     Vector3d sat_pos, sat_vel;
     Vector2d sat_clk;
     computePositionVelocityClock(rec_time, sat_pos, sat_vel, sat_clk);
-    Vector3d los_to_sat = sat_pos - receiver_pos;
-    double tau = los_to_sat.norm() / C_LIGHT;  // Time it took for observation to get here
+    double range = geoDist(receiver_pos, sat_pos);
+    double tau = range / C_LIGHT;  // Time it took for observation to get here
 
     // extrapolate satellite position backwards in time
     sat_pos -= sat_vel * tau;
@@ -78,11 +85,11 @@ void Satellite::computeMeasurement(const GTime& rec_time, const Vector3d& receiv
     sat_pos.y() = yrot;
 
     // Re-calculate the line-of-sight vector with the adjusted position
-    los_to_sat = sat_pos - receiver_pos;
-    z(0) = los_to_sat.norm();
+    Vector3d los_to_sat = sat_pos - receiver_pos;
+    z(0) = geoDist(receiver_pos, sat_pos);
 
     // compute relative velocity between receiver and satellite, adjusted by the clock drift rate
-    z(1) = ((sat_vel - receiver_vel).transpose() * los_to_sat / z(0))(0) + C_LIGHT * (clk_bias(1) - sat_clk(1));
+    z(1) = ((sat_vel - receiver_vel).transpose() * los_to_sat / z(0))(0) ;// + C_LIGHT * (clk_bias(1) - sat_clk(1));
 
     // adjust range by the satellite clock offset
     z(0) += C_LIGHT * (clk_bias(0) - sat_clk(0));
@@ -94,7 +101,8 @@ void Satellite::computeMeasurement(const GTime& rec_time, const Vector3d& receiv
 
     // Compute and incorporate ionospheric delay
     double ion_delay = ionosphericDelay(rec_time, lla, az_el);
-    z(0) += ion_delay;
+    double trop_delay = troposphericDelay(rec_time, lla, az_el);
+    z(0) += ion_delay + trop_delay;
 
     z(2) = z(0) / LAMBDA_L1;
 
@@ -127,6 +135,30 @@ void Satellite::los2azimuthElevation(const Vector3d& receiver_pos_ecef, const Ve
     az_el(0) = q_los.yaw();
     az_el(1) = q_los.pitch();
 }
+
+// Saastamoninen Troposphere Model
+double Satellite::troposphericDelay(const GTime &t, const Vector3d &pos, const Vector2d &azel) const
+{
+    const double temp0=15.0; /* temparature at sea level */
+    double humi = 0.7; // relative humidity
+
+    if (pos[2] < -100.0 || 1E4<pos[2] || azel[1] <= 0)
+        return 0.0;
+
+    /* standard atmosphere */
+    double hgt = pos[2]<0.0 ? 0.0 : pos[2];
+
+    double pres=1013.25*std::pow(1.0-2.2557E-5*hgt,5.2568);
+    double temp=temp0-6.5E-3*hgt+273.16;
+    double e=6.108*humi*std::exp((17.15*temp-4684.0)/(temp-38.45));
+
+    /* saastamoninen model */
+    double z=PI/2.0-azel[1];
+    double trph=0.0022768*pres/(1.0-0.00266*std::cos(2.0*pos[0])-0.00028*hgt/1E3)/std::cos(z);
+    double trpw=0.002277*(1255.0/temp+0.05)*e/std::cos(z);
+    return trph+trpw;
+}
+
 
 double Satellite::ionosphericDelay(const GTime& gtime, const Vector3d& lla, const Vector2d& az_el) const
 {

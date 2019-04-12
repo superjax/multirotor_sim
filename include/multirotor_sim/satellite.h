@@ -79,10 +79,12 @@ public:
     void los2azimuthElevation(const Vector3d& receiver_pos_ecef, const Vector3d& los_ecef, Vector2d& az_el) const;
     Vector2d los2azimuthElevation(const Vector3d& receiver_pos_ecef, const Vector3d& los_ecef) const;
     double ionosphericDelay(const GTime &t, const Vector3d& lla, const Vector2d& az_el) const;
+    double troposphericDelay(const GTime &t, const Vector3d& lla, const Vector2d& az_el) const;
     double selectEphemeris(const GTime& time) const;
     void readFromRawFile(std::string filename);
     void addEphemeris(const eph_t& eph_);
     Vector2d azimuthElevation(const GTime &t, const Vector3d& rec_pos_ecef) const;
+    double geoDist(const Vector3d& rec_pos, const Vector3d& sat_pos) const;
 
     int id_;
     int idx_;
