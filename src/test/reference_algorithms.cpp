@@ -239,6 +239,9 @@ double ionosphericDelay(const ionoutc_t *ionoutc, GTime g, double *llh, double *
 
     return (iono_delay);
 }
+
+#define DBG(x) printf(#x": %6.6f\n", x); std::cout << std::flush;
+
 void computeRange(range_t *rho, Satellite& eph, ionoutc_t *ionoutc, GTime g, Vector3d& xyz)
 {
 
@@ -270,11 +273,15 @@ void computeRange(range_t *rho, Satellite& eph, ionoutc_t *ionoutc, GTime g, Vec
     yrot = pos[1] - pos[0]*OMEGA_EARTH*tau;
     pos[0] = xrot;
     pos[1] = yrot;
+    DBG(pos[0]);
+    DBG(pos[1]);
+    DBG(pos[2]);
 
     // New observer to satellite vector and satellite range.
     los =  pos - xyz;
     range = los.norm();
     rho->d = range;
+//    DBG(rho->d);
 
     // Pseudorange.
     rho->range = range - SPEED_OF_LIGHT*clk[0];
@@ -298,6 +305,7 @@ void computeRange(range_t *rho, Satellite& eph, ionoutc_t *ionoutc, GTime g, Vec
     // Add ionospheric delay
     rho->iono_delay = ionosphericDelay(ionoutc, g, lla.data(), rho->azel);
     rho->range += rho->iono_delay;
+
 
     return;
 }

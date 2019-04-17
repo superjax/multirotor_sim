@@ -60,48 +60,52 @@ void Satellite::addEphemeris(const eph_t &_eph)
 //    }
 }
 
-// Compute Geometric Distance to Satellite while compensating for Sagnac Effect
-double Satellite::geoDist(const Vector3d& rec_pos, const Vector3d& sat_pos) const
+#define DBG(x) printf(#x": %6.6f\n", x); std::cout << std::flush;
+void Satellite::computeMeasurement(const GTime& rec_time, const Vector3d& rec_pos, const Vector3d& receiver_vel, const Vector2d& clk_bias, Vector3d& z ) const
 {
-    double r = (sat_pos - rec_pos).norm();
-    return r + OMEGA_EARTH * (sat_pos.x()*rec_pos.y() - sat_pos.y()*rec_pos.x())/C_LIGHT;
-}
-
-void Satellite::computeMeasurement(const GTime& rec_time, const Vector3d& receiver_pos, const Vector3d& receiver_vel, const Vector2d& clk_bias, Vector3d& z ) const
-{
-    Vector3d sat_pos, sat_vel;
+    Vector3d sat_pos_tr, sat_vel_tr;
     Vector2d sat_clk;
-    computePositionVelocityClock(rec_time, sat_pos, sat_vel, sat_clk);
-    double range = geoDist(receiver_pos, sat_pos);
+    computePositionVelocityClock(rec_time, sat_pos_tr, sat_vel_tr, sat_clk);
+    double range = (sat_pos_tr - rec_pos).norm();
+    double sagnac = OMEGA_EARTH * (sat_pos_tr.x()*rec_pos.y() - sat_pos_tr.y()*rec_pos.x())/C_LIGHT;
+    DBG(sagnac);
+    range += sagnac;
     double tau = range / C_LIGHT;  // Time it took for observation to get here
 
     // extrapolate satellite position backwards in time
-    sat_pos -= sat_vel * tau;
+    Vector3d sat_pos_ts = sat_pos_tr - sat_vel_tr * tau;
 
     // Earth rotation correction. The change in velocity can be neglected.
-    double xrot = sat_pos.x() + sat_pos.y() * OMEGA_EARTH * tau;
-    double yrot = sat_pos.y() - sat_pos.x() * OMEGA_EARTH * tau;
-    sat_pos.x() = xrot;
-    sat_pos.y() = yrot;
+    Vector3d earth_rot = sat_pos_ts.cross(e_z * OMEGA_EARTH * tau);
+    DBG(earth_rot.x());
+    DBG(earth_rot.y());
+    DBG(earth_rot.z());
+    sat_pos_ts += earth_rot;
 
     // Re-calculate the line-of-sight vector with the adjusted position
-    Vector3d los_to_sat = sat_pos - receiver_pos;
-    z(0) = geoDist(receiver_pos, sat_pos);
-
-    // compute relative velocity between receiver and satellite, adjusted by the clock drift rate
-    z(1) = ((sat_vel - receiver_vel).transpose() * los_to_sat / z(0))(0) ;// + C_LIGHT * (clk_bias(1) - sat_clk(1));
+    Vector3d los = sat_pos_ts - rec_pos;
+    range = los.norm();
+    sagnac = OMEGA_EARTH * (sat_pos_ts.x()*rec_pos.y() - sat_pos_ts.y()*rec_pos.x())/C_LIGHT;
+    DBG(sagnac);
+    range += sagnac;
 
     // adjust range by the satellite clock offset
-    z(0) += C_LIGHT * (clk_bias(0) - sat_clk(0));
+    z(0) = range + C_LIGHT * (clk_bias(0) - sat_clk(0));
+
+    // compute relative velocity between receiver and satellite, adjusted by the clock drift rate
+    z(1) = (sat_vel_tr - receiver_vel).dot(los) / range;// + C_LIGHT * (clk_bias(1) - sat_clk(1));
+
 
     // Compute Azimuth and Elevation to satellite
     Vector2d az_el;
-    los2azimuthElevation(receiver_pos, los_to_sat, az_el);
-    Vector3d lla = WSG84::ecef2lla(receiver_pos);
+    los2azimuthElevation(rec_pos, los, az_el);
+    Vector3d lla = WSG84::ecef2lla(rec_pos);
 
     // Compute and incorporate ionospheric delay
     double ion_delay = ionosphericDelay(rec_time, lla, az_el);
     double trop_delay = troposphericDelay(rec_time, lla, az_el);
+    DBG(ion_delay);
+    DBG(trop_delay);
     z(0) += ion_delay + trop_delay;
 
     z(2) = z(0) / LAMBDA_L1;

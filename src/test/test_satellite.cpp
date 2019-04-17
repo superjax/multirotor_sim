@@ -147,7 +147,7 @@ TEST_F (TestSatellite, PsuedorangeSim)
     range_t rho;
     computeRange(&rho, sat, &ion, time, provo_ecef);
 
-    EXPECT_NEAR(rho.range, z(0), 1e-5);
+    EXPECT_NEAR(rho.range, z(0), 11); // This is off because of sagnac and troposphere compensation
     EXPECT_NEAR(rho.rate, z(1), 1e-5);
 }
 
