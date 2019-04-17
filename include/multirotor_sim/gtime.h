@@ -26,6 +26,7 @@ public:
     bool operator <(const GTime& g2) const;
     bool operator <=(const GTime& g2) const;
     bool operator ==(const GTime& g2) const;
+    bool operator !=(const GTime& g2) const;
     double toSec() const;
     static GTime fromUTC(int time_sec, double subsec);
     static GTime fromTime(int time, double sec);

@@ -73,9 +73,9 @@ public:
 
     Satellite(int id, int idx);
     Satellite(const eph_t& eph, int idx);
-    void update(const GTime &g);
-    bool computePositionVelocityClock(const GTime &g, const Ref<Vector3d> &pos, const Ref<Vector3d> &vel, const Ref<Vector2d> &clock) const;
-    void computeMeasurement(const GTime& rec_time, const Vector3d& receiver_pos, const Vector3d &receiver_vel, const Vector2d &clk_bias, Vector3d &z) const;
+    void update(const GTime &time);
+    void computePositionVelocityClock(const GTime &g, const Ref<Vector3d> &pos, const Ref<Vector3d> &vel, const Ref<Vector2d> &clock);
+    void computeMeasurement(const GTime& rec_time, const Vector3d& receiver_pos, const Vector3d &receiver_vel, const Vector2d &clk_bias, Vector3d &z);
     void los2azimuthElevation(const Vector3d& receiver_pos_ecef, const Vector3d& los_ecef, Vector2d& az_el) const;
     Vector2d los2azimuthElevation(const Vector3d& receiver_pos_ecef, const Vector3d& los_ecef) const;
     double ionosphericDelay(const GTime &t, const Vector3d& lla, const Vector2d& az_el) const;
@@ -83,7 +83,7 @@ public:
     double selectEphemeris(const GTime& time) const;
     void readFromRawFile(std::string filename);
     void addEphemeris(const eph_t& eph_);
-    Vector2d azimuthElevation(const GTime &t, const Vector3d& rec_pos_ecef) const;
+    Vector2d azimuthElevation(const GTime &t, const Vector3d& rec_pos_ecef);
 
     int id_;
     int idx_;

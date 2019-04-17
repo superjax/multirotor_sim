@@ -20,6 +20,8 @@ Satellite::Satellite(int id, int idx)
     id_ = id;
     idx_ = idx;
     memset(&eph_, 0, sizeof(eph_t));
+    t.week = 0;
+    t.tow_sec = 0;
 }
 
 Satellite::Satellite(const eph_t& eph, int idx)
@@ -27,6 +29,8 @@ Satellite::Satellite(const eph_t& eph, int idx)
     id_ = eph.sat;
     idx_ = idx;
     addEphemeris(eph);
+    t.week = 0;
+    t.tow_sec = 0;
 }
 
 
@@ -40,6 +44,8 @@ void Satellite::addEphemeris(const eph_t &_eph)
     ASSERT((_eph.toe.tow_sec <= DateTime::SECONDS_IN_WEEK), "Corrupt ephemeris");
     ASSERT((_eph.toe.week <= 1000000), "Corrupt ephemeris");
     eph_ = _eph;
+    t.week = 0;
+    t.tow_sec = 0;
 
 //    if (eph_.size() > 0 && (eph.toe == eph_.back().toe))
 //    {
@@ -61,48 +67,34 @@ void Satellite::addEphemeris(const eph_t &_eph)
 }
 
 //#define DBG(x) printf(#x": %6.6f\n", x); std::cout << std::flush;
-#define DBG(...)
-void Satellite::computeMeasurement(const GTime& rec_time, const Vector3d& rec_pos, const Vector3d& receiver_vel, const Vector2d& clk_bias, Vector3d& z ) const
+void Satellite::computeMeasurement(const GTime& rec_time, const Vector3d& rec_pos, const Vector3d& receiver_vel, const Vector2d& clk_bias, Vector3d& z )
 {
     Vector3d sat_pos_tr, sat_vel_tr;
     Vector2d sat_clk;
     computePositionVelocityClock(rec_time, sat_pos_tr, sat_vel_tr, sat_clk);
     double range = (sat_pos_tr - rec_pos).norm();
-    DBG(range);
     double sagnac = OMEGA_EARTH * (sat_pos_tr.x()*rec_pos.y() - sat_pos_tr.y()*rec_pos.x())/C_LIGHT;
-    DBG(sagnac);
     range += sagnac;
     double tau = range / C_LIGHT;  // Time it took for observation to get here
 
     // extrapolate satellite position backwards in time
     Vector3d sat_pos_ts = sat_pos_tr - sat_vel_tr * tau;
-    DBG(sat_vel_tr(0)*tau);
-    DBG(sat_vel_tr(1)*tau);
-    DBG(sat_vel_tr(2)*tau);
 
     // Earth rotation correction. The change in velocity can be neglected.
     Vector3d earth_rot = sat_pos_ts.cross(e_z * OMEGA_EARTH * tau);
-    DBG(earth_rot.x());
-    DBG(earth_rot.y());
-    DBG(earth_rot.z());
     sat_pos_ts += earth_rot;
 
     // Re-calculate the line-of-sight vector with the adjusted position
     Vector3d los = sat_pos_ts - rec_pos;
     range = los.norm();
     sagnac = OMEGA_EARTH * (sat_pos_ts.x()*rec_pos.y() - sat_pos_ts.y()*rec_pos.x())/C_LIGHT;
-    DBG(sagnac);
     range += sagnac;
-    DBG(range);
-    DBG(clk_bias(0));
-    DBG(sat_clk(0));
 
     // adjust range by the satellite clock offset
     z(0) = range + C_LIGHT * (clk_bias(0) - sat_clk(0));
 
     // compute relative velocity between receiver and satellite, adjusted by the clock drift rate
-    z(1) = (sat_vel_tr - receiver_vel).dot(los) / range;// + C_LIGHT * (clk_bias(1) - sat_clk(1));
-
+    z(1) = (sat_vel_tr - receiver_vel).dot(los) / range + C_LIGHT * (clk_bias(1) - sat_clk(1));
 
     // Compute Azimuth and Elevation to satellite
     Vector2d az_el;
@@ -112,8 +104,6 @@ void Satellite::computeMeasurement(const GTime& rec_time, const Vector3d& rec_po
     // Compute and incorporate ionospheric delay
     double ion_delay = ionosphericDelay(rec_time, lla, az_el);
     double trop_delay = troposphericDelay(rec_time, lla, az_el);
-    DBG(ion_delay);
-    DBG(trop_delay);
     z(0) += ion_delay + trop_delay;
 
     z(2) = z(0) / LAMBDA_L1;
@@ -128,11 +118,9 @@ Vector2d Satellite::los2azimuthElevation(const Vector3d &receiver_pos_ecef, cons
     return az_el;
 }
 
-Vector2d Satellite::azimuthElevation(const GTime& t, const Vector3d &rec_pos_ecef) const
+Vector2d Satellite::azimuthElevation(const GTime& t, const Vector3d &rec_pos_ecef)
 {
-  Vector3d pos, vel;
-  Vector2d clock;
-  computePositionVelocityClock(t, pos, vel, clock);
+  update(t);
   Vector3d los_ecef = pos - rec_pos_ecef;
   Vector2d az_el;
   los2azimuthElevation(rec_pos_ecef, los_ecef, az_el);
@@ -148,9 +136,9 @@ void Satellite::los2azimuthElevation(const Vector3d& receiver_pos_ecef, const Ve
     az_el(1) = q_los.pitch();
 }
 
-// Saastamoninen Troposphere Model
 double Satellite::troposphericDelay(const GTime &t, const Vector3d &pos, const Vector2d &azel) const
 {
+    // Saastamoninen Troposphere Model
     const double temp0=15.0; /* temparature at sea level */
     double humi = 0.7; // relative humidity
 
@@ -164,7 +152,6 @@ double Satellite::troposphericDelay(const GTime &t, const Vector3d &pos, const V
     double temp=temp0-6.5E-3*hgt+273.16;
     double e=6.108*humi*std::exp((17.15*temp-4684.0)/(temp-38.45));
 
-    /* saastamoninen model */
     double z=PI/2.0-azel[1];
     double trph=0.0022768*pres/(1.0-0.00266*std::cos(2.0*pos[0])-0.00028*hgt/1E3)/std::cos(z);
     double trpw=0.002277*(1255.0/temp+0.05)*e/std::cos(z);
@@ -264,24 +251,12 @@ double Satellite::selectEphemeris(const GTime &time) const
 //    return dt;
 }
 
-void Satellite::update(const GTime &g)
+void Satellite::update(const GTime &time)
 {
-    t = g;
-    computePositionVelocityClock(g, pos, vel, clk);
-}
-
-
-bool Satellite::computePositionVelocityClock(const GTime& time, const Ref<Vector3d> &_pos, const Ref<Vector3d> &_vel, const Ref<Vector2d>& _clock) const
-{
-    // const-cast hackery to get around Ref
-    Ref<Vector3d> pos = const_cast<Ref<Vector3d>&>(_pos);
-    Ref<Vector3d> vel = const_cast<Ref<Vector3d>&>(_vel);
-    Ref<Vector2d> clock = const_cast<Ref<Vector2d>&>(_clock);
-
     double dt = selectEphemeris(time);
 
     if (dt > MAXDTOE)
-        return false;
+        return;
 
     // https://www.ngs.noaa.gov/gps-toolbox/bc_velo/bc_velo.c
     double n0 = std::sqrt(GM_EARTH/(eph_.A*eph_.A*eph_.A));
@@ -355,13 +330,27 @@ bool Satellite::computePositionVelocityClock(const GTime& time, const Ref<Vector
 
     // Correct for relativistic effects on the satellite clock
     dts -= 2.0*std::sqrt(GM_EARTH * eph_.A) * eph_.e * sek/(C_LIGHT * C_LIGHT);
-    DBG(dts);
-    DBG(sek);
 
-    clock(0) = dts; // satellite clock bias
-    clock(1) = eph_.f1 + eph_.f2*dt; // satellite drift rate
+    clk(0) = dts; // satellite clock bias
+    clk(1) = eph_.f1 + eph_.f2*dt; // satellite drift rate
+    t = time;
+}
 
-    return true;
+
+void Satellite::computePositionVelocityClock(const GTime& time, const Ref<Vector3d> &_pos, const Ref<Vector3d> &_vel, const Ref<Vector2d>& _clock)
+{
+    if (time != t)
+        update(time);
+    // const-cast hackery to get around Ref
+    // https://eigen.tuxfamily.org/dox/TopicFunctionTakingEigenTypes.html
+    Ref<Vector3d> pos_ref = const_cast<Ref<Vector3d>&>(_pos);
+    Ref<Vector3d> vel_ref = const_cast<Ref<Vector3d>&>(_vel);
+    Ref<Vector2d> clock_ref = const_cast<Ref<Vector2d>&>(_clock);
+
+    pos_ref = pos;
+    vel_ref = vel;
+    clock_ref = clk;
+    return;
 }
 
 void Satellite::readFromRawFile(std::string filename)

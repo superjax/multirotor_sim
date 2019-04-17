@@ -66,7 +66,7 @@ protected:
         tmp_file << node;
         tmp_file.close();
 
-        cont.load("../params/sim_params.yaml");
+        cont.load(MULTIROTOR_SIM_DIR"/params/sim_params.yaml");
         sim.param_filename_ = filename;
         sim.init_raw_gnss();
         sim.register_estimator(&est);
@@ -140,6 +140,7 @@ TEST_F (RawGpsTest, LeastSquaresPositioningPseudoranges)
     Vector3d vel_ecef = sim.X_e2n_.q().rota(vel_ned);
 
     Vector3d xhat = Vector3d::Zero();
+    xhat.topRows<3>() = sim.X_e2n_.t();
     Vector3d xtrue = WSG84::ned2ecef(sim.X_e2n_, x.p);
 
     Matrix<double, 15, 4> A;

@@ -117,6 +117,11 @@ bool GTime::operator ==(const GTime& g2) const
   return week == g2.week && tow_sec == g2.tow_sec;
 }
 
+bool GTime::operator !=(const GTime& g2) const
+{
+    return week != g2.week || tow_sec != g2.tow_sec;
+}
+
 DateTime GTime::toDate() const
 {
     double s_leap = tow_sec - DateTime::LEAP_SECONDS;
