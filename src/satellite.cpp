@@ -60,13 +60,15 @@ void Satellite::addEphemeris(const eph_t &_eph)
 //    }
 }
 
-#define DBG(x) printf(#x": %6.6f\n", x); std::cout << std::flush;
+//#define DBG(x) printf(#x": %6.6f\n", x); std::cout << std::flush;
+#define DBG(...)
 void Satellite::computeMeasurement(const GTime& rec_time, const Vector3d& rec_pos, const Vector3d& receiver_vel, const Vector2d& clk_bias, Vector3d& z ) const
 {
     Vector3d sat_pos_tr, sat_vel_tr;
     Vector2d sat_clk;
     computePositionVelocityClock(rec_time, sat_pos_tr, sat_vel_tr, sat_clk);
     double range = (sat_pos_tr - rec_pos).norm();
+    DBG(range);
     double sagnac = OMEGA_EARTH * (sat_pos_tr.x()*rec_pos.y() - sat_pos_tr.y()*rec_pos.x())/C_LIGHT;
     DBG(sagnac);
     range += sagnac;
@@ -74,6 +76,9 @@ void Satellite::computeMeasurement(const GTime& rec_time, const Vector3d& rec_po
 
     // extrapolate satellite position backwards in time
     Vector3d sat_pos_ts = sat_pos_tr - sat_vel_tr * tau;
+    DBG(sat_vel_tr(0)*tau);
+    DBG(sat_vel_tr(1)*tau);
+    DBG(sat_vel_tr(2)*tau);
 
     // Earth rotation correction. The change in velocity can be neglected.
     Vector3d earth_rot = sat_pos_ts.cross(e_z * OMEGA_EARTH * tau);
@@ -88,6 +93,9 @@ void Satellite::computeMeasurement(const GTime& rec_time, const Vector3d& rec_po
     sagnac = OMEGA_EARTH * (sat_pos_ts.x()*rec_pos.y() - sat_pos_ts.y()*rec_pos.x())/C_LIGHT;
     DBG(sagnac);
     range += sagnac;
+    DBG(range);
+    DBG(clk_bias(0));
+    DBG(sat_clk(0));
 
     // adjust range by the satellite clock offset
     z(0) = range + C_LIGHT * (clk_bias(0) - sat_clk(0));
@@ -262,7 +270,6 @@ void Satellite::update(const GTime &g)
     computePositionVelocityClock(g, pos, vel, clk);
 }
 
-#define dbg(x) std::cout << #x": " << x << std::endl;
 
 bool Satellite::computePositionVelocityClock(const GTime& time, const Ref<Vector3d> &_pos, const Ref<Vector3d> &_vel, const Ref<Vector2d>& _clock) const
 {
@@ -348,6 +355,8 @@ bool Satellite::computePositionVelocityClock(const GTime& time, const Ref<Vector
 
     // Correct for relativistic effects on the satellite clock
     dts -= 2.0*std::sqrt(GM_EARTH * eph_.A) * eph_.e * sek/(C_LIGHT * C_LIGHT);
+    DBG(dts);
+    DBG(sek);
 
     clock(0) = dts; // satellite clock bias
     clock(1) = eph_.f1 + eph_.f2*dt; // satellite drift rate

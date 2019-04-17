@@ -70,8 +70,8 @@ TEST_F (TestSatellite, CheckSatPositionVelocityClock)
     EXPECT_MAT_NEAR(new_pos, truth_pos, 1e-5);
     EXPECT_MAT_NEAR(new_vel, truth_vel, 1e-5);
 
-    EXPECT_NEAR(clock(0), oracle_clock, 1e-8);
-    EXPECT_NEAR(clock(1), oracle_clk_rate, 1e-8);
+    EXPECT_NEAR(clock(0), oracle_clock, 1e-12);
+    EXPECT_NEAR(clock(1), oracle_clk_rate, 1e-12);
 }
 
 TEST_F (TestSatellite, AzimuthElevationStraightUp)

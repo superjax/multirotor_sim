@@ -182,4 +182,9 @@ struct WSG84
     }
 };
 
+inline void printLla(const Vector3d& lla)
+{
+    std::cout << lla(0)*180.0/M_PI << ", " << lla(1)*180.0/M_PI << ", " << lla(2);
+}
+
 
