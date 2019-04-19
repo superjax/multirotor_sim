@@ -10,9 +10,6 @@
 
 #include "multirotor_sim/state.h"
 
-using namespace quat;
-using namespace xform;
-
 namespace multirotor_sim
 {
 
@@ -69,7 +66,7 @@ public:
 
   Eigen::Vector4d low_level_control(const State& x, const Eigen::Vector4d& u) const;
 
-  const Xformd& get_global_pose() const { return x_.X; }
+  const xform::Xformd& get_global_pose() const { return x_.X; }
   const double& get_drag() const { return drag_constant_; }
   const Eigen::Vector3d& get_wind() const { return vw_; }
   Eigen::Vector3d get_imu_accel() const;
@@ -88,7 +85,7 @@ public:
   double max_thrust_;
   Vector6d imu_;
   Eigen::Vector3d p_b2u_; // Body to IMU translation
-  Quatd q_b2u_; // Body to IMU rotation
+  quat::Quatd q_b2u_; // Body to IMU rotation
 
   bool wind_enabled_;
   double vw_walk_stdev_;

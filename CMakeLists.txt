@@ -28,15 +28,6 @@ if (NOT TARGET gnss_utils)
     include_directories(lib/gnss_utils)
 endif()
 
-include_directories(include/multirotor_sim
-    ${Boost_INCLUDE_DIRS}
-    ${EIGEN3_INCLUDE_DIRS}
-    ${catkin_INCLUDE_DIRS}
-    ${YAML_CPP_INCLUDE_DIR}
-    lib/nanoflann/include
-    lib/geometry/include
-)
-
 add_library(multirotor_sim STATIC
     src/controller.cpp
     src/dynamics.cpp
@@ -48,6 +39,7 @@ target_include_directories(multirotor_sim PUBLIC
     lib/nanoflann/include
     lib/geometry/include)
 target_link_libraries(multirotor_sim
+    ${Boost_INCLUDE_DIRS}
     ${YAML_CPP_LIBRARIES}
     stdc++fs
     geometry

@@ -1,5 +1,9 @@
-#include "dynamics.h"
-#include "simulator.h"
+#include "multirotor_sim/dynamics.h"
+#include "multirotor_sim/simulator.h"
+
+using namespace Eigen;
+using namespace quat;
+using namespace xform;
 
 namespace multirotor_sim
 {

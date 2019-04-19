@@ -5,18 +5,18 @@
 #include "pid.h"
 #include "multirotor_sim/state.h"
 
-using namespace Eigen;
 
-using namespace multirotor_sim;
+namespace multirotor_sim
+{
 
 template<typename T>
 class NLC
 {
 public:
   EIGEN_MAKE_ALIGNED_OPERATOR_NEW
-  typedef Matrix<T,3,3> Mat3;
-  typedef Matrix<T,3,1> Vec3;
-  typedef Matrix<T,4,1> Vec4;
+  typedef Eigen::Matrix<T,3,3> Mat3;
+  typedef Eigen::Matrix<T,3,1> Vec3;
+  typedef Eigen::Matrix<T,4,1> Vec4;
   Mat3 K_p_; // position
   Mat3 K_v_; // velocity
   Mat3 K_d_; // disturbance acceleration
@@ -63,7 +63,7 @@ public:
     {
       // Compute vehicle-1 velocity command
 //      Vector3d x.p(xhat.p.x, xhat.pe, xhat.pd); // position estimate
-      Vector3d vc = frame_helper::R_v_to_v1(xhat.q.yaw()) * K_p_ * (xc.p-xhat.p); // velocity command
+      Eigen::Vector3d vc = frame_helper::R_v_to_v1(xhat.q.yaw()) * K_p_ * (xc.p-xhat.p); // velocity command
 
       // enforce max commanded velocity
       vmag = vc.norm();
@@ -96,17 +96,17 @@ public:
     xc.w(2) = sat(xc.w(2), max_.yaw_rate, -max_.yaw_rate);
 
     // Compute vehicle-1 thrust vector and update disturbance term
-    Matrix3d R_v1_to_b = frame_helper::R_v_to_b(xhat.q.roll(), xhat.q.pitch(), 0);
-    Vector3d vhat = R_v1_to_b.transpose()*xhat.v;
+    Eigen::Matrix3d R_v1_to_b = frame_helper::R_v_to_b(xhat.q.roll(), xhat.q.pitch(), 0);
+    Eigen::Vector3d vhat = R_v1_to_b.transpose()*xhat.v;
     dhat_ = dhat_ - K_d_*(xhat.v-vhat)*dt; // update disturbance estimate
-    Vector3d k_tilde = sh * (e3 - (1.0 / g) * (K_v_ * (xc.v - vhat) - dhat_));
+    Eigen::Vector3d k_tilde = sh * (e3 - (1.0 / g) * (K_v_ * (xc.v - vhat) - dhat_));
 
     // pack up throttle command
     throttle = e3.transpose() * R_v1_to_b * k_tilde;
     throttle = sat(throttle, max_.throttle, 0.001);
 
     // Compute the desired tilt angle
-    Vector3d kd = (1.0 / throttle) * k_tilde; // desired body z direction
+    Eigen::Vector3d kd = (1.0 / throttle) * k_tilde; // desired body z direction
     kd = kd / kd.norm(); // need direction only
     double kTkd = e3.transpose() * kd;
     double tilt_angle;
@@ -116,18 +116,19 @@ public:
       tilt_angle = 0;
 
     // Shortest rotation to desired tilt
-    Quatd qc;
+    quat::Quatd qc;
     if (tilt_angle < 1e-6)
-      qc = Quatd::Identity();
+      qc = quat::Quatd::Identity();
     else
     {
-      Vector3d k_cross_kd = e3.cross(kd);
-      qc = Quatd::exp(tilt_angle * k_cross_kd / k_cross_kd.norm());
+      Eigen::Vector3d k_cross_kd = e3.cross(kd);
+      qc = quat::Quatd::exp(tilt_angle * k_cross_kd / k_cross_kd.norm());
     }
 
     // Pack up roll/pitch commands after saturating roll and pitch angles
     double phi = sat(qc.roll(), max_.roll, -max_.roll);
     double theta = sat(qc.pitch(), max_.pitch, -max_.pitch);
-    xc.q = Quatd::from_euler(phi, theta, xc.q.yaw());
+    xc.q = quat::Quatd::from_euler(phi, theta, xc.q.yaw());
   }
 };
+}
