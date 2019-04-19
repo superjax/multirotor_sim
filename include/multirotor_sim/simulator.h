@@ -12,10 +12,10 @@
 
 #include "geometry/quat.h"
 #include "geometry/cam.h"
+#include "gnss_utils/wgs84.h"
+#include "gnss_utils/satellite.h"
 
 #include "multirotor_sim/utils.h"
-#include "multirotor_sim/wsg84.h"
-#include "multirotor_sim/satellite.h"
 #include "multirotor_sim/environment.h"
 #include "multirotor_sim/state.h"
 #include "multirotor_sim/dynamics.h"
@@ -282,8 +282,8 @@ public:
   std::string ephemeris_filename_;
   std::vector<double> multipath_offset_;
   std::vector<int> carrier_phase_integer_offsets_;
-  std::vector<Satellite, aligned_allocator<Satellite>> satellites_;
+  SatVec satellites_;
   double last_raw_gnss_update_;
-  GTime start_time_;
+  gnss_utils::GTime start_time_;
 };
 }

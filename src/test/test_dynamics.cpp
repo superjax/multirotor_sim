@@ -50,7 +50,7 @@ TEST (Dynamics, Propagate)
   std::ofstream file("/tmp/Dynamics.Propagate.log");
   double t;
   double dt = 0.002;
-  Vector4d u;
+  Eigen::Vector4d u;
   u.setZero();
   std::normal_distribution<double> dist;
   std::default_random_engine gen;
@@ -59,7 +59,7 @@ TEST (Dynamics, Propagate)
   for (int i = 0; i < 50; i++)
   {
     t = dt * i;
-    u += dt * randomNormal<Vector4d>(0.1, dist, gen);
+    u += dt * randomNormal<Eigen::Vector4d>(0.1, dist, gen);
     dyn_rk4.run(t, u);
     dyn_euler.run(t, u);
     file.write((char*)&t, sizeof(double));

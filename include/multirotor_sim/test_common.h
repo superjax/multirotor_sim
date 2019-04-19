@@ -3,11 +3,6 @@
 
 #include <Eigen/Core>
 
-#include "multirotor_sim/satellite.h"
-#include "multirotor_sim/gtime.h"
-#include "multirotor_sim/datetime.h"
-#include "multirotor_sim/test_common.h"
-
 static const double RAD2DEG = 180.0 / M_PI;
 static const double DEG2RAD = M_PI / 180.0;
 
@@ -79,25 +74,3 @@ do{  \
         }\
     } \
 } while(0)
-
-
-typedef struct
-{
-    GTime g;
-    double range; // pseudorange
-    double rate;
-    double d; // geometric distance
-    double azel[2];
-    double iono_delay;
-} range_t;
-typedef struct
-{
-    int enable;
-    int vflg;
-    double alpha0,alpha1,alpha2,alpha3;
-    double beta0,beta1,beta2,beta3;
-} ionoutc_t;
-void eph2pos(const GTime& t, const eph_t *eph, Eigen::Vector3d& pos, double *dts);
-double ionmodel(const GTime& t, const double *pos, const double *azel);
-double ionosphericDelay(const ionoutc_t *ionoutc, GTime g, double *llh, double *azel);
-void computeRange(range_t *rho, Satellite &eph, ionoutc_t *ionoutc, GTime g, Vector3d& xyz);

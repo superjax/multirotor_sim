@@ -45,7 +45,7 @@ bool Environment::get_center_img_center_on_ground_plane(const Xformd& x_I2c, Vec
   }
 }
 
-int Environment::add_point(const Vector3d& t_I_c, const Quatd& q_I_c, Vector3d& zeta, Vector2d& pix, double& depth)
+int Environment::add_point(const Vector3d& t_I_c, const quat::Quatd& q_I_c, Vector3d& zeta, Vector2d& pix, double& depth)
 {
   // Choose a random pixel (assume that image center is at center of camera)
   pix.setRandom();

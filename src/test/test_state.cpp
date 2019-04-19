@@ -3,6 +3,9 @@
 #include "multirotor_sim/state.h"
 #include "multirotor_sim/test_common.h"
 using namespace multirotor_sim;
+using namespace xform;
+using namespace Eigen;
+using namespace quat;
 
 TEST (ErrorState, Construct)
 {

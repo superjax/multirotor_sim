@@ -36,14 +36,14 @@ enum {
 
 static const double G = 9.80665;
 
-static const Vector3d gravity_ = [] {
-  Vector3d tmp;
+static const Eigen::Vector3d gravity_ = [] {
+  Eigen::Vector3d tmp;
   tmp << 0, 0, G;
   return tmp;
 }();
 
-static const Matrix3d M_ = [] {
-  Matrix3d tmp;
+static const Eigen::Matrix3d M_ = [] {
+  Eigen::Matrix3d tmp;
   tmp << 1, 0, 0, 0, 1, 0, 0, 0, 0;
   return tmp;
 }();
@@ -51,29 +51,29 @@ static const Matrix3d M_ = [] {
 
 class Dynamics
 {      
-typedef Matrix<double, 12, 12> Matrix12d;
-typedef Matrix<double, 12, 1> Vector12d;
+typedef Eigen::Matrix<double, 12, 12> Matrix12d;
+typedef Eigen::Matrix<double, 12, 1> Vector12d;
 public:
   EIGEN_MAKE_ALIGNED_OPERATOR_NEW
   Dynamics();
   
   void load(std::string filename);
-  void run(const double dt, const Vector4d& u);
+  void run(const double dt, const Eigen::Vector4d& u);
   
-  void f(const State& x, const Vector4d& ft, ErrorState& dx) const;
-  void f(const State& x, const Vector4d& u, ErrorState& dx, Vector6d& imu) const;
+  void f(const State& x, const Eigen::Vector4d& ft, ErrorState& dx) const;
+  void f(const State& x, const Eigen::Vector4d& u, ErrorState& dx, Vector6d& imu) const;
   
   const State& get_state() const { return x_; }
   State& get_state() { return x_; }
   void set_state(const State& x) { x_ = x; }
 
-  Vector4d low_level_control(const State& x, const Vector4d& u) const;
+  Eigen::Vector4d low_level_control(const State& x, const Eigen::Vector4d& u) const;
 
   const Xformd& get_global_pose() const { return x_.X; }
   const double& get_drag() const { return drag_constant_; }
   const Eigen::Vector3d& get_wind() const { return vw_; }
-  Vector3d get_imu_accel() const;
-  Vector3d get_imu_gyro() const;
+  Eigen::Vector3d get_imu_accel() const;
+  Eigen::Vector3d get_imu_gyro() const;
   
   // States and RK4 Workspace
   State x_, x2_, x3_, x4_;
@@ -87,7 +87,7 @@ public:
   double angular_drag_;
   double max_thrust_;
   Vector6d imu_;
-  Vector3d p_b2u_; // Body to IMU translation
+  Eigen::Vector3d p_b2u_; // Body to IMU translation
   Quatd q_b2u_; // Body to IMU rotation
 
   bool wind_enabled_;

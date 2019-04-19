@@ -2,16 +2,16 @@
 
 #include <Eigen/Core>
 
-#include "multirotor_sim/state.h"
-#include "multirotor_sim/gtime.h"
-#include "multirotor_sim/satellite.h"
+#include "gnss_utils/gtime.h"
+#include "gnss_utils/satellite.h"
 #include "multirotor_sim/state.h"
 
 namespace  multirotor_sim
 {
 
-typedef std::vector<Vector3d, aligned_allocator<Vector3d>> VecVec3;
-typedef std::vector<Matrix3d, aligned_allocator<Matrix3d>> VecMat3;
+typedef std::vector<Eigen::Vector3d, Eigen::aligned_allocator<Eigen::Vector3d>> VecVec3;
+typedef std::vector<Eigen::Matrix3d, Eigen::aligned_allocator<Eigen::Matrix3d>> VecMat3;
+typedef std::vector<gnss_utils::Satellite, Eigen::aligned_allocator<gnss_utils::Satellite>> SatVec;
 class EstimatorBase
 {
 public:
@@ -22,9 +22,10 @@ public:
 
     virtual void altCallback(const double& t, const Vector1d& z, const Matrix1d& R) {}
     virtual void baroCallback(const double& t, const Vector1d& z, const Matrix1d& R) {}
-    virtual void mocapCallback(const double& t, const Xformd& z, const Matrix6d& R) {}
-    virtual void voCallback(const double& t, const Xformd& z, const Matrix6d& R) {}
-    virtual void imageCallback(const double& t, const ImageFeat& z, const Matrix2d& R_pix, const Matrix1d& R_depth) {}
+    virtual void mocapCallback(const double& t, const xform::Xformd& z, const Matrix6d& R) {}
+    virtual void voCallback(const double& t, const xform::Xformd& z, const Matrix6d& R) {}
+    virtual void imageCallback(const double& t, const ImageFeat& z, const Eigen::Matrix2d& R_pix,
+                               const Matrix1d& R_depth) {}
 
     // t - current time (seconds)
     // z - gnss measurement [p_{b/ECEF}^ECEF, v_{b/ECEF}^ECEF]
@@ -35,7 +36,8 @@ public:
     // z - gnss measurements [[rho(m), rhodot(m/s), l(cycles)], x N]
     // R - gnss covariance xN
     // sat - Satellite objects related to each measurement
-    virtual void rawGnssCallback(const GTime& t, const VecVec3& z, const VecMat3& R, std::vector<Satellite, aligned_allocator<Satellite>>& sat, const std::vector<bool>& slip) {}
+    virtual void rawGnssCallback(const gnss_utils::GTime& t, const VecVec3& z, const VecMat3& R,
+                                 SatVec& sat, const std::vector<bool>& slip) {}
 };
 
 }

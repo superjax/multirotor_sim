@@ -28,7 +28,7 @@ public:
     void load(std::string filename);
     bool get_center_img_center_on_ground_plane(const Xformd &x_I2c, Vector3d& point);
 
-    int add_point(const Vector3d& t_I_c, const Quatd& q_I_c, Vector3d& zeta, Vector2d& pix, double& depth);
+    int add_point(const Vector3d& t_I_c, const quat::Quatd& q_I_c, Vector3d& zeta, Vector2d& pix, double& depth);
     bool get_closest_points(const Vector3d &query_pt, int num_pts, double max_dist,
                             vector<Vector3d, aligned_allocator<Vector3d> > &pts, vector<size_t> &ids);
     inline const std::vector<Vector3d, aligned_allocator<Vector3d>>& get_points() const {return points_.pts; }

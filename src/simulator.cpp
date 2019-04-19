@@ -1,11 +1,15 @@
-#include "simulator.h"
-#include <Eigen/StdVector>
 #include <chrono>
+#include <iomanip>
 
+#include <Eigen/StdVector>
+
+#include "multirotor_sim/simulator.h"
 #include "multirotor_sim/estimator_base.h"
 #include "multirotor_sim/controller.h"
 
 using namespace std;
+using namespace gnss_utils;
+using namespace Eigen;
 
 namespace  multirotor_sim
 {
@@ -291,7 +295,7 @@ void Simulator::init_gnss()
   bool use_gnss_truth;
   double gnss_pos_noise_h, gnss_pos_noise_v, gnss_vel_noise;
   get_yaml_eigen("ref_LLA", param_filename_, refLla);
-  X_e2n_ = WSG84::x_ecef2ned(WSG84::lla2ecef(refLla));
+  X_e2n_ = WGS84::x_ecef2ned(WGS84::lla2ecef(refLla));
   get_yaml_node("gnss_update_rate", param_filename_, gnss_update_rate_);
   get_yaml_node("use_gnss_truth", param_filename_, use_gnss_truth);
   get_yaml_node("gnss_horizontal_position_stdev", param_filename_, gnss_pos_noise_h);
@@ -318,7 +322,7 @@ void Simulator::init_raw_gnss()
   Vector3d refLla;
   bool use_raw_gnss_truth;
   get_yaml_eigen("ref_LLA", param_filename_, refLla);
-  X_e2n_ = WSG84::x_ecef2ned(WSG84::lla2ecef(refLla));
+  X_e2n_ = WGS84::x_ecef2ned(WGS84::lla2ecef(refLla));
   double pseudorange_noise, p_rate_noise, cp_noise, clock_walk;
   get_yaml_node("gnss_update_rate", param_filename_, gnss_update_rate_);
   get_yaml_node("use_raw_gnss_truth", param_filename_, use_raw_gnss_truth);
@@ -594,7 +598,7 @@ void Simulator::update_gnss_meas()
     Vector3d p_NED = dyn_.get_global_pose().t();
     p_NED.segment<2>(0) += gnss_horizontal_position_stdev_ * randomNormal<Vector2d>(normal_, rng_);
     p_NED(2) += gnss_vertical_position_stdev_ * normal_(rng_);
-    Vector3d p_ECEF = WSG84::ned2ecef(X_e2n_, p_NED);
+    Vector3d p_ECEF = WGS84::ned2ecef(X_e2n_, p_NED);
 
     Vector3d v_NED = dyn_.get_global_pose().q().rota(dyn_.get_state().v);
     Vector3d v_ECEF = X_e2n_.q().rota(v_NED);
@@ -627,6 +631,7 @@ void Simulator::update_raw_gnss_meas()
     int i;
     vector<Satellite, aligned_allocator<Satellite>>::iterator sat;
     vector<bool> slip(satellites_.size(), false);
+    cout << "t " << t_now.week << ":" << t_now.tow_sec << ", p_ECEF " << std::setprecision(10) << p_ECEF.transpose() << ", v_ECEF " << v_ECEF.transpose() << ", clk " << clock_bias_ << ", " << clock_bias_rate_ << std::endl;
     for (i = 0, sat = satellites_.begin(); sat != satellites_.end(); sat++, i++)
     {
       if (normal_(rng_) * dt_ < cycle_slip_prob_)
@@ -649,6 +654,7 @@ void Simulator::update_raw_gnss_meas()
 
       Vector3d z_i;
       sat->computeMeasurement(t_now, p_ECEF, v_ECEF, Vector2d{clock_bias_, clock_bias_rate_}, z_i);
+      std::cout << "p" << i << ": " << std::setprecision(10) <<  z_i(0) << std::endl;
       z_i(0) += normal_(rng_) * pseudorange_stdev_+ multipath_offset_[i];
       z_i(1) += normal_(rng_) * pseudorange_rate_stdev_;
       z_i(2) += normal_(rng_) * carrier_phase_stdev_ + carrier_phase_integer_offsets_[i];
@@ -779,7 +785,7 @@ bool Simulator::is_feature_tracked(int id) const
 
 Vector3d Simulator::get_position_ecef() const
 {
-  return WSG84::ned2ecef(X_e2n_, dyn_.get_state().p);
+  return WGS84::ned2ecef(X_e2n_, dyn_.get_state().p);
 }
 
 Vector3d Simulator::get_velocity_ecef() const

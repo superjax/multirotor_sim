@@ -3,13 +3,13 @@
 #include "multirotor_sim/simulator.h"
 #include "multirotor_sim/controller.h"
 #include "multirotor_sim/utils.h"
-#include "multirotor_sim/wsg84.h"
-#include "multirotor_sim/raw_gnss.h"
 #include "multirotor_sim/test_common.h"
+#include "gnss_utils/wgs84.h"
 
 using namespace Eigen;
 using namespace std;
 using namespace multirotor_sim;
+using namespace gnss_utils;
 
 class RawGnssTestEstimator : public EstimatorBase
 {
@@ -20,7 +20,8 @@ public:
     void mocapCallback(const double& t, const Xformd& z, const Matrix6d& R) override {}
     void voCallback(const double& t, const Xformd& z, const Matrix6d& R) override {}
     void gnssCallback(const double& t, const Vector6d& z, const Matrix6d& R) override {}
-    void rawGnssCallback(const GTime& t, const VecVec3& z, const VecMat3& R, std::vector<Satellite, aligned_allocator<Satellite>>& sat, const std::vector<bool>& slip) override
+    void rawGnssCallback(const GTime& t, const VecVec3& z, const VecMat3& R, SatVec& sat,
+                         const std::vector<bool>& slip) override
     {
         time_last = t;
         call_count++;
@@ -114,15 +115,16 @@ TEST_F (RawGpsTest, MeasurementIsCloseToTruth)
     sim.update_raw_gnss_meas();
 
     GTime t = sim.t_ + sim.start_time_;
-    Vector3d pos_ecef = WSG84::ned2ecef(sim.X_e2n_, x.p);
+    Vector3d pos_ecef = WGS84::ned2ecef(sim.X_e2n_, x.p);
     Vector3d vel_ned = sim.dyn_.get_state().q.rota(sim.dyn_.get_state().v);
     Vector3d vel_ecef = sim.X_e2n_.q().rota(vel_ned);
     Vector3d z_true;
     for (int i = 0; i < 15; i++)
     {
-        sim.satellites_[i].computeMeasurement(t, pos_ecef, vel_ecef, Vector2d{sim.clock_bias_, sim.clock_bias_rate_}, z_true);
+        Vector2d clk(sim.clock_bias_, sim.clock_bias_rate_);
+        sim.satellites_[i].computeMeasurement(t, pos_ecef, vel_ecef, clk, z_true);
         EXPECT_NEAR(z_true[0], est.z_last[i][0], 9.0); // 3-sigma
-        EXPECT_NEAR(z_true[1], est.z_last[i][1], 0.3);
+        EXPECT_NEAR(z_true[1], est.z_last[i][1], 3.0);
         EXPECT_NEAR(z_true[2], est.z_last[i][2], 100);
     }
 }
@@ -141,7 +143,7 @@ TEST_F (RawGpsTest, LeastSquaresPositioningPseudoranges)
 
     Vector3d xhat = Vector3d::Zero();
     xhat.topRows<3>() = sim.X_e2n_.t();
-    Vector3d xtrue = WSG84::ned2ecef(sim.X_e2n_, x.p);
+    Vector3d xtrue = WGS84::ned2ecef(sim.X_e2n_, x.p);
 
     Matrix<double, 15, 4> A;
     Matrix<double, 15, 1> b;
@@ -172,8 +174,8 @@ TEST_F (RawGpsTest, LeastSquaresPositioningPseudoranges)
 //        t += dx(3);
     } while (dx.norm() > 1e-4 && iter < 10);
 
-    Vector3d xhat_ned = WSG84::ecef2ned(sim.X_e2n_, xhat);
-    Vector3d xtrue_ned = WSG84::ecef2ned(sim.X_e2n_, xtrue);
+    Vector3d xhat_ned = WGS84::ecef2ned(sim.X_e2n_, xhat);
+    Vector3d xtrue_ned = WGS84::ecef2ned(sim.X_e2n_, xtrue);
 
     EXPECT_NEAR(xhat_ned.x(), xtrue_ned.x(), 5.0);
     EXPECT_NEAR(xhat_ned.y(), xtrue_ned.y(), 5.0);

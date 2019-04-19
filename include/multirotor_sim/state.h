@@ -3,10 +3,6 @@
 #include <Eigen/Core>
 #include <geometry/xform.h>
 
-using namespace Eigen;
-using namespace xform;
-using namespace quat;
-
 namespace multirotor_sim
 {
 
@@ -20,12 +16,12 @@ struct ErrorState
   };
 
 
-  Matrix<double, SIZE, 1> arr;
-  Map<Vector6d> X;
-  Map<Vector3d> p;
-  Map<Vector3d> q;
-  Map<Vector3d> v;
-  Map<Vector3d> w;
+  Eigen::Matrix<double, SIZE, 1> arr;
+  Eigen::Map<Vector6d> X;
+  Eigen::Map<Eigen::Vector3d> p;
+  Eigen::Map<Eigen::Vector3d> q;
+  Eigen::Map<Eigen::Vector3d> v;
+  Eigen::Map<Eigen::Vector3d> w;
 
   ErrorState() :
     X(arr.data()),
@@ -75,12 +71,12 @@ struct State
   };
 
 
-  Matrix<double, SIZE, 1> arr;
-  Xformd X;
-  Map<Vector3d> p;
-  Quatd q;
-  Map<Vector3d> v;
-  Map<Vector3d> w;
+  Eigen::Matrix<double, SIZE, 1> arr;
+  xform::Xformd X;
+  Eigen::Map<Eigen::Vector3d> p;
+  quat::Quatd q;
+  Eigen::Map<Eigen::Vector3d> v;
+  Eigen::Map<Eigen::Vector3d> w;
 
   State() :
     X(arr.data()),
@@ -90,7 +86,7 @@ struct State
     w(arr.data()+10)
   {
     arr.setZero();
-    q = Quatd::Identity();
+    q = quat::Quatd::Identity();
   }
 
   State(const State& x) :
@@ -147,9 +143,9 @@ struct Input
   {
     SIZE = 4
   };
-  Matrix<double, SIZE, 1> arr;
+  Eigen::Matrix<double, SIZE, 1> arr;
   double& T;
-  Map<Vector3d> tau;
+  Eigen::Map<Eigen::Vector3d> tau;
 
   Input() :
     T(*arr.data()),
@@ -164,9 +160,9 @@ struct IMU
   {
     SIZE = 6
   };
-  Matrix<double, SIZE, 1> arr;
-  Map<Vector3d> acc;
-  Map<Vector3d> gyro;
+  Eigen::Matrix<double, SIZE, 1> arr;
+  Eigen::Map<Eigen::Vector3d> acc;
+  Eigen::Map<Eigen::Vector3d> gyro;
 
   IMU() :
     acc(arr.data()),
@@ -180,7 +176,7 @@ public:
   EIGEN_MAKE_ALIGNED_OPERATOR_NEW
   int id; // image label
   double t; // time stamp of this image
-  std::vector<Vector2d, aligned_allocator<Vector2d>> pixs; // pixel measurements in this image
+  std::vector<Eigen::Vector2d, Eigen::aligned_allocator<Eigen::Vector2d>> pixs; // pixel measurements in this image
   std::vector<double> depths; // feature distances corresponding to pixel measurements
   std::vector<int> feat_ids; // feature ids corresonding to pixel measurements
 

@@ -14,8 +14,6 @@
 #include <yaml-cpp/yaml.h>
 #include <geometry/xform.h>
 
-using namespace Eigen;
-
 inline bool file_exists (const std::string& name) {
   struct stat buffer;   
   return (stat (name.c_str(), &buffer) == 0); 
@@ -96,7 +94,7 @@ bool get_yaml_eigen(const std::string key, const std::string filename, Eigen::Ma
 template <typename Derived>
 bool get_yaml_diag(const std::string key, const std::string filename, Eigen::MatrixBase<Derived>& val, bool print_error=true)
 {
-  Matrix<typename Derived::Scalar, Derived::RowsAtCompileTime, 1> diag;
+  Eigen::Matrix<typename Derived::Scalar, Derived::RowsAtCompileTime, 1> diag;
   if (get_yaml_eigen(key, filename, diag, print_error))
   {
     val = diag.asDiagonal();

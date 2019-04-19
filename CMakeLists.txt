@@ -23,6 +23,11 @@ if (NOT TARGET lin_alg_tools)
   include_directories(lib/lin_alg_tools/include)
 endif()
 
+if (NOT TARGET gnss_utils)
+    add_subdirectory(lib/gnss_utils)
+    include_directories(lib/gnss_utils)
+endif()
+
 include_directories(include/multirotor_sim
     ${Boost_INCLUDE_DIRS}
     ${EIGEN3_INCLUDE_DIRS}
@@ -37,29 +42,27 @@ add_library(multirotor_sim STATIC
     src/dynamics.cpp
     src/simulator.cpp
     src/environment.cpp
-    src/gtime.cpp
-    src/datetime.cpp
-    src/satellite.cpp
-    src/gnss.cpp
 )
 target_include_directories(multirotor_sim PUBLIC
     include
     lib/nanoflann/include
     lib/geometry/include)
-target_link_libraries(multirotor_sim ${YAML_CPP_LIBRARIES} stdc++fs geometry nanoflann_eigen lin_alg_tools)
+target_link_libraries(multirotor_sim
+    ${YAML_CPP_LIBRARIES}
+    stdc++fs
+    geometry
+    nanoflann_eigen
+    lin_alg_tools
+    gnss_utils)
 
 if (${GTEST_FOUND})
     add_definitions(-DMULTIROTOR_SIM_DIR="${CMAKE_CURRENT_LIST_DIR}")
     include_directories(include ${GTEST_INCLUDE_DIRS} ${EIGEN3_INCLUDE_DIRS})
     add_executable(multirotor_sim_test
-        src/test/test_gnss.cpp
-        src/test/test_time.cpp
-        src/test/test_satellite.cpp
         src/test/test_raw_gnss.cpp
         src/test/test_state.cpp
         src/test/test_dynamics.cpp
         src/test/test_reference_controller.cpp
-        src/test/reference_algorithms.cpp
         )
     target_link_libraries(multirotor_sim_test ${GTEST_LIBRARIES} gtest_main gtest pthread multirotor_sim)
 endif()
