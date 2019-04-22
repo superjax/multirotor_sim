@@ -10,25 +10,21 @@ find_package(GTest)
 
 if (NOT TARGET geometry)
     add_subdirectory(lib/geometry)
-    include_directories(lib/geometry/include)
 endif()
 
 if (NOT TARGET nanoflann_eigen)
     add_subdirectory(lib/nanoflann_eigen)
-    include_directories(lib/nanoflann_eigen/include)
 endif()
 
 if (NOT TARGET lin_alg_tools)
   add_subdirectory(lib/lin_alg_tools)
-  include_directories(lib/lin_alg_tools/include)
 endif()
 
 if (NOT TARGET gnss_utils)
     add_subdirectory(lib/gnss_utils)
-    include_directories(lib/gnss_utils)
 endif()
 
-add_library(multirotor_sim STATIC
+add_library(multirotor_sim
     src/controller.cpp
     src/dynamics.cpp
     src/simulator.cpp
@@ -39,7 +35,6 @@ target_include_directories(multirotor_sim PUBLIC
     lib/nanoflann/include
     lib/geometry/include)
 target_link_libraries(multirotor_sim
-    ${Boost_INCLUDE_DIRS}
     ${YAML_CPP_LIBRARIES}
     stdc++fs
     geometry
