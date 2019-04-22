@@ -631,7 +631,6 @@ void Simulator::update_raw_gnss_meas()
     int i;
     vector<Satellite, aligned_allocator<Satellite>>::iterator sat;
     vector<bool> slip(satellites_.size(), false);
-    cout << "t " << t_now.week << ":" << t_now.tow_sec << ", p_ECEF " << std::setprecision(10) << p_ECEF.transpose() << ", v_ECEF " << v_ECEF.transpose() << ", clk " << clock_bias_ << ", " << clock_bias_rate_ << std::endl;
     for (i = 0, sat = satellites_.begin(); sat != satellites_.end(); sat++, i++)
     {
       if (normal_(rng_) * dt_ < cycle_slip_prob_)
@@ -654,7 +653,6 @@ void Simulator::update_raw_gnss_meas()
 
       Vector3d z_i;
       sat->computeMeasurement(t_now, p_ECEF, v_ECEF, Vector2d{clock_bias_, clock_bias_rate_}, z_i);
-      std::cout << "p" << i << ": " << std::setprecision(10) <<  z_i(0) << std::endl;
       z_i(0) += normal_(rng_) * pseudorange_stdev_+ multipath_offset_[i];
       z_i(1) += normal_(rng_) * pseudorange_rate_stdev_;
       z_i(2) += normal_(rng_) * carrier_phase_stdev_ + carrier_phase_integer_offsets_[i];
