@@ -245,13 +245,14 @@ public:
   void set_theme_braille() { bars_ = {" ", "⡀", "⡄", "⡆", "⡇", "⡏", "⡟", "⡿", "⣿" }; }
   void set_theme_braille_spin() { bars_ = {" ", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠇", "⠿" }; }
   
-  void print(int completed)
+  void print(int completed, double t=NAN)
   {
     if (!initialized_)
     {
       last_print_time_ = std::chrono::system_clock::now();
       start_time_ = std::chrono::system_clock::now();
       initialized_ = true;
+      t_start_ = t;
     }
     std::chrono::system_clock::time_point now = std::chrono::system_clock::now();
 
@@ -272,15 +273,24 @@ public:
       double it_s = completed / elapsed;
       std::string left_stamp = ms_to_stamp(((total_ - completed) / it_s)*1000);
       std::string elapsed_stamp = ms_to_stamp(elapsed * 1000.0);
-      printf("[%s<%s, %.2fit/s] ", elapsed_stamp.c_str(), left_stamp.c_str(), it_s);
+      if (std::isfinite(t_start_) && std::isfinite(t))
+      {
+          double rt_factor = (t - t_start_) / elapsed;
+          printf("[%s<%s, %.2fit/s, %.2fx] ", elapsed_stamp.c_str(), left_stamp.c_str(), it_s, rt_factor);
+      }
+          else
+      {
+          printf("[%s<%s, %.2fit/s] ", elapsed_stamp.c_str(), left_stamp.c_str(), it_s);
+      }
       std::cout.flush();
     }
     last_completed_ = completed;
+    t_end_ = t;
   }
 
   void finished()
   {
-    print(total_);
+    print(total_, t_end_);
   }
 private:
 
@@ -319,6 +329,8 @@ private:
   int total_;
   bool initialized_;
   int last_completed_;
+  double t_start_;
+  double t_end_;
   std::vector<const char*> bars_ = {" ", "▏", "▎", "▍", "▋", "▋", "▊", "▉", "▉", "█"};
   
   std::chrono::system_clock::time_point start_time_;

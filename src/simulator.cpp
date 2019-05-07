@@ -111,7 +111,7 @@ bool Simulator::run()
     cont_->computeControl(t_, dyn_.get_state(), xc_, ur_, u_);
     dyn_.run(dt_, compute_low_level_control(u_));
     if (prog_indicator_)
-      prog_.print(t_/dt_);
+      prog_.print(t_/dt_, t_);
     update_measurements();
     return true;
   }
