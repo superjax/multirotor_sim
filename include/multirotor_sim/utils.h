@@ -253,6 +253,10 @@ public:
       start_time_ = std::chrono::system_clock::now();
       initialized_ = true;
       t_start_ = t;
+      elapsed_last_ = 0.0;
+      t_last_ = t;
+      rt_rate_ = 1.0;
+      rt_alpha_ = 0.9;
     }
     std::chrono::system_clock::time_point now = std::chrono::system_clock::now();
 
@@ -275,8 +279,11 @@ public:
       std::string elapsed_stamp = ms_to_stamp(elapsed * 1000.0);
       if (std::isfinite(t_start_) && std::isfinite(t))
       {
-          double rt_factor = (t - t_start_) / elapsed;
-          printf("[%s<%s, %.2fit/s, %.2fx] ", elapsed_stamp.c_str(), left_stamp.c_str(), it_s, rt_factor);
+          double rt_factor = (t - t_last_) / (elapsed - elapsed_last_);
+          rt_rate_ = rt_alpha_ * rt_rate_ + (1.0 - rt_alpha_) * rt_factor;
+          t_last_ = t;
+          elapsed_last_ = elapsed;
+          printf("[%s<%s, %.2fit/s, %.2fx] ", elapsed_stamp.c_str(), left_stamp.c_str(), it_s, rt_rate_);
       }
           else
       {
@@ -323,8 +330,10 @@ private:
 
 
 
-//  }
-
+  double rt_alpha_;
+  double rt_rate_;
+  double t_last_;
+  double elapsed_last_;
   int barwidth_;
   int total_;
   bool initialized_;
