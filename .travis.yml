@@ -29,6 +29,18 @@ install:
   - sudo cp *.a /usr/lib
   - cd "${TRAVIS_BUILD_DIR}"
   - gcc --version
+  - mkdir lib
+  - cd lib
+  - git clone https://github.com/superjax/geometry && cd geometry
+  - mkdir build && cd build && cmake -DCMAKE_BUILD_TYPE=Release && make && sudo make install && cd ../../
+  - git clone https://github.com/superjax/gnss_utils && cd gnss_utils
+  - mkdir build && cd build && cmake -DCMAKE_BUILD_TYPE=Release && make && sudo make install && cd ../../
+  - git clone https://github.com/superjax/nanoflann_eigen && cd nanoflann_eigen
+  - mkdir build && cd build && cmake -DCMAKE_BUILD_TYPE=Release && make && sudo make install && cd ../../
+  - git clone https://github.com/superjax/lin_alg_tools && cd lin_alg_tools
+  - mkdir build && cd build && cmake -DCMAKE_BUILD_TYPE=Release && make && sudo make install && cd ../../
+  - cd ..
+
 
 script:
   - mkdir build
