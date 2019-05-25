@@ -10,6 +10,7 @@ find_package(geometry REQUIRED)
 find_package(gnss_utils REQUIRED)
 find_package(nanoflann_eigen REQUIRED)
 find_package(lin_alg_tools REQUIRED)
+find_package(LAPACK REQUIRED)
 
 include_directories(
     include
@@ -20,7 +21,7 @@ include_directories(
     ${nanoflann_eigen_INCLUDE_DIRS}
     ${geometry_INCLUDE_DIRS})
 
-add_library(multirotor_sim
+add_library(multirotor_sim SHARED
     src/controller.cpp
     src/dynamics.cpp
     src/simulator.cpp
@@ -32,10 +33,12 @@ target_link_libraries(multirotor_sim
     ${geometry_LIBRARIES}
     ${nanoflann_eigen_LIBRARIES}
     ${lin_alg_tools_LIBRARIES}
+    ${LAPACK_LIBRARIES}
     ${gnss_utils_LIBRARIES})
 
-option(BUILD_TESTS "Build Tests" OFF)
+option(BUILD_TEST "Build Tests" OFF)
 if (BUILD_TEST)
+    message(STATUS "BUILDING TESTS")
     find_package(GTest REQUIRED)
     find_package(Boost REQUIRED COMPONENTS system thread)
     add_definitions(-DMULTIROTOR_SIM_DIR="${CMAKE_CURRENT_LIST_DIR}")
@@ -47,6 +50,8 @@ if (BUILD_TEST)
         src/test/test_reference_controller.cpp
         )
     target_link_libraries(multirotor_sim_test ${GTEST_LIBRARIES} gtest_main gtest pthread multirotor_sim)
+else()
+    message (STATUS "SKipping TESTS")
 endif()
 
 # install

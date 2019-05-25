@@ -93,6 +93,8 @@ public:
   State& commanded_state() {return xc_;}
   Vector3d get_position_ecef() const;
   Vector3d get_velocity_ecef() const;
+  Vector3d get_gps_position_ecef() const;
+  Vector3d get_gps_velocity_ecef() const;
 
   Environment env_;
   Dynamics dyn_;
@@ -265,6 +267,7 @@ public:
   double gnss_velocity_stdev_;
   double last_gnss_update_;
   Vector3d gnss_position_noise_;
+  Vector3d p_b2g_;
 
   // RAW GNSS
   bool raw_gnss_enabled_;

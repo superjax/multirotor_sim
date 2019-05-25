@@ -301,6 +301,7 @@ void Simulator::init_gnss()
   get_yaml_node("gnss_horizontal_position_stdev", param_filename_, gnss_pos_noise_h);
   get_yaml_node("gnss_vertical_position_stdev", param_filename_, gnss_pos_noise_v);
   get_yaml_node("gnss_velocity_stdev", param_filename_, gnss_vel_noise);
+  get_yaml_eigen("p_b2g", param_filename_, p_b2g_);
   gnss_horizontal_position_stdev_ = gnss_pos_noise_h * !use_gnss_truth;
   gnss_vertical_position_stdev_ = gnss_pos_noise_v * !use_gnss_truth;
   gnss_velocity_stdev_ = gnss_vel_noise * !use_gnss_truth;
@@ -338,6 +339,7 @@ void Simulator::init_raw_gnss()
   get_yaml_node("multipath_prob", param_filename_, multipath_prob_);
   get_yaml_node("cycle_slip_prob", param_filename_, cycle_slip_prob_);
   get_yaml_node("multipath_error_range", param_filename_, multipath_error_range_);
+  get_yaml_eigen("p_b2g", param_filename_, p_b2g_);
   pseudorange_stdev_ = pseudorange_noise * !use_raw_gnss_truth;
   pseudorange_rate_stdev_ = p_rate_noise * !use_raw_gnss_truth;
   carrier_phase_stdev_ = cp_noise * !use_raw_gnss_truth;
@@ -364,6 +366,7 @@ void Simulator::init_raw_gnss()
                          cp_noise*cp_noise}.asDiagonal();
 
   clock_bias_ = uniform_(rng_) * clock_init_stdev_;
+  clock_bias_rate_ = uniform_(rng_)*clock_walk_stdev_;
   last_raw_gnss_update_ = 0.0;
 }
 
@@ -790,6 +793,17 @@ Vector3d Simulator::get_velocity_ecef() const
 {
   Vector3d v_NED = dyn_.get_global_pose().q().rota(dyn_.get_state().v);
   return X_e2n_.q().rota(v_NED);
+}
+
+Vector3d Simulator::get_gps_position_ecef() const
+{
+    return WGS84::ned2ecef(X_e2n_, state().p + state().q.rota(p_b2g_));
+}
+
+Vector3d Simulator::get_gps_velocity_ecef() const
+{
+    Vector3d v_NED = dyn_.get_global_pose().q().rota(state().v + state().w.cross(p_b2g_));
+    return X_e2n_.q().rota(v_NED);
 }
 
 inline static double sat(double x, double max, double min)

@@ -64,6 +64,7 @@ protected:
         node["multipath_prob"] = 0.00;
         node["multipath_error_range"] = 25;
         node["cycle_slip_prob"] = 0.00;
+        node["p_b2g"] = std::vector<double>{0, 0, -0.3};
         tmp_file << node;
         tmp_file.close();
 
