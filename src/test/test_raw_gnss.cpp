@@ -51,6 +51,8 @@ protected:
         ofstream tmp_file(filename);
         YAML::Node node;
         node["ref_LLA"] = std::vector<double>{40.247082 * DEG2RAD, -111.647776 * DEG2RAD, 1387.998309};
+        node["multipath_area"] = std::vector<double>{1, 1, 1, 1};
+        node["gps_denied_area"] = std::vector<double>{1, 1, 1, 1};
         node["gnss_update_rate"] = 5;
         node["use_raw_gnss_truth"] = false;
         node["pseudorange_stdev"] = 3.0;

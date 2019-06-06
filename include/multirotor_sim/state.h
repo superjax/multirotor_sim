@@ -195,5 +195,22 @@ public:
   }
 };
 
+struct Area
+{
+    struct Range
+    {
+        double min;
+        double max;
+    };
+
+    Range x;
+    Range y;
+
+    bool inside(const Eigen::Vector3d& p)
+    {
+        return p.x() > x.min && p.x() < x.max && p.y() > y.min && p.y() < y.max;
+    }
+};
+
 
 } // namespace multirotor_sim

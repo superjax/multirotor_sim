@@ -296,6 +296,7 @@ void Simulator::init_gnss()
   double gnss_pos_noise_h, gnss_pos_noise_v, gnss_vel_noise;
   get_yaml_eigen("ref_LLA", param_filename_, refLla);
   X_e2n_ = WGS84::x_ecef2ned(WGS84::lla2ecef(refLla));
+  get_yaml_eigen("p_b2g", param_filename_, p_b2g_);
   get_yaml_node("gnss_update_rate", param_filename_, gnss_update_rate_);
   get_yaml_node("use_gnss_truth", param_filename_, use_gnss_truth);
   get_yaml_node("gnss_horizontal_position_stdev", param_filename_, gnss_pos_noise_h);
@@ -322,9 +323,10 @@ void Simulator::init_raw_gnss()
 {
   Vector3d refLla;
   bool use_raw_gnss_truth;
-  get_yaml_eigen("ref_LLA", param_filename_, refLla);
-  X_e2n_ = WGS84::x_ecef2ned(WGS84::lla2ecef(refLla));
+  std::vector<double> area;
   double pseudorange_noise, p_rate_noise, cp_noise, clock_walk;
+  get_yaml_eigen("ref_LLA", param_filename_, refLla);
+  get_yaml_eigen("p_b2g", param_filename_, p_b2g_);
   get_yaml_node("gnss_update_rate", param_filename_, gnss_update_rate_);
   get_yaml_node("use_raw_gnss_truth", param_filename_, use_raw_gnss_truth);
   get_yaml_node("use_raw_gnss_truth", param_filename_, use_raw_gnss_truth);
@@ -337,9 +339,19 @@ void Simulator::init_raw_gnss()
   get_yaml_node("start_time_week", param_filename_, start_time_.week);
   get_yaml_node("start_time_tow_sec", param_filename_, start_time_.tow_sec);
   get_yaml_node("multipath_prob", param_filename_, multipath_prob_);
+  get_yaml_node("multipath_area", param_filename_, area);
+  multipath_area_.x.min = area[0];
+  multipath_area_.x.max = area[1];
+  multipath_area_.y.min = area[2];
+  multipath_area_.y.max = area[3];
+  get_yaml_node("gps_denied_area", param_filename_, area);
+  gps_denied_area_.x.min = area[0];
+  gps_denied_area_.x.max = area[1];
+  gps_denied_area_.y.min = area[2];
+  gps_denied_area_.y.max = area[3];
   get_yaml_node("cycle_slip_prob", param_filename_, cycle_slip_prob_);
   get_yaml_node("multipath_error_range", param_filename_, multipath_error_range_);
-  get_yaml_eigen("p_b2g", param_filename_, p_b2g_);
+  X_e2n_ = WGS84::x_ecef2ned(WGS84::lla2ecef(refLla));
   pseudorange_stdev_ = pseudorange_noise * !use_raw_gnss_truth;
   pseudorange_rate_stdev_ = p_rate_noise * !use_raw_gnss_truth;
   carrier_phase_stdev_ = cp_noise * !use_raw_gnss_truth;
@@ -626,8 +638,12 @@ void Simulator::update_raw_gnss_meas()
     clock_bias_ += clock_bias_rate_ * dt;
 
     GTime t_now = t_ + start_time_;
-    Vector3d p_ECEF = get_position_ecef();
-    Vector3d v_ECEF = get_velocity_ecef();
+    Vector3d p_ECEF = get_gps_position_ecef();
+    Vector3d v_ECEF = get_gps_velocity_ecef();
+    Vector3d p_ned = get_gps_position_ned();
+
+    if (gps_denied_area_.inside(p_ned))
+        return;
 
     VecVec3 z;
     VecMat3 R;
@@ -642,16 +658,23 @@ void Simulator::update_raw_gnss_meas()
         carrier_phase_integer_offsets_[i] = round(uniform_(rng_) * 100) - 50;
       }
 
-      if (multipath_offset_[i] > 0)
+      if (multipath_area_.inside(p_ned))
       {
-          if (uniform_(rng_) < (multipath_prob_ + (0.7 * (1.0 - multipath_prob_)))* 1.0/gnss_update_rate_ )
+          if (multipath_offset_[i] > 0)
           {
-              multipath_offset_[i] = 0;
+              if (uniform_(rng_) < (multipath_prob_ + (0.7 * (1.0 - multipath_prob_)))* 1.0/gnss_update_rate_ )
+              {
+                  multipath_offset_[i] = 0;
+              }
+          }
+          else if ((uniform_(rng_)  < multipath_prob_ * 1.0/gnss_update_rate_))
+          {
+              multipath_offset_[i] = uniform_(rng_) * multipath_error_range_;
           }
       }
-      else if ((uniform_(rng_)  < multipath_prob_ * 1.0/gnss_update_rate_))
+      else
       {
-          multipath_offset_[i] = uniform_(rng_) * multipath_error_range_;
+          multipath_offset_[i] = 0;
       }
 
       Vector3d z_i;
@@ -795,9 +818,14 @@ Vector3d Simulator::get_velocity_ecef() const
   return X_e2n_.q().rota(v_NED);
 }
 
+Vector3d Simulator::get_gps_position_ned() const
+{
+    return state().p + state().q.rota(p_b2g_);
+}
+
 Vector3d Simulator::get_gps_position_ecef() const
 {
-    return WGS84::ned2ecef(X_e2n_, state().p + state().q.rota(p_b2g_));
+    return WGS84::ned2ecef(X_e2n_, get_gps_position_ned());
 }
 
 Vector3d Simulator::get_gps_velocity_ecef() const

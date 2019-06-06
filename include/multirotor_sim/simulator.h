@@ -93,6 +93,7 @@ public:
   State& commanded_state() {return xc_;}
   Vector3d get_position_ecef() const;
   Vector3d get_velocity_ecef() const;
+  Vector3d get_gps_position_ned() const;
   Vector3d get_gps_position_ecef() const;
   Vector3d get_gps_velocity_ecef() const;
 
@@ -261,13 +262,13 @@ public:
   bool gnss_enabled_;
   Xformd X_e2n_; // transform from the ECEF frame to the Inertial (NED) frame
   Matrix6d gnss_R_;
+  Vector3d p_b2g_; // position of gps antenna in body frame
   double gnss_update_rate_;
   double gnss_horizontal_position_stdev_;
   double gnss_vertical_position_stdev_;
   double gnss_velocity_stdev_;
   double last_gnss_update_;
   Vector3d gnss_position_noise_;
-  Vector3d p_b2g_;
 
   // RAW GNSS
   bool raw_gnss_enabled_;
@@ -279,11 +280,14 @@ public:
   double clock_init_stdev_;
   double clock_bias_;
   double clock_bias_rate_;
-  double multipath_prob_;
+
+  Area multipath_area_;
+  Area gps_denied_area_;
   double multipath_error_range_;
   double cycle_slip_prob_;
   std::string ephemeris_filename_;
   std::vector<double> multipath_offset_;
+  double multipath_prob_;
   std::vector<int> carrier_phase_integer_offsets_;
   SatVec satellites_;
   double last_raw_gnss_update_;
