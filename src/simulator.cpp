@@ -10,6 +10,8 @@
 using namespace std;
 using namespace gnss_utils;
 using namespace Eigen;
+using namespace quat;
+using namespace xform;
 
 namespace  multirotor_sim
 {
@@ -469,7 +471,7 @@ void Simulator::update_camera_meas()
     while (tracked_points_.size() < num_features_)
     {
       // Add the new feature to our "tracker"
-      feature_t new_feature;
+      Feature new_feature;
       if (!get_feature_in_frame(new_feature, loop_closure_))
         break;
       tracked_points_.push_back(new_feature);
@@ -711,7 +713,7 @@ void Simulator::update_measurements()
 }
 
 
-bool Simulator::update_feature(feature_t &feature) const
+bool Simulator::update_feature(Feature &feature) const
 {
   if (feature.id > env_.get_points().size() || feature.id < 0)
     return false;
@@ -735,7 +737,7 @@ bool Simulator::update_feature(feature_t &feature) const
     return true;
 }
 
-bool Simulator::get_previously_tracked_feature_in_frame(feature_t &feature)
+bool Simulator::get_previously_tracked_feature_in_frame(Feature &feature)
 {
 
   Vector3d ground_pt;
@@ -769,7 +771,7 @@ bool Simulator::get_previously_tracked_feature_in_frame(feature_t &feature)
   return false;
 }
 
-bool Simulator::get_feature_in_frame(feature_t &feature, bool retrack)
+bool Simulator::get_feature_in_frame(Feature &feature, bool retrack)
 {
   if (retrack && get_previously_tracked_feature_in_frame(feature))
   {
@@ -781,10 +783,11 @@ bool Simulator::get_feature_in_frame(feature_t &feature, bool retrack)
   }
 }
 
-bool Simulator::create_new_feature_in_frame(feature_t &feature)
+bool Simulator::create_new_feature_in_frame(Feature &feature)
 {
   // First, look for features in frame that are not currently being tracked
-  feature.id = env_.add_point(x_I2c_.t_, x_I2c_.q_, feature.zeta, feature.pixel, feature.depth);
+  feature.id = env_.add_point(x_I2c_.t_, x_I2c_.q_, tracked_points_,
+                              feature.zeta, feature.pixel, feature.depth);
   if (feature.id != -1)
   {
     feature.id = next_feature_id_++;

@@ -16,7 +16,7 @@ protected:
   void SetUp() override
   {
     filename = "tmp.params.yaml";
-    ofstream tmp_file(filename);
+    std::ofstream tmp_file(filename);
     YAML::Node node = YAML::LoadFile(MULTIROTOR_SIM_DIR"/params/sim_params.yaml");
     node["tmax"] = 60;
     node["seed"] = 1;
@@ -57,7 +57,7 @@ TEST_F (ReferenceControllerTest, WaypointsSupplied)
 {
   int prev_waypoint_id = -1;
   std::vector<double> waypoint_time;
-  ofstream file("/tmp/ReferenceController.NonlinearController_Waypoints.log");
+  std::ofstream file("/tmp/ReferenceController.NonlinearController_Waypoints.log");
 
   ReferenceController cont;
   cont.load(filename);
@@ -66,16 +66,16 @@ TEST_F (ReferenceControllerTest, WaypointsSupplied)
 
   while(sim.run())
   {
-     file.write((char*)&sim.t_, sizeof(double));
-    file.write((char*)sim.state().arr.data(), sizeof(double) * State::SIZE);
-    file.write((char*)sim.commanded_state().arr.data(), sizeof(double) * State::SIZE);
-    if (cont.current_waypoint_id_ != prev_waypoint_id)
-    {
-      prev_waypoint_id = cont.current_waypoint_id_;
-      waypoint_time.push_back(sim.t_);
-    }
+      file.write((char*)&sim.t_, sizeof(double));
+      file.write((char*)sim.state().arr.data(), sizeof(double) * State::SIZE);
+      file.write((char*)sim.commanded_state().arr.data(), sizeof(double) * State::SIZE);
+      if (cont.current_waypoint_id_ != prev_waypoint_id)
+      {
+          prev_waypoint_id = cont.current_waypoint_id_;
+          waypoint_time.push_back(sim.t_);
+      }
   }
-//  EXPECT_NEAR(waypoint_time[0], 0.01, 0.1);
+  //  EXPECT_NEAR(waypoint_time[0], 0.01, 0.1);
 //  EXPECT_NEAR(waypoint_time[1], 5.25, 0.1);
 //  EXPECT_NEAR(waypoint_time[2], 16.45, 0.2);
 //  EXPECT_NEAR(waypoint_time[3], 30.25, 0.5);
@@ -88,7 +88,7 @@ TEST_F (ReferenceControllerTest, WaypointsInternal)
 {
   int prev_waypoint_id = -1;
   std::vector<double> waypoint_time;
-  ofstream file("ReferenceController.NonlinearController_Waypoints.log");
+  std::ofstream file("ReferenceController.NonlinearController_Waypoints.log");
 
   while(sim.run())
   {

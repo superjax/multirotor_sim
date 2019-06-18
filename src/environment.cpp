@@ -3,7 +3,14 @@
 
 #include "multirotor_sim/environment.h"
 
+using namespace Eigen;
+using namespace std;
+using namespace xform;
     
+namespace multirotor_sim {
+
+
+
 Environment::Environment(int seed)
   : uniform_(-1.0, 1.0),
     generator_(seed)
@@ -12,6 +19,7 @@ Environment::Environment(int seed)
 void Environment::load(string filename)
 {
   get_yaml_node("wall_max_offset", filename, max_offset_);
+  get_yaml_node("feat_too_close_thresh", filename, feat_too_close_thresh_);
   get_yaml_eigen("image_size", filename, img_size_);
   Vector2d focal_len;
   get_yaml_eigen("focal_len", filename, focal_len);
@@ -45,11 +53,31 @@ bool Environment::get_center_img_center_on_ground_plane(const Xformd& x_I2c, Vec
   }
 }
 
-int Environment::add_point(const Vector3d& t_I_c, const quat::Quatd& q_I_c, Vector3d& zeta, Vector2d& pix, double& depth)
+int Environment::add_point(const Vector3d& t_I_c, const quat::Quatd& q_I_c, const FeatVec& tracked,
+                           Vector3d& zeta, Vector2d& pix, double& depth)
 {
-  // Choose a random pixel (assume that image center is at center of camera)
-  pix.setRandom();
-  pix = 0.45 * pix.cwiseProduct(img_size_); // stay away from the edges of image
+  bool too_close = true;
+  int attempts = 0;
+  do
+  {
+      // Choose a random pixel (assume that image center is at center of camera)
+      pix.setRandom();
+      pix = 0.45 * pix.cwiseProduct(img_size_); // stay away from the edges of image
+
+      // Make sure it's not too close to other tracked pixels
+      for (auto& ft : tracked)
+      {
+          if ((ft.pixel - pix).norm() < feat_too_close_thresh_)
+          {
+              // try again
+              attempts++;
+              continue;
+          }
+      }
+
+      // we made it!
+      too_close = false;
+  } while (too_close && attempts < 100);
 
   // Calculate the Unit Vector
   zeta << pix.cwiseProduct(finv_), 1.0;
@@ -77,8 +105,8 @@ int Environment::add_point(const Vector3d& t_I_c, const quat::Quatd& q_I_c, Vect
   }
 }
 
-bool Environment::get_closest_points(const Vector3d& query_pt,
-      int num_pts, double max_dist, vector<Vector3d, aligned_allocator<Vector3d>>& pts, vector<size_t>& ids)
+bool Environment::get_closest_points(const Vector3d& query_pt, int num_pts, double max_dist,
+                                     VecVec3& pts, vector<size_t>& ids)
 {
   std::vector<size_t> ret_index(num_pts);
   std::vector<double> dist_sqr(num_pts);
@@ -106,3 +134,5 @@ bool Environment::get_closest_points(const Vector3d& query_pt,
 ////  cout << "moving point by " << move.transpose();
 //  points_.row(id) += move.transpose();
 //}
+
+}

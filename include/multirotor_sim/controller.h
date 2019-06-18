@@ -16,9 +16,6 @@
 #include "multirotor_sim/nlc.h"
 #include "multirotor_sim/lqr.h"
 
-using namespace quat;
-using namespace Eigen;
-
 namespace multirotor_sim
 {
 
@@ -76,7 +73,7 @@ public:
   int current_waypoint_id_;
 
   // Hover throttle estimation
-  Vector3d vhat_;
+  Eigen::Vector3d vhat_;
   double sh_inv_hat_;
   double s_prev_;
   double sh_kv_;
@@ -100,7 +97,7 @@ public:
   bool initialized_;
   State xhat_ = {}; // estimate
   State xc_ = {}; // command
-  Vector3d xc_euler_ = {};
+  Eigen::Vector3d xc_euler_ = {};
   double Tc_ = 0; // commanded throttle
   double t_c_ = 0; // time of command
   max_t max_ = {};
@@ -110,9 +107,10 @@ public:
   void load(const std::string filename);
   void updateWaypointManager();
   void updateTrajectoryManager();
-  void computeControl(const double& t, const State &x, const State& x_c, const Vector4d& ur, Vector4d& u) override;
+  void computeControl(const double& t, const State &x, const State& x_c,
+                      const Eigen::Vector4d& ur, Eigen::Vector4d& u) override;
   
-  void getCommandedState(const double& t, State& x_c, Vector4d& u_r) override;
+  void getCommandedState(const double& t, State& x_c, Eigen::Vector4d& u_r) override;
   const Eigen::MatrixXd get_waypoints() const { return waypoints_; }
 };
 

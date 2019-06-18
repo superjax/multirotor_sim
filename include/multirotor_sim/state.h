@@ -212,5 +212,16 @@ struct Area
     }
 };
 
+struct Feature
+{
+    EIGEN_MAKE_ALIGNED_OPERATOR_NEW
+    Eigen::Vector3d zeta;
+    Eigen::Vector2d pixel;
+    double depth;
+    int id;
+};
+
+typedef std::vector<Feature, Eigen::aligned_allocator<Feature>> FeatVec;
+
 
 } // namespace multirotor_sim

@@ -34,8 +34,6 @@
 #define DBG(msg, ...) {}
 #endif
 
-using namespace quat;
-
 namespace multirotor_sim
 {
 class Simulator
@@ -105,14 +103,6 @@ public:
   typedef std::vector<EstimatorBase*> estVec;
   estVec est_;
   double t_, dt_, tmax_, t_round_off_;
-
-  typedef struct
-  {
-    Vector3d zeta;
-    Vector2d pixel;
-    double depth;
-    int id;
-  } feature_t;
   
   /**
    * @brief update_feature
@@ -122,7 +112,7 @@ public:
    * @param feature
    * @return true if feature still in image, false otherwise
    */
-  bool update_feature(feature_t &feature) const;
+  bool update_feature(Feature &feature) const;
   
   /**
    * @brief get_feature_in_frame
@@ -135,11 +125,11 @@ public:
    * @param retrack - flag of whether to rediscover old landmarks or always create new
    * @returns bool - true if suceeded, false if the ground plane is not in the camera FOV.
    */
-  bool get_feature_in_frame(feature_t &feature, bool retrack);
+  bool get_feature_in_frame(Feature &feature, bool retrack);
 
 
-  bool get_previously_tracked_feature_in_frame(feature_t &feature);
-  bool create_new_feature_in_frame(feature_t &feature);
+  bool get_previously_tracked_feature_in_frame(Feature &feature);
+  bool create_new_feature_in_frame(Feature &feature);
   bool is_feature_tracked(const int env_id) const;
   
   /**
@@ -157,7 +147,7 @@ public:
   bool prog_indicator_;
   std::string log_filename_;
   std::string param_filename_;
-  ofstream log_;
+  std::ofstream log_;
 
   Vector4d u_; // Command vector passed from controller to dynamics [F, Omega]
   Vector4d ur_; // Reference Command given by the trajectory
@@ -165,9 +155,9 @@ public:
 
   // Random number Generation
   uint64_t seed_;
-  default_random_engine rng_;
-  uniform_real_distribution<double> uniform_;
-  normal_distribution<double> normal_;
+  std::default_random_engine rng_;
+  std::uniform_real_distribution<double> uniform_;
+  std::normal_distribution<double> normal_;
 
   // Multirotor Hardware
   double max_thrust_;
@@ -178,7 +168,7 @@ public:
 
   // IMU
   bool imu_enabled_;
-  Quatd q_b2u_;
+  quat::Quatd q_b2u_;
   Vector3d p_b2u_;
   double imu_update_rate_;
   double last_imu_update_;
@@ -193,8 +183,8 @@ public:
   // Camera (Features)
   bool camera_enabled_;
   int num_features_;
-  Xformd x_b2c_;
-  Xformd x_I2c_;
+  xform::Xformd x_b2c_;
+  xform::Xformd x_I2c_;
   Matrix2d feat_R_;
   double pixel_noise_stdev_;
   double camera_update_rate_;
@@ -204,8 +194,8 @@ public:
   double camera_transmission_noise_;
   double camera_transmission_time_;
   bool loop_closure_; // whether to re-use features if they show up in the frame again
-  vector<feature_t, aligned_allocator<feature_t>> tracked_points_; // currently tracked features
-  deque<std::pair<double,measurement_t>, aligned_allocator<std::pair<double,measurement_t>>> camera_measurements_buffer_; // container to hold measurements while waiting for delay
+  std::vector<Feature, aligned_allocator<Feature>> tracked_points_; // currently tracked features
+  std::deque<std::pair<double,measurement_t>, aligned_allocator<std::pair<double,measurement_t>>> camera_measurements_buffer_; // container to hold measurements while waiting for delay
   Camera<double> cam_;
   ImageFeat img_;
   int image_id_;
@@ -245,7 +235,7 @@ public:
 
   // Motion Capture
   bool mocap_enabled_;
-  Quatd q_b2m_;
+  quat::Quatd q_b2m_;
   Vector3d p_b2m_;
   Matrix6d mocap_R_;
   double mocap_update_rate_;
@@ -256,11 +246,11 @@ public:
   double mocap_time_offset_;
   double mocap_transmission_noise_;
   double mocap_transmission_time_;
-  deque<std::pair<double, measurement_t>, aligned_allocator<std::pair<double, measurement_t>>> mocap_measurement_buffer_; // container to hold measurements while waiting for delay
+  std::deque<std::pair<double, measurement_t>, aligned_allocator<std::pair<double, measurement_t>>> mocap_measurement_buffer_; // container to hold measurements while waiting for delay
 
   // GNSS
   bool gnss_enabled_;
-  Xformd X_e2n_; // transform from the ECEF frame to the Inertial (NED) frame
+  xform::Xformd X_e2n_; // transform from the ECEF frame to the Inertial (NED) frame
   Matrix6d gnss_R_;
   Vector3d p_b2g_; // position of gps antenna in body frame
   double gnss_update_rate_;

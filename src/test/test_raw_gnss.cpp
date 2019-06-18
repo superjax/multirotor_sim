@@ -17,8 +17,8 @@ public:
     EIGEN_MAKE_ALIGNED_OPERATOR_NEW
     void imuCallback(const double& t, const Vector6d& z, const Matrix6d& R) override {}
     void altCallback(const double& t, const Vector1d& z, const Matrix1d& R) override {}
-    void mocapCallback(const double& t, const Xformd& z, const Matrix6d& R) override {}
-    void voCallback(const double& t, const Xformd& z, const Matrix6d& R) override {}
+    void mocapCallback(const double& t, const xform::Xformd& z, const Matrix6d& R) override {}
+    void voCallback(const double& t, const xform::Xformd& z, const Matrix6d& R) override {}
     void gnssCallback(const double& t, const Vector6d& z, const Matrix6d& R) override {}
     void rawGnssCallback(const GTime& t, const VecVec3& z, const VecMat3& R, SatVec& sat,
                          const std::vector<bool>& slip) override
