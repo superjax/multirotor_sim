@@ -103,6 +103,7 @@ public:
   typedef std::vector<EstimatorBase*> estVec;
   estVec est_;
   double t_, dt_, tmax_, t_round_off_;
+  double takeoff_wait_time_;
   
   /**
    * @brief update_feature

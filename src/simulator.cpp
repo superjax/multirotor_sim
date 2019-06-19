@@ -98,6 +98,8 @@ void Simulator::load(string filename)
   if (prog_indicator_)
     prog_.init(std::round(tmax_/dt_), 40);
 
+  get_yaml_node("takeoff_wait_time", filename, takeoff_wait_time_);
+
   // start at hover throttle
   u_(multirotor_sim::THRUST) = dyn_.mass_ / dyn_.max_thrust_ * multirotor_sim::G;
 }
@@ -109,9 +111,19 @@ bool Simulator::run()
   {
     // Propagate forward in time and get new control input and true acceleration
     t_ += dt_;
-    traj_->getCommandedState(t_, xc_, ur_);
-    cont_->computeControl(t_, dyn_.get_state(), xc_, ur_, u_);
-    dyn_.run(dt_, compute_low_level_control(u_));
+    Vector4d forces_torques;
+    if (t_ > takeoff_wait_time_)
+    {
+        traj_->getCommandedState(t_, xc_, ur_);
+        cont_->computeControl(t_, dyn_.get_state(), xc_, ur_, u_);
+        forces_torques = compute_low_level_control(u_);
+    }
+    else
+    {
+        forces_torques(THRUST) = G * dyn_.mass_;
+        forces_torques.bottomRows<3>().setZero();
+    }
+    dyn_.run(dt_, forces_torques);
     if (prog_indicator_)
       prog_.print(t_/dt_, t_);
     update_measurements();
@@ -418,8 +430,15 @@ void Simulator::update_imu_meas()
 
     // Populate accelerometer and gyro measurements
     Vector6d imu;
-    imu.segment<3>(0) = dyn_.get_imu_accel() + accel_bias_ + randomNormal<Vector3d>(accel_noise_stdev_, normal_,  rng_);
-    imu.segment<3>(3) = dyn_.get_imu_gyro() + gyro_bias_ + randomNormal<Vector3d>(gyro_noise_stdev_, normal_,  rng_);;
+    imu.segment<3>(0) = dyn_.get_imu_accel() + accel_bias_;
+    imu.segment<3>(3) = dyn_.get_imu_gyro() + gyro_bias_;
+
+    // only apply noise if the motors are spinnings
+    if (t_ > takeoff_wait_time_)
+    {
+        imu.head<3>() += randomNormal<Vector3d>(accel_noise_stdev_, normal_,  rng_);
+        imu.tail<3>() += randomNormal<Vector3d>(gyro_noise_stdev_, normal_,  rng_);
+    }
 
     for (estVec::iterator it = est_.begin(); it != est_.end(); it++)
       (*it)->imuCallback(t_, imu, imu_R_);
