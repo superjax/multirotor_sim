@@ -50,6 +50,7 @@ traj_yaw_period: 20
 
 
 # Controller Configuration
+takeoff_wait_time: 0
 throttle_eq: 0.5
 mass: 1.0
 max_thrust: 19.6133
