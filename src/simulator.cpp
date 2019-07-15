@@ -114,8 +114,8 @@ bool Simulator::run()
     Vector4d forces_torques;
     if (t_ > takeoff_wait_time_)
     {
-        traj_->getCommandedState(t_, xc_, ur_);
-        cont_->computeControl(t_, dyn_.get_state(), xc_, ur_, u_);
+        traj_->getCommandedState(t_-takeoff_wait_time_, xc_, ur_);
+        cont_->computeControl(t_-takeoff_wait_time_, dyn_.get_state(), xc_, ur_, u_);
         forces_torques = compute_low_level_control(u_);
     }
     else

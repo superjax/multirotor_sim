@@ -49,7 +49,7 @@ target_link_libraries(multirotor_sim
     gnss_utils)
 
 option(BUILD_TEST "Build Tests" OFF)
-if (BUILD_TESTS)
+if (BUILD_TEST)
     message(STATUS "BUILDING TESTS")
     find_package(GTest REQUIRED)
     find_package(Boost REQUIRED COMPONENTS system thread)
