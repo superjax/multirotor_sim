@@ -289,7 +289,7 @@ public:
       {
           printf("[%s<%s, %.2fit/s] ", elapsed_stamp.c_str(), left_stamp.c_str(), it_s);
       }
-      std::cout.flush();
+      fflush(stdout);
     }
     last_completed_ = completed;
     t_end_ = t;

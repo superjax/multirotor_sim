@@ -2,3 +2,4 @@ build*
 *.user
 python/.idea/*
 *.pyc
+lib/*

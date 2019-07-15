@@ -6,11 +6,26 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
 
 find_package(Eigen3 REQUIRED)
 find_package(yaml-cpp REQUIRED)
-find_package(geometry REQUIRED)
-find_package(gnss_utils REQUIRED)
-find_package(nanoflann_eigen REQUIRED)
-find_package(lin_alg_tools REQUIRED)
 find_package(LAPACK REQUIRED)
+
+function(find_deps package url)
+    find_package(${package} QUIET)
+    if (${package}_FOUND)
+        message(STATUS found ${package})
+    else()
+        message(STATUS "did not find ${package}, cloning into local lib/ folder")
+        # Clone and create the proper variables
+        file(MAKE_DIRECTORY ${CMAKE_CURRENT_LIST_DIR}/lib)
+        execute_process(COMMAND git clone ${url} ${CMAKE_CURRENT_LIST_DIR}/lib/${package})
+        add_subdirectory(${CMAKE_CURRENT_LIST_DIR}/lib/${package})
+        set(${package}_INCLUDE_DIRS ${CMAKE_CURRENT_LIST_DIR}/lib/${package}/include)
+    endif()
+endfunction()
+
+find_deps(geometry https://github.com/superjax/geometry)
+find_deps(gnss_utils https://github.com/superjax/gnss_utils)
+find_deps(nanoflann_eigen https://github.com/superjax/nanoflann_eigen)
+find_deps(lin_alg_tools https://github.com/superjax/lin_alg_tools)
 
 include_directories(
     include
@@ -30,11 +45,8 @@ add_library(multirotor_sim SHARED
 target_link_libraries(multirotor_sim
     stdc++fs
     ${YAML_CPP_LIBRARIES}
-    ${geometry_LIBRARIES}
-    ${nanoflann_eigen_LIBRARIES}
-    ${lin_alg_tools_LIBRARIES}
     ${LAPACK_LIBRARIES}
-    ${gnss_utils_LIBRARIES})
+    gnss_utils)
 
 option(BUILD_TEST "Build Tests" OFF)
 if (BUILD_TESTS)
