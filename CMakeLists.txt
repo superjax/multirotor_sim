@@ -42,7 +42,7 @@ function(find_deps package url)
 endfunction()
 
 find_deps(geometry https://github.com/superjax/geometry)
-find_deps(gnss_utils https://github.com/mhask94/gnss_utils)
+find_deps(gnss_utils https://github.com/superjax/gnss_utils)
 find_deps(nanoflann_eigen https://github.com/superjax/nanoflann_eigen)
 find_deps(lin_alg_tools https://github.com/superjax/lin_alg_tools)
 
